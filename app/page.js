@@ -43,12 +43,7 @@ export default function HomePage() {
       }
 
       setStatus(`Saved successfully. Request ID: ${data.requestId}`);
-      setTicker("");
-      setPeriod("1Y");
-      setFile(null);
-
-      const fileInput = document.getElementById("excel-file");
-      if (fileInput) fileInput.value = "";
+      window.location.href = `/report/${data.requestId}`;
     } catch (error) {
       setStatus(error.message || "Submission failed.");
     } finally {
