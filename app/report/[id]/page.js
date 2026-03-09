@@ -11,6 +11,7 @@ export default function ReportPage({ params }) {
   const [targetRange, setTargetRange] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [loadingPDF, setLoadingPDF] = useState(false);
+  const [publishing, setPublishing] = useState(false);
 
   const id = params.id;
 
@@ -22,6 +23,9 @@ export default function ReportPage({ params }) {
     const res = await fetch(`/.netlify/functions/get-report-summary?id=${id}`);
     const json = await res.json();
     setData(json);
+    setAiReport(json.savedReport || "");
+    setRating(json.request?.analyst_rating || "");
+    setTargetRange(json.narrative?.targetRange || null);
   }
 
   async function generateAIReport() {
@@ -34,6 +38,7 @@ export default function ReportPage({ params }) {
       setComps(json.comps || null);
       setRating(json.rating || "");
       setTargetRange(json.targetRange || null);
+      await loadReport();
     } finally {
       setLoadingAI(false);
     }
@@ -43,8 +48,23 @@ export default function ReportPage({ params }) {
     try {
       setLoadingPDF(true);
       window.open(`/.netlify/functions/export-report-pdf?id=${id}`, "_blank");
+      setTimeout(loadReport, 1500);
     } finally {
       setLoadingPDF(false);
+    }
+  }
+
+  async function publishReport() {
+    try {
+      setPublishing(true);
+      await fetch("/.netlify/functions/publish-report", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      await loadReport();
+    } finally {
+      setPublishing(false);
     }
   }
 
@@ -58,7 +78,7 @@ export default function ReportPage({ params }) {
     );
   }
 
-  const { request, analytics, narrative } = data;
+  const { request, analytics, narrative, exports } = data;
 
   return (
     <main style={pageStyle}>
@@ -94,9 +114,9 @@ export default function ReportPage({ params }) {
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginTop: 18 }}>
-            <Metric label="Low Case" value={formatMoney(targetRange?.low ?? narrative?.targetRange?.low)} />
-            <Metric label="Base Case" value={formatMoney(targetRange?.base ?? narrative?.targetRange?.base)} />
-            <Metric label="High Case" value={formatMoney(targetRange?.high ?? narrative?.targetRange?.high)} />
+            <Metric label="Low Case" value={formatMoney(targetRange?.low)} />
+            <Metric label="Base Case" value={formatMoney(targetRange?.base)} />
+            <Metric label="High Case" value={formatMoney(targetRange?.high)} />
           </div>
 
           <div style={{ display: "flex", gap: 14, marginTop: 24, flexWrap: "wrap" }}>
@@ -108,24 +128,50 @@ export default function ReportPage({ params }) {
               {loadingPDF ? "Preparing PDF..." : "Download PDF Report"}
             </button>
 
-            <a href="/dashboard" style={dashboardLinkStyle}>
-              Open Dashboard
-            </a>
+            <button onClick={publishReport} style={publishButtonStyle}>
+              {publishing ? "Publishing..." : "Publish Report"}
+            </button>
+
+            <a href="/dashboard" style={dashboardLinkStyle}>Dashboard</a>
+            <a href="/reports" style={dashboardLinkStyle}>Published Reports</a>
           </div>
         </section>
 
-        {rating ? (
+        <section style={cardStyle}>
+          <h2 style={{ marginTop: 0 }}>Report Metadata</h2>
+          <div style={{ display: "grid", gap: 8, color: "#24364f", lineHeight: 1.7 }}>
+            <div><strong>Status:</strong> {request.status}</div>
+            <div><strong>Rating:</strong> {rating || request.analyst_rating || "—"}</div>
+            <div><strong>Title:</strong> {request.report_title || "—"}</div>
+            <div><strong>Published:</strong> {formatDateTime(request.published_at)}</div>
+            <div><strong>Last PDF Export:</strong> {formatDateTime(request.pdf_generated_at)}</div>
+          </div>
+        </section>
+
+        {exports?.length ? (
           <section style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Analyst Conclusion</h2>
-            <p><strong>Rating:</strong> {rating}</p>
-            {dcf ? (
-              <p>
-                <strong>DCF Implied Value:</strong> {formatMoney(dcf.impliedValuePerShare)}
-              </p>
-            ) : null}
-            {comps?.commentary ? (
-              <p style={{ lineHeight: 1.7, color: "#24364f" }}>{comps.commentary}</p>
-            ) : null}
+            <h2 style={{ marginTop: 0 }}>Export History</h2>
+            <div style={{ display: "grid", gap: 10 }}>
+              {exports.map((item) => (
+                <div key={item.id} style={exportRowStyle}>
+                  <div><strong>{item.export_type.toUpperCase()}</strong></div>
+                  <div>{item.file_name || "—"}</div>
+                  <div>{formatDateTime(item.created_at)}</div>
+                </div>
+              ))}
+            </div>
+          </section>
+        ) : null}
+
+        {dcf ? (
+          <section style={cardStyle}>
+            <h2 style={{ marginTop: 0 }}>DCF Snapshot</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
+              <Metric label="Enterprise Value" value={formatMoney(dcf.enterpriseValue)} />
+              <Metric label="Implied Value / Share" value={formatMoney(dcf.impliedValuePerShare)} />
+              <Metric label="Growth Rate" value={formatPercent((dcf.assumptions?.growthRate || 0) * 100)} />
+              <Metric label="Discount Rate" value={formatPercent((dcf.assumptions?.discountRate || 0) * 100)} />
+            </div>
           </section>
         ) : null}
 
@@ -210,6 +256,13 @@ function formatPercent(v) {
   return `${n.toFixed(2)}%`;
 }
 
+function formatDateTime(value) {
+  if (!value) return "—";
+  const d = new Date(value);
+  if (Number.isNaN(d.getTime())) return String(value);
+  return d.toLocaleString("en-US");
+}
+
 const pageStyle = {
   minHeight: "100vh",
   padding: 40,
@@ -274,6 +327,16 @@ const secondaryButtonStyle = {
   cursor: "pointer"
 };
 
+const publishButtonStyle = {
+  padding: "12px 18px",
+  fontSize: 16,
+  background: "#14804A",
+  color: "#ffffff",
+  border: "none",
+  borderRadius: 8,
+  cursor: "pointer"
+};
+
 const dashboardLinkStyle = {
   padding: "12px 18px",
   fontSize: 16,
@@ -290,6 +353,15 @@ const reportBoxStyle = {
   padding: 20,
   background: "#f6f8fb",
   borderRadius: 10
+};
+
+const exportRowStyle = {
+  display: "grid",
+  gridTemplateColumns: "120px 1fr 220px",
+  gap: 16,
+  padding: "12px 14px",
+  borderRadius: 10,
+  background: "#f8fbff"
 };
 
 const tableStyle = {
