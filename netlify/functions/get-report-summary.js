@@ -1,30 +1,52 @@
 const { neon } = require("@neondatabase/serverless");
 const { buildHistoryAnalytics } = require("../../lib/reportAnalytics");
-const { buildPdfReport } = require("../../lib/buildPdfReport");
-const { generateResearchReport } = require("../../lib/generateResearchReport");
 
 exports.handler = async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
-      return responseJson(405, { error: "Method not allowed." });
+      return response(405, { error: "Method not allowed." });
     }
 
     const id = event.queryStringParameters?.id;
     if (!id) {
-      return responseJson(400, { error: "Missing report request id." });
+      return response(400, { error: "Missing report request id." });
     }
 
     const sql = neon(process.env.DATABASE_URL);
 
     const requests = await sql`
-      SELECT id, ticker, period, status, original_filename, row_count, created_at, ai_report, report_title
+      SELECT
+        id,
+        ticker,
+        period,
+        status,
+        original_filename,
+        row_count,
+        created_at,
+        ai_report,
+        analyst_rating,
+        target_low,
+        target_base,
+        target_high,
+        pdf_generated_at,
+        published_at,
+        report_title,
+        company_name,
+        sector,
+        industry,
+        exchange,
+        currency,
+        market_cap,
+        live_price,
+        price_change_pct,
+        market_data_updated_at
       FROM report_requests
       WHERE id = ${id}
       LIMIT 1
     `;
 
     if (!requests.length) {
-      return responseJson(404, { error: "Report request not found." });
+      return response(404, { error: "Report request not found." });
     }
 
     const request = requests[0];
@@ -36,69 +58,51 @@ exports.handler = async function handler(event) {
       ORDER BY trade_date ASC
     `;
 
+    const exportsList = await sql`
+      SELECT id, export_type, file_name, created_at
+      FROM report_exports
+      WHERE report_request_id = ${id}
+      ORDER BY created_at DESC
+    `;
+
+    const peers = await sql`
+      SELECT
+        id,
+        peer_ticker,
+        peer_name,
+        peer_sector,
+        peer_industry,
+        peer_market_cap,
+        created_at
+      FROM peer_selections
+      WHERE report_request_id = ${id}
+      ORDER BY created_at DESC, peer_ticker ASC
+    `;
+
     const analytics = buildHistoryAnalytics(history);
 
-    const narrative = {
-      headline: `${request.ticker} preliminary quantitative summary`,
-      thesis: analytics.investmentView,
-      targetRange: {
-        low: analytics.impliedRangeLow,
-        base: analytics.impliedRangeBase,
-        high: analytics.impliedRangeHigh,
-      },
-    };
-
-    let aiReport = request.ai_report || "";
-    if (!aiReport) {
-      try {
-        aiReport = await generateResearchReport({
-          ticker: request.ticker,
-          analytics,
-        });
-      } catch (err) {
-        aiReport =
-          "AI narrative was unavailable during PDF export. The quantitative report has still been generated successfully.";
-      }
-    }
-
-    const pdfBuffer = await buildPdfReport({
+    return response(200, {
       request,
       analytics,
-      narrative,
-      aiReport,
-    });
-
-    const fileName = `${request.ticker || "report"}-research-report.pdf`;
-
-    await sql`
-      INSERT INTO report_exports (report_request_id, export_type, file_name)
-      VALUES (${id}, 'pdf', ${fileName})
-    `;
-
-    await sql`
-      UPDATE report_requests
-      SET pdf_generated_at = NOW()
-      WHERE id = ${id}
-    `;
-
-    return {
-      statusCode: 200,
-      isBase64Encoded: true,
-      headers: {
-        "Content-Type": "application/pdf",
-        "Content-Disposition": `attachment; filename="${fileName}"`,
-        "Cache-Control": "no-store",
+      narrative: {
+        headline: `${request.ticker} preliminary quantitative summary`,
+        thesis: analytics.investmentView,
+        targetRange: {
+          low: request.target_low ?? analytics.impliedRangeLow,
+          base: request.target_base ?? analytics.impliedRangeBase,
+          high: request.target_high ?? analytics.impliedRangeHigh,
+        },
       },
-      body: pdfBuffer.toString("base64"),
-    };
-  } catch (error) {
-    return responseJson(500, {
-      error: error.message || "Server error.",
+      savedReport: request.ai_report || "",
+      exports: exportsList,
+      peers,
     });
+  } catch (error) {
+    return response(500, { error: error.message || "Server error." });
   }
 };
 
-function responseJson(statusCode, body) {
+function response(statusCode, body) {
   return {
     statusCode,
     headers: {
