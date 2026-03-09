@@ -5,7 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   createWorkspaceDocument,
   createWorkspaceNote,
-} from "@/lib/workspace-repository";
+} from "@/lib/WorkspaceRepository";
 import type { WorkspaceDocumentKind } from "@/types/workspace";
 
 function getRequiredString(value: FormDataEntryValue | null): string {
