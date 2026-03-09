@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import {
   createWorkspaceDocument,
   getWorkspaceDocuments,
-} from "@/lib/workspace-repository";
+} from "@/lib/WorkspaceRepository";
 import type { WorkspaceDocumentKind } from "@/types/workspace";
 
 interface RouteContext {
