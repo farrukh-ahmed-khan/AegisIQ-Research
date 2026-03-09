@@ -1,5 +1,3 @@
-import { StyleSheet } from '@react-pdf/renderer';
-
 export type PdfTone = 'positive' | 'negative' | 'warning' | 'neutral';
 
 export type PdfPalette = {
@@ -199,7 +197,7 @@ export function getToneColors(tone: PdfTone, theme: PdfThemePack) {
 export function buildPdfStyles(theme: PdfThemePack) {
   const { palette, typography, spacing } = theme;
 
-  return StyleSheet.create({
+  return {
     page: {
       backgroundColor: palette.pageBg,
       color: palette.text,
@@ -645,5 +643,5 @@ export function buildPdfStyles(theme: PdfThemePack) {
       fontSize: typography.caption,
       color: palette.text,
     },
-  });
+  };
 }
