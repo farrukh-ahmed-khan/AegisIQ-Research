@@ -130,6 +130,10 @@ export default function HomePage() {
               View Report Dashboard
             </a>
 
+            <a href="/reports" style={heroLinkSecondary}>
+              View Published Reports
+            </a>
+
             <a href="#new-request" style={heroLinkSecondary}>
               Create New Request
             </a>
@@ -158,14 +162,7 @@ export default function HomePage() {
 
             <form onSubmit={handleSubmit} style={{ display: "grid", gap: "18px" }}>
               <div>
-                <label
-                  htmlFor="ticker"
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontWeight: 700,
-                  }}
-                >
+                <label htmlFor="ticker" style={{ display: "block", marginBottom: "8px", fontWeight: 700 }}>
                   Stock ticker
                 </label>
                 <input
@@ -179,14 +176,7 @@ export default function HomePage() {
               </div>
 
               <div>
-                <label
-                  htmlFor="period"
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontWeight: 700,
-                  }}
-                >
+                <label htmlFor="period" style={{ display: "block", marginBottom: "8px", fontWeight: 700 }}>
                   History period
                 </label>
                 <select
@@ -202,14 +192,7 @@ export default function HomePage() {
               </div>
 
               <div>
-                <label
-                  htmlFor="excel-file"
-                  style={{
-                    display: "block",
-                    marginBottom: "8px",
-                    fontWeight: 700,
-                  }}
-                >
+                <label htmlFor="excel-file" style={{ display: "block", marginBottom: "8px", fontWeight: 700 }}>
                   Investor.com Excel file
                 </label>
                 <input
@@ -269,22 +252,11 @@ export default function HomePage() {
               <h3 style={{ marginTop: 0, fontSize: "24px" }}>What this step does</h3>
 
               <div style={{ display: "grid", gap: "14px", lineHeight: 1.6 }}>
-                <div>
-                  <strong>1.</strong> Captures the stock ticker.
-                </div>
-                <div>
-                  <strong>2.</strong> Uploads the Excel history file.
-                </div>
-                <div>
-                  <strong>3.</strong> Labels the dataset as 1Y, 3Y, or 5Y.
-                </div>
-                <div>
-                  <strong>4.</strong> Sends the request to a Netlify Function.
-                </div>
-                <div>
-                  <strong>5.</strong> Stores the submission for analytics, AI narrative,
-                  and PDF report generation.
-                </div>
+                <div><strong>1.</strong> Captures the stock ticker.</div>
+                <div><strong>2.</strong> Uploads the Excel history file.</div>
+                <div><strong>3.</strong> Labels the dataset as 1Y, 3Y, or 5Y.</div>
+                <div><strong>4.</strong> Sends the request to a Netlify Function.</div>
+                <div><strong>5.</strong> Stores the submission for analytics, AI narrative, and PDF report generation.</div>
               </div>
             </div>
 
@@ -309,10 +281,12 @@ export default function HomePage() {
                 <div>Generate AI research narrative</div>
                 <div>↓</div>
                 <div>Export PDF report</div>
+                <div>↓</div>
+                <div>Publish report into AegisIQ library</div>
               </div>
 
-              <a href="/dashboard" style={sideLinkStyle}>
-                Open saved report history →
+              <a href="/reports" style={sideLinkStyle}>
+                Open published reports →
               </a>
             </div>
           </div>
