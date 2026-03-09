@@ -8,6 +8,8 @@ type Primitive = string | number | boolean | null | undefined;
 
 type UnknownRecord = Record<string, unknown>;
 
+type NormalizedBullet = { text: string } | { title: string; text: string };
+
 export type ExistingReportPayload = {
   themeId?: string | null;
 
@@ -204,13 +206,11 @@ function normalizeMetricArray(
     .filter((item): item is { label: string; value: string } => Boolean(item));
 }
 
-function normalizeBulletArray(
-  input: unknown,
-): Array<{ title?: string; text: string }> {
+function normalizeBulletArray(input: unknown): NormalizedBullet[] {
   if (!Array.isArray(input)) return [];
 
   return input
-    .map((item) => {
+    .map((item): NormalizedBullet | null => {
       if (typeof item === 'string') {
         const text = asString(item);
         return text ? { text } : null;
@@ -225,7 +225,7 @@ function normalizeBulletArray(
       if (!text) return null;
       return title ? { title, text } : { text };
     })
-    .filter((item): item is { title?: string; text: string } => Boolean(item));
+    .filter((item): item is NormalizedBullet => item !== null);
 }
 
 function normalizeTableArray(
