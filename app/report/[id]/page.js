@@ -5,6 +5,10 @@ import { useEffect, useState } from "react";
 export default function ReportPage({ params }) {
   const [data, setData] = useState(null);
   const [aiReport, setAiReport] = useState("");
+  const [dcf, setDcf] = useState(null);
+  const [comps, setComps] = useState(null);
+  const [rating, setRating] = useState("");
+  const [targetRange, setTargetRange] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [loadingPDF, setLoadingPDF] = useState(false);
 
@@ -26,6 +30,10 @@ export default function ReportPage({ params }) {
       const res = await fetch(`/.netlify/functions/generate-report?id=${id}`);
       const json = await res.json();
       setAiReport(json.report || "No report generated.");
+      setDcf(json.dcf || null);
+      setComps(json.comps || null);
+      setRating(json.rating || "");
+      setTargetRange(json.targetRange || null);
     } finally {
       setLoadingAI(false);
     }
@@ -86,9 +94,9 @@ export default function ReportPage({ params }) {
           </p>
 
           <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginTop: 18 }}>
-            <Metric label="Low Case" value={formatMoney(narrative?.targetRange?.low)} />
-            <Metric label="Base Case" value={formatMoney(narrative?.targetRange?.base)} />
-            <Metric label="High Case" value={formatMoney(narrative?.targetRange?.high)} />
+            <Metric label="Low Case" value={formatMoney(targetRange?.low ?? narrative?.targetRange?.low)} />
+            <Metric label="Base Case" value={formatMoney(targetRange?.base ?? narrative?.targetRange?.base)} />
+            <Metric label="High Case" value={formatMoney(targetRange?.high ?? narrative?.targetRange?.high)} />
           </div>
 
           <div style={{ display: "flex", gap: 14, marginTop: 24, flexWrap: "wrap" }}>
@@ -99,8 +107,59 @@ export default function ReportPage({ params }) {
             <button onClick={downloadPDF} style={secondaryButtonStyle}>
               {loadingPDF ? "Preparing PDF..." : "Download PDF Report"}
             </button>
+
+            <a href="/dashboard" style={dashboardLinkStyle}>
+              Open Dashboard
+            </a>
           </div>
         </section>
+
+        {rating ? (
+          <section style={cardStyle}>
+            <h2 style={{ marginTop: 0 }}>Analyst Conclusion</h2>
+            <p><strong>Rating:</strong> {rating}</p>
+            {dcf ? (
+              <p>
+                <strong>DCF Implied Value:</strong> {formatMoney(dcf.impliedValuePerShare)}
+              </p>
+            ) : null}
+            {comps?.commentary ? (
+              <p style={{ lineHeight: 1.7, color: "#24364f" }}>{comps.commentary}</p>
+            ) : null}
+          </section>
+        ) : null}
+
+        {comps?.comps?.length ? (
+          <section style={cardStyle}>
+            <h2 style={{ marginTop: 0 }}>Comparable Companies</h2>
+            <div style={{ overflowX: "auto" }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Company</th>
+                    <th>Market Cap</th>
+                    <th>EV/Revenue</th>
+                    <th>EV/EBITDA</th>
+                    <th>P/E</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {comps.comps.map((comp) => (
+                    <tr key={comp.ticker}>
+                      <td>{comp.ticker}</td>
+                      <td>{comp.company_name}</td>
+                      <td>{formatMoney(comp.market_cap)}</td>
+                      <td>{formatNumber(comp.ev_revenue)}</td>
+                      <td>{formatNumber(comp.ev_ebitda)}</td>
+                      <td>{formatNumber(comp.pe_ratio)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
 
         <section style={cardStyle}>
           <h2 style={{ marginTop: 0 }}>AI Equity Research Report</h2>
@@ -115,16 +174,6 @@ export default function ReportPage({ params }) {
               </pre>
             </div>
           )}
-        </section>
-
-        <section style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Request Metadata</h2>
-          <div style={{ display: "grid", gap: 8, color: "#24364f", lineHeight: 1.7 }}>
-            <div><strong>Request ID:</strong> {request.id}</div>
-            <div><strong>Status:</strong> {request.status}</div>
-            <div><strong>Original File:</strong> {request.original_filename || "—"}</div>
-            <div><strong>Created:</strong> {formatDateTime(request.created_at)}</div>
-          </div>
         </section>
       </div>
     </main>
@@ -149,17 +198,16 @@ function formatMoney(v) {
   }).format(n);
 }
 
+function formatNumber(v) {
+  const n = Number(v);
+  if (!Number.isFinite(n)) return "—";
+  return n.toFixed(2);
+}
+
 function formatPercent(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
   return `${n.toFixed(2)}%`;
-}
-
-function formatDateTime(value) {
-  if (!value) return "—";
-  const d = new Date(value);
-  if (Number.isNaN(d.getTime())) return String(value);
-  return d.toLocaleString("en-US");
 }
 
 const pageStyle = {
@@ -226,9 +274,26 @@ const secondaryButtonStyle = {
   cursor: "pointer"
 };
 
+const dashboardLinkStyle = {
+  padding: "12px 18px",
+  fontSize: 16,
+  background: "#eef4ff",
+  color: "#0b3d91",
+  border: "1px solid #cfe0ff",
+  borderRadius: 8,
+  textDecoration: "none",
+  fontWeight: 700
+};
+
 const reportBoxStyle = {
   marginTop: 10,
   padding: 20,
   background: "#f6f8fb",
   borderRadius: 10
+};
+
+const tableStyle = {
+  width: "100%",
+  borderCollapse: "collapse",
+  fontSize: 14,
 };
