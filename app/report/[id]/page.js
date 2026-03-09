@@ -1,4 +1,4 @@
-t";
+"use client";
 
 import { useEffect, useState } from "react";
 
@@ -6,12 +6,15 @@ export default function ReportPage({ params }) {
   const [data, setData] = useState(null);
   const [aiReport, setAiReport] = useState("");
   const [dcf, setDcf] = useState(null);
+  const [valuation, setValuation] = useState(null);
   const [comps, setComps] = useState(null);
   const [rating, setRating] = useState("");
   const [targetRange, setTargetRange] = useState(null);
   const [loadingAI, setLoadingAI] = useState(false);
   const [loadingPDF, setLoadingPDF] = useState(false);
   const [publishing, setPublishing] = useState(false);
+  const [refreshingMarket, setRefreshingMarket] = useState(false);
+  const [runningValuation, setRunningValuation] = useState(false);
 
   const id = params.id;
 
@@ -28,6 +31,37 @@ export default function ReportPage({ params }) {
     setTargetRange(json.narrative?.targetRange || null);
   }
 
+  async function refreshMarketData() {
+    try {
+      setRefreshingMarket(true);
+      await fetch("/.netlify/functions/refresh-market-data", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ id }),
+      });
+      await loadReport();
+    } finally {
+      setRefreshingMarket(false);
+    }
+  }
+
+  async function runValuation() {
+    try {
+      setRunningValuation(true);
+      const res = await fetch(`/.netlify/functions/run-valuation?id=${id}`, {
+        method: "GET",
+      });
+      const json = await res.json();
+      setValuation(json.valuation || null);
+      setDcf(json.valuation?.dcf || null);
+      setRating(json.valuation?.rating || "");
+      setTargetRange(json.valuation?.targetRange || null);
+      await loadReport();
+    } finally {
+      setRunningValuation(false);
+    }
+  }
+
   async function generateAIReport() {
     try {
       setLoadingAI(true);
@@ -36,6 +70,7 @@ export default function ReportPage({ params }) {
       setAiReport(json.report || "No report generated.");
       setDcf(json.dcf || null);
       setComps(json.comps || null);
+      setValuation(json.valuation || null);
       setRating(json.rating || "");
       setTargetRange(json.targetRange || null);
       await loadReport();
@@ -78,7 +113,7 @@ export default function ReportPage({ params }) {
     );
   }
 
-  const { request, analytics, narrative, exports } = data;
+  const { request, analytics, narrative, exports, peers } = data;
 
   return (
     <main style={pageStyle}>
@@ -86,11 +121,56 @@ export default function ReportPage({ params }) {
         <section style={heroStyle}>
           <div style={badgeStyle}>AegisIQ Equity Research</div>
           <h1 style={{ margin: "12px 0 8px 0", fontSize: 42 }}>
-            {request.ticker} Research Summary
+            {request.company_name || request.ticker} Research Summary
           </h1>
           <p style={{ margin: 0, color: "rgba(255,255,255,0.84)", fontSize: 18 }}>
-            Period: {request.period} · Rows Uploaded: {analytics.rows}
+            {request.ticker} · {request.period} · Rows Uploaded: {analytics.rows}
           </p>
+        </section>
+
+        <section style={cardStyle}>
+          <div style={sectionHeaderStyle}>
+            <h2 style={{ margin: 0 }}>Live Market Snapshot</h2>
+            <button onClick={refreshMarketData} style={secondaryButtonStyle}>
+              {refreshingMarket ? "Refreshing..." : "Refresh Market Data"}
+            </button>
+          </div>
+
+          <div style={gridStyle}>
+            <Metric label="Company" value={request.company_name || "—"} />
+            <Metric label="Live Price" value={formatMoney(request.live_price)} />
+            <Metric label="Daily Change" value={formatPercent(request.price_change_pct)} />
+            <Metric label="Market Cap" value={formatMoney(request.market_cap)} />
+          </div>
+
+          <div style={gridStyle}>
+            <Metric label="Sector" value={request.sector || "—"} />
+            <Metric label="Industry" value={request.industry || "—"} />
+            <Metric label="Exchange" value={request.exchange || "—"} />
+            <Metric label="Updated" value={formatDateTime(request.market_data_updated_at)} />
+          </div>
+        </section>
+
+        <section style={cardStyle}>
+          <div style={sectionHeaderStyle}>
+            <h2 style={{ margin: 0 }}>Valuation Engine</h2>
+            <button onClick={runValuation} style={primaryButtonStyle}>
+              {runningValuation ? "Running..." : "Run Valuation"}
+            </button>
+          </div>
+
+          <div style={gridStyle}>
+            <Metric label="Rating" value={rating || request.analyst_rating || "—"} />
+            <Metric label="Low Target" value={formatMoney(targetRange?.low || request.target_low)} />
+            <Metric label="Base Target" value={formatMoney(targetRange?.base || request.target_base)} />
+            <Metric label="High Target" value={formatMoney(targetRange?.high || request.target_high)} />
+          </div>
+
+          {valuation ? (
+            <div style={{ marginTop: 18, color: "#24364f", lineHeight: 1.7 }}>
+              {valuation.summary}
+            </div>
+          ) : null}
         </section>
 
         <section style={gridStyle}>
@@ -113,12 +193,6 @@ export default function ReportPage({ params }) {
             {narrative?.thesis || "No thesis available yet."}
           </p>
 
-          <div style={{ display: "grid", gridTemplateColumns: "repeat(3,1fr)", gap: 16, marginTop: 18 }}>
-            <Metric label="Low Case" value={formatMoney(targetRange?.low)} />
-            <Metric label="Base Case" value={formatMoney(targetRange?.base)} />
-            <Metric label="High Case" value={formatMoney(targetRange?.high)} />
-          </div>
-
           <div style={{ display: "flex", gap: 14, marginTop: 24, flexWrap: "wrap" }}>
             <button onClick={generateAIReport} style={primaryButtonStyle}>
               {loadingAI ? "Generating..." : "Generate AI Research Report"}
@@ -137,16 +211,47 @@ export default function ReportPage({ params }) {
           </div>
         </section>
 
-        <section style={cardStyle}>
-          <h2 style={{ marginTop: 0 }}>Report Metadata</h2>
-          <div style={{ display: "grid", gap: 8, color: "#24364f", lineHeight: 1.7 }}>
-            <div><strong>Status:</strong> {request.status}</div>
-            <div><strong>Rating:</strong> {rating || request.analyst_rating || "—"}</div>
-            <div><strong>Title:</strong> {request.report_title || "—"}</div>
-            <div><strong>Published:</strong> {formatDateTime(request.published_at)}</div>
-            <div><strong>Last PDF Export:</strong> {formatDateTime(request.pdf_generated_at)}</div>
-          </div>
-        </section>
+        {peers?.length ? (
+          <section style={cardStyle}>
+            <h2 style={{ marginTop: 0 }}>Automatic Peer Selection</h2>
+            <div style={{ overflowX: "auto" }}>
+              <table style={tableStyle}>
+                <thead>
+                  <tr>
+                    <th>Ticker</th>
+                    <th>Name</th>
+                    <th>Sector</th>
+                    <th>Industry</th>
+                    <th>Market Cap</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {peers.map((peer) => (
+                    <tr key={peer.id}>
+                      <td>{peer.peer_ticker}</td>
+                      <td>{peer.peer_name || "—"}</td>
+                      <td>{peer.peer_sector || "—"}</td>
+                      <td>{peer.peer_industry || "—"}</td>
+                      <td>{formatMoney(peer.peer_market_cap)}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          </section>
+        ) : null}
+
+        {dcf ? (
+          <section style={cardStyle}>
+            <h2 style={{ marginTop: 0 }}>DCF Snapshot</h2>
+            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
+              <Metric label="Enterprise Value" value={formatMoney(dcf.enterpriseValue)} />
+              <Metric label="Equity Value" value={formatMoney(dcf.equityValue)} />
+              <Metric label="Implied Value / Share" value={formatMoney(dcf.impliedValuePerShare)} />
+              <Metric label="Terminal Value" value={formatMoney(dcf.terminalValue)} />
+            </div>
+          </section>
+        ) : null}
 
         {exports?.length ? (
           <section style={cardStyle}>
@@ -159,50 +264,6 @@ export default function ReportPage({ params }) {
                   <div>{formatDateTime(item.created_at)}</div>
                 </div>
               ))}
-            </div>
-          </section>
-        ) : null}
-
-        {dcf ? (
-          <section style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>DCF Snapshot</h2>
-            <div style={{ display: "grid", gridTemplateColumns: "repeat(4,1fr)", gap: 16 }}>
-              <Metric label="Enterprise Value" value={formatMoney(dcf.enterpriseValue)} />
-              <Metric label="Implied Value / Share" value={formatMoney(dcf.impliedValuePerShare)} />
-              <Metric label="Growth Rate" value={formatPercent((dcf.assumptions?.growthRate || 0) * 100)} />
-              <Metric label="Discount Rate" value={formatPercent((dcf.assumptions?.discountRate || 0) * 100)} />
-            </div>
-          </section>
-        ) : null}
-
-        {comps?.comps?.length ? (
-          <section style={cardStyle}>
-            <h2 style={{ marginTop: 0 }}>Comparable Companies</h2>
-            <div style={{ overflowX: "auto" }}>
-              <table style={tableStyle}>
-                <thead>
-                  <tr>
-                    <th>Ticker</th>
-                    <th>Company</th>
-                    <th>Market Cap</th>
-                    <th>EV/Revenue</th>
-                    <th>EV/EBITDA</th>
-                    <th>P/E</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {comps.comps.map((comp) => (
-                    <tr key={comp.ticker}>
-                      <td>{comp.ticker}</td>
-                      <td>{comp.company_name}</td>
-                      <td>{formatMoney(comp.market_cap)}</td>
-                      <td>{formatNumber(comp.ev_revenue)}</td>
-                      <td>{formatNumber(comp.ev_ebitda)}</td>
-                      <td>{formatNumber(comp.pe_ratio)}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
             </div>
           </section>
         ) : null}
@@ -244,12 +305,6 @@ function formatMoney(v) {
   }).format(n);
 }
 
-function formatNumber(v) {
-  const n = Number(v);
-  if (!Number.isFinite(n)) return "—";
-  return n.toFixed(2);
-}
-
 function formatPercent(v) {
   const n = Number(v);
   if (!Number.isFinite(n)) return "—";
@@ -285,6 +340,14 @@ const badgeStyle = {
   fontSize: 12,
   textTransform: "uppercase",
   letterSpacing: "0.08em"
+};
+
+const sectionHeaderStyle = {
+  display: "flex",
+  justifyContent: "space-between",
+  alignItems: "center",
+  gap: 16,
+  marginBottom: 18
 };
 
 const gridStyle = {
