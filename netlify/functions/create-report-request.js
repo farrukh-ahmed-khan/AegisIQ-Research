@@ -18,16 +18,14 @@ exports.handler = async function handler(event) {
     const form = await parseMultipart(event);
     const ticker = (form.fields.ticker || "").trim().toUpperCase();
     const period = (form.fields.period || "").trim().toUpperCase();
+    const userId = (form.fields.userId || "").trim();
+    const customerEmail = (form.fields.customerEmail || "").trim();
     const uploadedFile = form.file;
 
-    if (!ticker) {
-      return response(400, { error: "Ticker is required." });
-    }
-
+    if (!ticker) return response(400, { error: "Ticker is required." });
     if (!["1Y", "3Y", "5Y"].includes(period)) {
       return response(400, { error: "Period must be 1Y, 3Y, or 5Y." });
     }
-
     if (!uploadedFile || !uploadedFile.buffer) {
       return response(400, { error: "Excel file is required." });
     }
@@ -36,8 +34,10 @@ exports.handler = async function handler(event) {
     const sql = neon(process.env.DATABASE_URL);
 
     const requestRows = await sql`
-      INSERT INTO report_requests (ticker, period, status, original_filename, row_count)
-      VALUES (${ticker}, ${period}, 'uploaded', ${uploadedFile.filename}, ${rows.length})
+      INSERT INTO report_requests
+        (ticker, period, status, original_filename, row_count, user_id, customer_email)
+      VALUES
+        (${ticker}, ${period}, 'uploaded', ${uploadedFile.filename}, ${rows.length}, ${userId || null}, ${customerEmail || null})
       RETURNING id
     `;
 
@@ -68,9 +68,7 @@ exports.handler = async function handler(event) {
       rowsSaved: rows.length,
     });
   } catch (error) {
-    return response(500, {
-      error: error.message || "Server error.",
-    });
+    return response(500, { error: error.message || "Server error." });
   }
 };
 
@@ -93,7 +91,7 @@ function parseMultipart(event) {
     busboy.on("file", (name, stream, info) => {
       const chunks = [];
       const filename =
-        typeof info === "object" ? info.filename : arguments[1] || "upload.xlsx";
+        typeof info === "object" ? info.filename : "upload.xlsx";
 
       stream.on("data", (chunk) => chunks.push(chunk));
       stream.on("end", () => {
@@ -115,9 +113,7 @@ function parseMultipart(event) {
 function response(statusCode, body) {
   return {
     statusCode,
-    headers: {
-      "Content-Type": "application/json",
-    },
+    headers: { "Content-Type": "application/json" },
     body: JSON.stringify(body),
   };
 }
