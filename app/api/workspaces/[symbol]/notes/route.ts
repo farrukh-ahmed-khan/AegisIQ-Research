@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import {
   createWorkspaceNote,
   getWorkspaceNotes,
-} from "@/lib/workspace-repository";
+} from "@/lib/WorkspaceRepository";
 
 interface RouteContext {
   params: Promise<{
