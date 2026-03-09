@@ -1,5 +1,9 @@
 import Link from "next/link";
 import type { CompanyWorkspaceTerminalViewModel } from "@/types/workspace";
+import {
+  createWorkspaceDocumentAction,
+  createWorkspaceNoteAction,
+} from "@/app/workspace/[symbol]/actions";
 
 interface CompanyWorkspaceTerminalProps {
   data: CompanyWorkspaceTerminalViewModel;
@@ -95,6 +99,154 @@ function EmptyState({
       <p className="text-sm font-medium text-slate-200">{title}</p>
       <p className="mt-1 text-sm text-slate-400">{body}</p>
     </div>
+  );
+}
+
+function CreateNoteForm({ symbol }: { symbol: string }) {
+  return (
+    <details className="rounded-xl border border-white/10 bg-white/[0.03]">
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-slate-200">
+        Add note
+      </summary>
+      <form action={createWorkspaceNoteAction} className="grid gap-3 border-t border-white/10 p-4">
+        <input type="hidden" name="symbol" value={symbol} />
+        <div className="grid gap-1.5">
+          <label htmlFor="workspace-note-title" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            Title
+          </label>
+          <input
+            id="workspace-note-title"
+            name="title"
+            required
+            maxLength={140}
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            placeholder="Investment thesis update"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <label htmlFor="workspace-note-body" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            Body
+          </label>
+          <textarea
+            id="workspace-note-body"
+            name="bodyMd"
+            rows={5}
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            placeholder="Key catalysts, risks, valuation thoughts, and management observations."
+          />
+        </div>
+        <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+          <input
+            type="checkbox"
+            name="isPinned"
+            className="h-4 w-4 rounded border-white/10 bg-[#111827]"
+          />
+          Pin note
+        </label>
+        <div>
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
+          >
+            Save Note
+          </button>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+function CreateDocumentForm({ symbol }: { symbol: string }) {
+  return (
+    <details className="rounded-xl border border-white/10 bg-white/[0.03]">
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-slate-200">
+        Link document
+      </summary>
+      <form
+        action={createWorkspaceDocumentAction}
+        className="grid gap-3 border-t border-white/10 p-4"
+      >
+        <input type="hidden" name="symbol" value={symbol} />
+        <div className="grid gap-1.5">
+          <label htmlFor="workspace-document-title" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            Title
+          </label>
+          <input
+            id="workspace-document-title"
+            name="title"
+            required
+            maxLength={180}
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            placeholder="Q4 earnings transcript"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <label htmlFor="workspace-document-kind" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            Kind
+          </label>
+          <select
+            id="workspace-document-kind"
+            name="kind"
+            defaultValue="other"
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none"
+          >
+            <option value="report">Report</option>
+            <option value="filing">Filing</option>
+            <option value="model">Model</option>
+            <option value="transcript">Transcript</option>
+            <option value="deck">Deck</option>
+            <option value="memo">Memo</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div className="grid gap-1.5">
+          <label htmlFor="workspace-document-url" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            Source URL
+          </label>
+          <input
+            id="workspace-document-url"
+            name="sourceUrl"
+            type="url"
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            placeholder="https://..."
+          />
+        </div>
+        <div className="grid gap-3 sm:grid-cols-2">
+          <div className="grid gap-1.5">
+            <label htmlFor="workspace-document-provider" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+              Provider
+            </label>
+            <input
+              id="workspace-document-provider"
+              name="sourceProvider"
+              maxLength={80}
+              className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+              placeholder="SEC, IR site, Internal"
+            />
+          </div>
+          <div className="grid gap-1.5">
+            <label htmlFor="workspace-document-mimetype" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+              MIME Type
+            </label>
+            <input
+              id="workspace-document-mimetype"
+              name="mimeType"
+              maxLength={120}
+              className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+              placeholder="application/pdf"
+            />
+          </div>
+        </div>
+        <div>
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
+          >
+            Save Document
+          </button>
+        </div>
+      </form>
+    </details>
   );
 }
 
@@ -294,14 +446,7 @@ export function CompanyWorkspaceTerminal({
           <Card
             title="Research Notes"
             description="Pinned and recent internal note coverage."
-            action={
-              <button
-                type="button"
-                className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-slate-200"
-              >
-                New Note
-              </button>
-            }
+            action={<CreateNoteForm symbol={data.workspace.symbol} />}
           >
             {data.notes.length === 0 ? (
               <EmptyState
@@ -310,7 +455,7 @@ export function CompanyWorkspaceTerminal({
               />
             ) : (
               <div className="space-y-3">
-                {data.notes.slice(0, 5).map((note) => (
+                {data.notes.slice(0, 8).map((note) => (
                   <div
                     key={note.id}
                     className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
@@ -328,7 +473,7 @@ export function CompanyWorkspaceTerminal({
                         </span>
                       ) : null}
                     </div>
-                    <p className="mt-3 line-clamp-3 whitespace-pre-wrap text-sm text-slate-300">
+                    <p className="mt-3 whitespace-pre-wrap text-sm text-slate-300">
                       {note.bodyMd || "Empty note"}
                     </p>
                   </div>
@@ -340,14 +485,7 @@ export function CompanyWorkspaceTerminal({
           <Card
             title="Documents"
             description="Source materials linked to this workspace."
-            action={
-              <button
-                type="button"
-                className="rounded-lg border border-white/10 bg-white/[0.04] px-3 py-1.5 text-sm font-medium text-slate-200"
-              >
-                Add Document
-              </button>
-            }
+            action={<CreateDocumentForm symbol={data.workspace.symbol} />}
           >
             {data.documents.length === 0 ? (
               <EmptyState
@@ -356,17 +494,28 @@ export function CompanyWorkspaceTerminal({
               />
             ) : (
               <div className="space-y-3">
-                {data.documents.slice(0, 6).map((document) => (
+                {data.documents.slice(0, 8).map((document) => (
                   <div
                     key={document.id}
                     className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
                   >
                     <div className="flex items-center justify-between gap-3">
-                      <div>
-                        <h3 className="text-sm font-medium text-white">{document.title}</h3>
+                      <div className="min-w-0">
+                        <h3 className="truncate text-sm font-medium text-white">{document.title}</h3>
                         <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
                           {document.kind}
+                          {document.sourceProvider ? ` · ${document.sourceProvider}` : ""}
                         </p>
+                        {document.sourceUrl ? (
+                          <a
+                            href={document.sourceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                            className="mt-2 inline-block truncate text-xs text-cyan-300 hover:text-cyan-200"
+                          >
+                            Open source
+                          </a>
+                        ) : null}
                       </div>
                       <span className="text-xs text-slate-400">
                         {formatDate(document.createdAt)}
@@ -389,7 +538,7 @@ export function CompanyWorkspaceTerminal({
               />
             ) : (
               <div className="space-y-3">
-                {data.activity.slice(0, 8).map((event) => (
+                {data.activity.slice(0, 10).map((event) => (
                   <div
                     key={event.id}
                     className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
@@ -411,6 +560,53 @@ export function CompanyWorkspaceTerminal({
             )}
           </Card>
         </div>
+
+        <Card
+          title="Recent Report Runs"
+          description="Latest report generation jobs and PDF outputs."
+        >
+          {data.reports.length === 0 ? (
+            <EmptyState
+              title="No report runs yet"
+              body="Generated reports for this symbol will appear here as they are created."
+            />
+          ) : (
+            <div className="grid gap-3">
+              {data.reports.map((report) => (
+                <div
+                  key={report.id}
+                  className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+                >
+                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                    <div>
+                      <div className="text-sm font-medium capitalize text-white">
+                        {report.reportType.replaceAll("_", " ")}
+                      </div>
+                      <div className="mt-1 text-sm text-slate-400">
+                        Status: <span className="capitalize">{report.status}</span>
+                      </div>
+                      <div className="mt-1 text-xs text-slate-500">
+                        Created {formatDateTime(report.createdAt)}
+                      </div>
+                    </div>
+                    <div className="flex flex-wrap gap-2">
+                      {report.pdfUrl ? (
+                        <a
+                          href={report.pdfUrl}
+                          target="_blank"
+                          rel="noreferrer"
+                          className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/[0.08]"
+                        >
+                          Open PDF
+                        </a>
+                      ) : null}
+                    </div>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </Card>
       </div>
     </div>
   );
