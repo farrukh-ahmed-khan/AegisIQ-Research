@@ -1,7 +1,7 @@
 import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { CompanyWorkspaceTerminal } from "@/components/workspace/CompanyWorkspaceTerminal";
-import { getWorkspaceTerminalViewModel } from "@/lib/WorkspaceRepository";
+import { CompanyWorkspaceTerminal } from "@/components/workspace/company-workspace-terminal";
+import { getWorkspaceTerminalViewModel } from "@/lib/workspace-repository";
 
 interface WorkspacePageProps {
   params: Promise<{
