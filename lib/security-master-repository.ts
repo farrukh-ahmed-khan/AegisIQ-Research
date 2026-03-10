@@ -1,6 +1,6 @@
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 
-export type SecurityMasterFilterOptionKey =
+export type SecurityMasterFilterKey =
   | "sector"
   | "industry"
   | "exchange"
@@ -9,7 +9,7 @@ export type SecurityMasterFilterOptionKey =
   | "securityType";
 
 export type SecurityMasterSupportedFilters = Record<
-  SecurityMasterFilterOptionKey,
+  SecurityMasterFilterKey,
   string[]
 >;
 
@@ -27,13 +27,11 @@ export type SecurityMasterRecord = {
 };
 
 export async function getSecurityMasterCoverageCount(): Promise<number> {
-  void db;
-  return 0;
+  const result = await sql`select 0 as count`;
+  return Number(result[0]?.count ?? 0);
 }
 
 export async function getSecurityMasterSupportedFilters(): Promise<SecurityMasterSupportedFilters> {
-  void db;
-
   return {
     sector: [],
     industry: [],
@@ -45,6 +43,5 @@ export async function getSecurityMasterSupportedFilters(): Promise<SecurityMaste
 }
 
 export async function querySecurityMaster(): Promise<SecurityMasterRecord[]> {
-  void db;
   return [];
 }
