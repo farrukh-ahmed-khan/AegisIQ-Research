@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import { sql } from "@/lib/db";
 
 export type WorkspaceScreenerQueryInput = {
   workspaceId: string;
@@ -29,7 +29,9 @@ export type WorkspaceScreenerQueryResult = {
 export async function runWorkspaceScreenerQuery(
   _input: WorkspaceScreenerQueryInput,
 ): Promise<WorkspaceScreenerQueryResult> {
-  void db;
+
+  // keep connection warm but do nothing yet
+  await sql`select 1`;
 
   return {
     coverageMode: "watchlist_fallback",
