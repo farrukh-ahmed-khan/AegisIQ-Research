@@ -26,12 +26,16 @@ export type SecurityMasterRecord = {
   securityType?: string | null;
 };
 
-export async function getSecurityMasterCoverageCount(): Promise<number> {
+export async function getSecurityMasterCoverageCount(
+  _workspaceId: string,
+): Promise<number> {
   const result = await sql`select 0 as count`;
   return Number(result[0]?.count ?? 0);
 }
 
-export async function getSecurityMasterSupportedFilters(): Promise<SecurityMasterSupportedFilters> {
+export async function getSecurityMasterSupportedFilters(
+  _workspaceId?: string,
+): Promise<SecurityMasterSupportedFilters> {
   return {
     sector: [],
     industry: [],
@@ -42,6 +46,8 @@ export async function getSecurityMasterSupportedFilters(): Promise<SecurityMaste
   };
 }
 
-export async function querySecurityMaster(): Promise<SecurityMasterRecord[]> {
+export async function querySecurityMaster(
+  _workspaceId?: string,
+): Promise<SecurityMasterRecord[]> {
   return [];
 }
