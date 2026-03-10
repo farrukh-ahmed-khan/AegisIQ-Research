@@ -3,6 +3,7 @@ import type { CompanyWorkspaceTerminalViewModel } from "../../types/workspace";
 import {
   createWorkspaceDocumentAction,
   createWorkspaceNoteAction,
+  updateWorkspaceNoteAction,
 } from "../../app/workspace/[symbol]/actions";
 
 interface CompanyWorkspaceTerminalProps {
@@ -108,10 +109,16 @@ function CreateNoteForm({ symbol }: { symbol: string }) {
       <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-slate-200">
         Add note
       </summary>
-      <form action={createWorkspaceNoteAction} className="grid gap-3 border-t border-white/10 p-4">
+      <form
+        action={createWorkspaceNoteAction}
+        className="grid gap-3 border-t border-white/10 p-4"
+      >
         <input type="hidden" name="symbol" value={symbol} />
         <div className="grid gap-1.5">
-          <label htmlFor="workspace-note-title" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+          <label
+            htmlFor="workspace-note-title"
+            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+          >
             Title
           </label>
           <input
@@ -124,7 +131,10 @@ function CreateNoteForm({ symbol }: { symbol: string }) {
           />
         </div>
         <div className="grid gap-1.5">
-          <label htmlFor="workspace-note-body" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+          <label
+            htmlFor="workspace-note-body"
+            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+          >
             Body
           </label>
           <textarea
@@ -168,7 +178,10 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
       >
         <input type="hidden" name="symbol" value={symbol} />
         <div className="grid gap-1.5">
-          <label htmlFor="workspace-document-title" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+          <label
+            htmlFor="workspace-document-title"
+            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+          >
             Title
           </label>
           <input
@@ -181,7 +194,10 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
           />
         </div>
         <div className="grid gap-1.5">
-          <label htmlFor="workspace-document-kind" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+          <label
+            htmlFor="workspace-document-kind"
+            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+          >
             Kind
           </label>
           <select
@@ -200,7 +216,10 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
           </select>
         </div>
         <div className="grid gap-1.5">
-          <label htmlFor="workspace-document-url" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+          <label
+            htmlFor="workspace-document-url"
+            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+          >
             Source URL
           </label>
           <input
@@ -213,7 +232,10 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
         </div>
         <div className="grid gap-3 sm:grid-cols-2">
           <div className="grid gap-1.5">
-            <label htmlFor="workspace-document-provider" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            <label
+              htmlFor="workspace-document-provider"
+              className="text-xs uppercase tracking-[0.14em] text-slate-400"
+            >
               Provider
             </label>
             <input
@@ -225,7 +247,10 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
             />
           </div>
           <div className="grid gap-1.5">
-            <label htmlFor="workspace-document-mimetype" className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            <label
+              htmlFor="workspace-document-mimetype"
+              className="text-xs uppercase tracking-[0.14em] text-slate-400"
+            >
               MIME Type
             </label>
             <input
@@ -243,6 +268,79 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
             className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
           >
             Save Document
+          </button>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+function EditNoteForm({
+  symbol,
+  noteId,
+  title,
+  bodyMd,
+  isPinned,
+}: {
+  symbol: string;
+  noteId: string;
+  title: string;
+  bodyMd: string;
+  isPinned: boolean;
+}) {
+  return (
+    <details className="mt-4 rounded-xl border border-white/10 bg-[#0b1220]">
+      <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium uppercase tracking-[0.14em] text-cyan-300 hover:text-cyan-200">
+        Edit Note
+      </summary>
+      <form
+        action={updateWorkspaceNoteAction}
+        className="grid gap-3 border-t border-white/10 p-3"
+      >
+        <input type="hidden" name="symbol" value={symbol} />
+        <input type="hidden" name="noteId" value={noteId} />
+
+        <div className="grid gap-1.5">
+          <label className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            Title
+          </label>
+          <input
+            name="title"
+            required
+            maxLength={140}
+            defaultValue={title}
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0"
+          />
+        </div>
+
+        <div className="grid gap-1.5">
+          <label className="text-xs uppercase tracking-[0.14em] text-slate-400">
+            Body
+          </label>
+          <textarea
+            name="bodyMd"
+            rows={4}
+            defaultValue={bodyMd}
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0"
+          />
+        </div>
+
+        <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+          <input
+            type="checkbox"
+            name="isPinned"
+            defaultChecked={isPinned}
+            className="h-4 w-4 rounded border-white/10 bg-[#111827]"
+          />
+          Pin note
+        </label>
+
+        <div>
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
+          >
+            Update Note
           </button>
         </div>
       </form>
@@ -294,7 +392,7 @@ export function CompanyWorkspaceTerminal({
                 <div className="mt-2 text-lg font-semibold text-white">
                   {formatCurrency(
                     data.workspace.lastPrice,
-                    data.workspace.primaryCurrency
+                    data.workspace.primaryCurrency,
                   )}
                 </div>
               </div>
@@ -315,7 +413,7 @@ export function CompanyWorkspaceTerminal({
                 <div className="mt-2 text-lg font-semibold text-white">
                   {formatCurrency(
                     data.workspace.latestTargetPrice,
-                    data.workspace.primaryCurrency
+                    data.workspace.primaryCurrency,
                   )}
                 </div>
               </div>
@@ -367,12 +465,14 @@ export function CompanyWorkspaceTerminal({
                   {latestValuation
                     ? formatCurrency(
                         latestValuation.fairValue,
-                        data.workspace.primaryCurrency
+                        data.workspace.primaryCurrency,
                       )
                     : "—"}
                 </div>
                 <div className="mt-1 text-sm text-slate-400">
-                  {latestValuation ? latestValuation.modelName : "No snapshot saved"}
+                  {latestValuation
+                    ? latestValuation.modelName
+                    : "No snapshot saved"}
                 </div>
               </div>
 
@@ -398,7 +498,9 @@ export function CompanyWorkspaceTerminal({
                   {latestReport?.status ?? "—"}
                 </div>
                 <div className="mt-1 text-sm text-slate-400">
-                  {latestReport ? formatDateTime(latestReport.createdAt) : "No report runs yet"}
+                  {latestReport
+                    ? formatDateTime(latestReport.createdAt)
+                    : "No report runs yet"}
                 </div>
               </div>
             </div>
@@ -413,7 +515,9 @@ export function CompanyWorkspaceTerminal({
                 href={`/reports/new?symbol=${encodeURIComponent(data.workspace.symbol)}`}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
               >
-                <div className="text-sm font-medium text-white">New Institutional Report</div>
+                <div className="text-sm font-medium text-white">
+                  New Institutional Report
+                </div>
                 <div className="mt-1 text-sm text-slate-400">
                   Launch report generation with the current symbol preloaded.
                 </div>
@@ -423,7 +527,9 @@ export function CompanyWorkspaceTerminal({
                 href={`/reports?symbol=${encodeURIComponent(data.workspace.symbol)}`}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
               >
-                <div className="text-sm font-medium text-white">Report History</div>
+                <div className="text-sm font-medium text-white">
+                  Report History
+                </div>
                 <div className="mt-1 text-sm text-slate-400">
                   Review previous report runs and exported PDFs.
                 </div>
@@ -433,7 +539,9 @@ export function CompanyWorkspaceTerminal({
                 href={`/ai-analyst?symbol=${encodeURIComponent(data.workspace.symbol)}`}
                 className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
               >
-                <div className="text-sm font-medium text-white">AI Analyst Session</div>
+                <div className="text-sm font-medium text-white">
+                  AI Analyst Session
+                </div>
                 <div className="mt-1 text-sm text-slate-400">
                   Open analyst Q&A and research drafting for this company.
                 </div>
@@ -462,7 +570,9 @@ export function CompanyWorkspaceTerminal({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-sm font-medium text-white">{note.title}</h3>
+                        <h3 className="text-sm font-medium text-white">
+                          {note.title}
+                        </h3>
                         <p className="mt-1 text-xs text-slate-400">
                           Updated {formatDateTime(note.updatedAt)}
                         </p>
@@ -473,9 +583,18 @@ export function CompanyWorkspaceTerminal({
                         </span>
                       ) : null}
                     </div>
+
                     <p className="mt-3 whitespace-pre-wrap text-sm text-slate-300">
                       {note.bodyMd || "Empty note"}
                     </p>
+
+                    <EditNoteForm
+                      symbol={data.workspace.symbol}
+                      noteId={note.id}
+                      title={note.title}
+                      bodyMd={note.bodyMd}
+                      isPinned={note.isPinned}
+                    />
                   </div>
                 ))}
               </div>
@@ -501,10 +620,14 @@ export function CompanyWorkspaceTerminal({
                   >
                     <div className="flex items-center justify-between gap-3">
                       <div className="min-w-0">
-                        <h3 className="truncate text-sm font-medium text-white">{document.title}</h3>
+                        <h3 className="truncate text-sm font-medium text-white">
+                          {document.title}
+                        </h3>
                         <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
                           {document.kind}
-                          {document.sourceProvider ? ` · ${document.sourceProvider}` : ""}
+                          {document.sourceProvider
+                            ? ` · ${document.sourceProvider}`
+                            : ""}
                         </p>
                         {document.sourceUrl ? (
                           <a
@@ -545,9 +668,13 @@ export function CompanyWorkspaceTerminal({
                   >
                     <div className="flex items-start justify-between gap-3">
                       <div>
-                        <h3 className="text-sm font-medium text-white">{event.label}</h3>
+                        <h3 className="text-sm font-medium text-white">
+                          {event.label}
+                        </h3>
                         {event.detail ? (
-                          <p className="mt-1 text-sm text-slate-300">{event.detail}</p>
+                          <p className="mt-1 text-sm text-slate-300">
+                            {event.detail}
+                          </p>
                         ) : null}
                       </div>
                       <span className="whitespace-nowrap text-xs text-slate-400">
