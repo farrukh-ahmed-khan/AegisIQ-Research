@@ -363,7 +363,7 @@ export async function createWorkspaceNote(
       ${bodyMd.slice(0, 240) || null},
       'workspace_note',
       ${note.id},
-      ${sql.json({ title })}
+      ${sql.json({ title } as never)}
     )
   `;
 
@@ -407,7 +407,7 @@ export async function createWorkspaceDocument(
       ${input.mimeType ?? null},
       ${input.sourceProvider ?? null},
       ${input.fileSizeBytes ?? null},
-      ${sql.json(safeMetadata)}
+      ${sql.json(safeMetadata as never)}
     )
     RETURNING *
   `;
@@ -433,10 +433,12 @@ export async function createWorkspaceDocument(
       ${input.sourceUrl ?? null},
       'workspace_document',
       ${document.id},
-      ${sql.json({
-        kind: input.kind,
-        sourceProvider: input.sourceProvider ?? null,
-      })}
+      ${sql.json(
+        {
+          kind: input.kind,
+          sourceProvider: input.sourceProvider ?? null,
+        } as never
+      )}
     )
   `;
 
