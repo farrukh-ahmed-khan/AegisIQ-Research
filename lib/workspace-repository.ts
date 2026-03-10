@@ -1,4 +1,4 @@
-import { sql } from "@/lib/db";
+import { sql } from "./db";
 import type {
   CompanyWorkspace,
   CompanyWorkspaceTerminalViewModel,
@@ -9,7 +9,7 @@ import type {
   WorkspaceActivity,
   WorkspaceDocument,
   WorkspaceNote,
-} from "@/types/workspace";
+} from "../types/workspace";
 
 type JsonValue = Record<string, unknown>;
 
