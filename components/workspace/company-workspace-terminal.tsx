@@ -1,9 +1,9 @@
 import Link from "next/link";
-import type { CompanyWorkspaceTerminalViewModel } from "@/types/workspace";
+import type { CompanyWorkspaceTerminalViewModel } from "../../types/workspace";
 import {
   createWorkspaceDocumentAction,
   createWorkspaceNoteAction,
-} from "@/app/workspace/[symbol]/actions";
+} from "../../app/workspace/[symbol]/actions";
 
 interface CompanyWorkspaceTerminalProps {
   data: CompanyWorkspaceTerminalViewModel;
