@@ -1,8 +1,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { getStore } from "@netlify/blobs";
 import { NextResponse } from "next/server";
-import { getWorkspaceDocumentById } from "../../../../../../lib/workspace-repository";
-import { WORKSPACE_DOCUMENTS_STORE_NAME } from "../../../../../../lib/workspace-document-storage";
+import { getWorkspaceDocumentById } from "../../../../../../../lib/workspace-repository";
+import { WORKSPACE_DOCUMENTS_STORE_NAME } from "../../../../../../../lib/workspace-document-storage";
 
 interface RouteContext {
   params: Promise<{
