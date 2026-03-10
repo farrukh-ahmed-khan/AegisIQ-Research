@@ -5,6 +5,7 @@ import { revalidatePath } from "next/cache";
 import {
   createWorkspaceDocument,
   createWorkspaceNote,
+  deleteWorkspaceNote,
   updateWorkspaceNote,
 } from "../../../lib/workspace-repository";
 import type { WorkspaceDocumentKind } from "../../../types/workspace";
@@ -37,7 +38,10 @@ function assertAllowedKind(value: string): WorkspaceDocumentKind {
 
 export async function createWorkspaceNoteAction(formData: FormData): Promise<void> {
   const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized.");
+
+  if (!userId) {
+    throw new Error("Unauthorized.");
+  }
 
   const symbol = normalizeSymbol(getRequiredString(formData.get("symbol")));
   const title = getRequiredString(formData.get("title"));
@@ -56,9 +60,11 @@ export async function createWorkspaceNoteAction(formData: FormData): Promise<voi
 }
 
 export async function updateWorkspaceNoteAction(formData: FormData): Promise<void> {
-
   const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized.");
+
+  if (!userId) {
+    throw new Error("Unauthorized.");
+  }
 
   const symbol = normalizeSymbol(getRequiredString(formData.get("symbol")));
   const noteId = getRequiredString(formData.get("noteId"));
@@ -77,12 +83,36 @@ export async function updateWorkspaceNoteAction(formData: FormData): Promise<voi
   revalidatePath(`/api/workspaces/${symbol}/notes`);
 }
 
+export async function deleteWorkspaceNoteAction(formData: FormData): Promise<void> {
+  const { userId } = await auth();
+
+  if (!userId) {
+    throw new Error("Unauthorized.");
+  }
+
+  const symbol = normalizeSymbol(getRequiredString(formData.get("symbol")));
+  const noteId = getRequiredString(formData.get("noteId"));
+  const confirmation = getRequiredString(formData.get("confirmation")).trim();
+
+  if (confirmation !== "DELETE") {
+    throw new Error("Type DELETE to confirm note removal.");
+  }
+
+  await deleteWorkspaceNote(userId, symbol, noteId);
+
+  revalidatePath(`/workspace/${symbol}`);
+  revalidatePath(`/api/workspaces/${symbol}`);
+  revalidatePath(`/api/workspaces/${symbol}/notes`);
+}
+
 export async function createWorkspaceDocumentAction(
   formData: FormData,
 ): Promise<void> {
-
   const { userId } = await auth();
-  if (!userId) throw new Error("Unauthorized.");
+
+  if (!userId) {
+    throw new Error("Unauthorized.");
+  }
 
   const symbol = normalizeSymbol(getRequiredString(formData.get("symbol")));
   const title = getRequiredString(formData.get("title"));
