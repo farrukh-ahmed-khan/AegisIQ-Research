@@ -1,7 +1,19 @@
 import { sql } from "@/lib/db";
 
+export type WorkspaceScreenerFilters = {
+  symbol?: string;
+  search?: string;
+  sector?: string;
+  industry?: string;
+  exchange?: string;
+  country?: string;
+  currency?: string;
+  securityType?: string;
+};
+
 export type WorkspaceScreenerQueryInput = {
   workspaceId: string;
+  filters?: WorkspaceScreenerFilters;
 };
 
 export type WorkspaceScreenerResultRow = {
