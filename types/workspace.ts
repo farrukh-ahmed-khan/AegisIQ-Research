@@ -129,6 +129,24 @@ export interface ScreenerPreset {
   updatedAt: string;
 }
 
+export interface CreateScreenerPresetInput {
+  name: string;
+  description?: string | null;
+  filters?: Record<string, unknown>;
+  columns?: string[];
+  sort?: Record<string, unknown>;
+  isDefault?: boolean;
+}
+
+export interface UpdateScreenerPresetInput {
+  name?: string;
+  description?: string | null;
+  filters?: Record<string, unknown>;
+  columns?: string[];
+  sort?: Record<string, unknown>;
+  isDefault?: boolean;
+}
+
 export interface Watchlist {
   id: string;
   clerkUserId: string;
@@ -139,6 +157,18 @@ export interface Watchlist {
   updatedAt: string;
 }
 
+export interface CreateWatchlistInput {
+  name: string;
+  description?: string | null;
+  isDefault?: boolean;
+}
+
+export interface UpdateWatchlistInput {
+  name?: string;
+  description?: string | null;
+  isDefault?: boolean;
+}
+
 export interface WatchlistItem {
   id: string;
   watchlistId: string;
@@ -147,6 +177,13 @@ export interface WatchlistItem {
   exchange: string | null;
   sortOrder: number;
   createdAt: string;
+}
+
+export interface CreateWatchlistItemInput {
+  symbol: string;
+  companyName?: string | null;
+  exchange?: string | null;
+  sortOrder?: number | null;
 }
 
 export interface CompanyWorkspaceTerminalViewModel {
