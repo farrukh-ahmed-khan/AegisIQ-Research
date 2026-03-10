@@ -3,6 +3,16 @@ import type {
   WorkspaceDocumentSourceProvider,
 } from "../types/workspace";
 
+export const WORKSPACE_DOCUMENTS_STORE_NAME = "workspace-documents";
+export const MAX_WORKSPACE_DOCUMENT_BYTES = 10 * 1024 * 1024;
+
+export const ALLOWED_WORKSPACE_DOCUMENT_MIME_TYPES = new Set<string>([
+  "application/pdf",
+  "text/plain",
+  "text/csv",
+  "application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+]);
+
 function sanitizePathSegment(value: string): string {
   return value
     .trim()
@@ -95,6 +105,9 @@ export function buildWorkspaceDocumentStoragePath(input: {
   const yyyy = now.getUTCFullYear();
   const mm = String(now.getUTCMonth() + 1).padStart(2, "0");
   const dd = String(now.getUTCDate()).padStart(2, "0");
+  const hh = String(now.getUTCHours()).padStart(2, "0");
+  const min = String(now.getUTCMinutes()).padStart(2, "0");
+  const sec = String(now.getUTCSeconds()).padStart(2, "0");
 
   const safeUser = sanitizePathSegment(input.clerkUserId);
   const safeSymbol = sanitizePathSegment(input.symbol.toUpperCase());
@@ -105,11 +118,10 @@ export function buildWorkspaceDocumentStoragePath(input: {
   const extension = extractExtension(input.filename);
 
   const basename = extension
-    ? `${safeFilenameBase || "document"}.${extension}`
-    : safeFilenameBase || "document";
+    ? `${safeFilenameBase || "document"}-${hh}${min}${sec}.${extension}`
+    : `${safeFilenameBase || "document"}-${hh}${min}${sec}`;
 
   return [
-    "workspace-documents",
     safeUser,
     safeSymbol,
     safeKind,
@@ -134,4 +146,32 @@ export function buildWorkspaceDocumentMetadata(input: {
     sourceUrl: input.sourceUrl ?? null,
     storagePath: input.storagePath ?? null,
   };
+}
+
+export function assertSupportedWorkspaceDocumentFile(file: File): void {
+  if (!(file instanceof File)) {
+    throw new Error("A document file is required.");
+  }
+
+  if (!file.name.trim()) {
+    throw new Error("Uploaded file must have a filename.");
+  }
+
+  if (!ALLOWED_WORKSPACE_DOCUMENT_MIME_TYPES.has(file.type)) {
+    throw new Error("Unsupported file type. Upload PDF, TXT, CSV, or DOCX.");
+  }
+
+  if (file.size <= 0) {
+    throw new Error("Uploaded file is empty.");
+  }
+
+  if (file.size > MAX_WORKSPACE_DOCUMENT_BYTES) {
+    throw new Error("Uploaded file exceeds the 10 MB limit.");
+  }
+}
+
+export function inferDocumentTitleFromFilename(filename: string): string {
+  const withoutExtension = filename.replace(/\.[^.]+$/, "").trim();
+
+  return withoutExtension || "Workspace document";
 }
