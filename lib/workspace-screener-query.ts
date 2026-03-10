@@ -1,5 +1,3 @@
-import { sql } from "drizzle-orm";
-
 import { db } from "@/lib/db";
 import type {
   ScreenerFilters,
@@ -166,22 +164,20 @@ function getUnsupportedRequestedFilters(filters: ScreenerFilters): string[] {
 }
 
 async function loadInternalUniverse(): Promise<ScreenerResultRow[]> {
-  const query = sql`
+  const result = await db.execute(`
     select distinct upper(symbol) as symbol
     from watchlist_items
     where symbol is not null
       and length(trim(symbol)) > 0
     order by upper(symbol) asc
     limit 1000
-  `;
+  `);
 
-  const result = (await db.execute(query)) as unknown;
-  const rows: InternalSymbolRow[] = Array.isArray(result)
-    ? (result as InternalSymbolRow[])
-    : result &&
-        typeof result === "object" &&
-        "rows" in result &&
-        Array.isArray((result as { rows: unknown[] }).rows)
+  const rows =
+    result &&
+    typeof result === "object" &&
+    "rows" in result &&
+    Array.isArray((result as { rows?: unknown[] }).rows)
       ? ((result as { rows: InternalSymbolRow[] }).rows ?? [])
       : [];
 
@@ -211,7 +207,6 @@ export async function runWorkspaceScreener(input: {
   const unsupportedRequestedFilters = getUnsupportedRequestedFilters(filters);
 
   const universe = await loadInternalUniverse();
-
   const query = filters.queryText.trim().toLowerCase();
 
   const filtered = universe.filter((row) => {
