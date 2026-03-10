@@ -1,8 +1,9 @@
-import { NextResponse } from "next/server";
+import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
-import { getWorkspaceTerminalViewModel } from "../../../../lib/workspace-repository";
+import { CompanyWorkspaceTerminal } from "../../../components/workspace/company-workspace-terminal";
+import { getWorkspaceTerminalViewModel } from "../../../lib/workspace-repository";
 
-interface RouteContext {
+interface WorkspacePageProps {
   params: Promise<{
     symbol: string;
   }>;
@@ -18,21 +19,21 @@ function isValidSymbol(symbol: string): boolean {
 
 export const dynamic = "force-dynamic";
 
-export async function GET(_: Request, context: RouteContext) {
+export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const { userId } = await auth();
 
   if (!userId) {
-    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    notFound();
   }
 
-  const { symbol: rawSymbol } = await context.params;
-  const symbol = normalizeSymbol(rawSymbol);
+  const resolvedParams = await params;
+  const symbol = normalizeSymbol(resolvedParams.symbol);
 
   if (!isValidSymbol(symbol)) {
-    return NextResponse.json({ error: "Invalid symbol." }, { status: 400 });
+    notFound();
   }
 
   const data = await getWorkspaceTerminalViewModel(userId, symbol);
 
-  return NextResponse.json(data);
+  return <CompanyWorkspaceTerminal data={data} />;
 }
