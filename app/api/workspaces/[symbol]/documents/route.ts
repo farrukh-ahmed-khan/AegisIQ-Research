@@ -3,8 +3,8 @@ import { auth } from "@clerk/nextjs/server";
 import {
   createWorkspaceDocument,
   getWorkspaceDocuments,
-} from "@/lib/workspace-repository";
-import type { WorkspaceDocumentKind } from "@/types/workspace";
+} from "../../../../../lib/workspace-repository";
+import type { WorkspaceDocumentKind } from "../../../../../types/workspace";
 
 interface RouteContext {
   params: Promise<{
