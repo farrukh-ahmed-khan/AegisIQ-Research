@@ -11,7 +11,178 @@ import type {
   WorkspaceNote,
 } from "../types/workspace";
 
+type JsonValue = Record<string, unknown>;import { sql } from "./db";
+import type {
+  CompanyWorkspace,
+  CompanyWorkspaceTerminalViewModel,
+  CreateWorkspaceDocumentInput,
+  CreateWorkspaceNoteInput,
+  ReportRun,
+  ValuationSnapshot,
+  WorkspaceActivity,
+  WorkspaceDocument,
+  WorkspaceNote,
+} from "../types/workspace";
+
 type JsonValue = Record<string, unknown>;
+
+function asRecord(value: unknown): Record<string, unknown> {
+  if (value && typeof value === "object" && !Array.isArray(value)) {
+    return value as Record<string, unknown>;
+  }
+  return {};
+}
+
+function asNumberOrNull(value: unknown): number | null {
+  if (value === null || value === undefined) return null;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : null;
+}
+
+function asStringOrNull(value: unknown): string | null {
+  return typeof value === "string" ? value : null;
+}
+
+function normalizeSymbol(symbol: string): string {
+  return symbol.trim().toUpperCase();
+}
+
+function assertValidSymbol(symbol: string): string {
+  const normalized = normalizeSymbol(symbol);
+  if (!/^[A-Z0-9.\-]{1,12}$/.test(normalized)) {
+    throw new Error("Invalid symbol.");
+  }
+  return normalized;
+}
+
+function mapWorkspace(row: Record<string, unknown>): CompanyWorkspace {
+  return {
+    id: String(row.id),
+    clerkUserId: String(row.clerk_user_id),
+    symbol: String(row.symbol),
+    companyName: asStringOrNull(row.company_name),
+    exchange: asStringOrNull(row.exchange),
+    primaryCurrency: String(row.primary_currency ?? "USD"),
+    coverageStatus: String(row.coverage_status ?? "active"),
+    lastPrice: asNumberOrNull(row.last_price),
+    lastPriceAt: asStringOrNull(row.last_price_at),
+    latestRating: asStringOrNull(row.latest_rating),
+    latestTargetPrice: asNumberOrNull(row.latest_target_price),
+    latestReportId: asStringOrNull(row.latest_report_id),
+    metadata: asRecord(row.metadata),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+function mapNote(row: Record<string, unknown>): WorkspaceNote {
+  return {
+    id: String(row.id),
+    workspaceId: String(row.workspace_id),
+    clerkUserId: String(row.clerk_user_id),
+    title: String(row.title),
+    bodyMd: String(row.body_md ?? ""),
+    isPinned: Boolean(row.is_pinned),
+    createdAt: String(row.created_at),
+    updatedAt: String(row.updated_at),
+  };
+}
+
+/* existing code unchanged above */
+
+async function ensureWorkspace(
+  clerkUserId: string,
+  rawSymbol: string,
+): Promise<CompanyWorkspace> {
+  const symbol = assertValidSymbol(rawSymbol);
+
+  const rows = await sql<Record<string, unknown>[]>`
+    INSERT INTO company_workspaces (
+      clerk_user_id,
+      symbol,
+      coverage_status,
+      primary_currency,
+      metadata
+    )
+    VALUES (
+      ${clerkUserId},
+      ${symbol},
+      'active',
+      'USD',
+      '{}'::jsonb
+    )
+    ON CONFLICT (clerk_user_id, symbol)
+    DO UPDATE SET updated_at = now()
+    RETURNING *
+  `;
+
+  return mapWorkspace(rows[0]);
+}
+
+/* ===========================
+   NOTE UPDATE SUPPORT
+   =========================== */
+
+export async function updateWorkspaceNote(
+  clerkUserId: string,
+  rawSymbol: string,
+  noteId: string,
+  input: CreateWorkspaceNoteInput,
+): Promise<WorkspaceNote> {
+
+  const workspace = await ensureWorkspace(clerkUserId, rawSymbol);
+
+  const title = input.title.trim();
+  const bodyMd = input.bodyMd.trim();
+
+  if (!title) {
+    throw new Error("Note title is required.");
+  }
+
+  const rows = await sql<Record<string, unknown>[]>`
+    UPDATE workspace_notes
+    SET
+      title = ${title},
+      body_md = ${bodyMd},
+      is_pinned = ${Boolean(input.isPinned)},
+      updated_at = now()
+    WHERE id = ${noteId}
+      AND workspace_id = ${workspace.id}
+      AND clerk_user_id = ${clerkUserId}
+    RETURNING *
+  `;
+
+  if (!rows.length) {
+    throw new Error("Note not found.");
+  }
+
+  const note = mapNote(rows[0]);
+
+  await sql`
+    INSERT INTO workspace_activity (
+      workspace_id,
+      clerk_user_id,
+      kind,
+      label,
+      detail,
+      related_entity_type,
+      related_entity_id,
+      metadata
+    )
+    VALUES (
+      ${workspace.id},
+      ${clerkUserId},
+      'note_updated',
+      ${`Note updated: ${title}`},
+      ${bodyMd.slice(0,240) || null},
+      'workspace_note',
+      ${note.id},
+      ${sql.json({ title } as never)}
+    )
+  `;
+
+  return note;
+}
 
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
