@@ -25,6 +25,27 @@ export type SecurityMasterScreenerResult = {
   total: number;
 };
 
+function normalizeString(value: unknown): string | undefined {
+  return typeof value === "string" && value.trim().length > 0
+    ? value.trim()
+    : undefined;
+}
+
+export function normalizeSecurityMasterFilters(
+  input?: Partial<SecurityMasterScreenerFilters> | null,
+): SecurityMasterScreenerFilters {
+  return {
+    symbol: normalizeString(input?.symbol),
+    search: normalizeString(input?.search),
+    sector: normalizeString(input?.sector),
+    industry: normalizeString(input?.industry),
+    exchange: normalizeString(input?.exchange),
+    country: normalizeString(input?.country),
+    currency: normalizeString(input?.currency),
+    securityType: normalizeString(input?.securityType),
+  };
+}
+
 function applyLimit(
   records: SecurityMasterRecord[],
   limit?: number,
