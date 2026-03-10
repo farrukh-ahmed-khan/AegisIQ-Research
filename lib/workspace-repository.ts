@@ -324,54 +324,50 @@ export async function createWorkspaceNote(
     throw new Error("Note title is required.");
   }
 
-  const inserted = await sql.begin(async (tx) => {
-    const noteRows = await tx`
-      INSERT INTO workspace_notes (
-        workspace_id,
-        clerk_user_id,
-        title,
-        body_md,
-        is_pinned
-      )
-      VALUES (
-        ${workspace.id},
-        ${clerkUserId},
-        ${title},
-        ${bodyMd},
-        ${Boolean(input.isPinned)}
-      )
-      RETURNING *
-    `;
+  const noteRows = await sql<Record<string, unknown>[]>`
+    INSERT INTO workspace_notes (
+      workspace_id,
+      clerk_user_id,
+      title,
+      body_md,
+      is_pinned
+    )
+    VALUES (
+      ${workspace.id},
+      ${clerkUserId},
+      ${title},
+      ${bodyMd},
+      ${Boolean(input.isPinned)}
+    )
+    RETURNING *
+  `;
 
-    const note = mapNote(noteRows[0] as Record<string, unknown>);
+  const note = mapNote(noteRows[0]);
 
-    await tx`
-      INSERT INTO workspace_activity (
-        workspace_id,
-        clerk_user_id,
-        kind,
-        label,
-        detail,
-        related_entity_type,
-        related_entity_id,
-        metadata
-      )
-      VALUES (
-        ${workspace.id},
-        ${clerkUserId},
-        'note_created',
-        ${`Note added: ${title}`},
-        ${bodyMd.slice(0, 240) || null},
-        'workspace_note',
-        ${note.id},
-        ${sql.json({ title })}
-      )
-    `;
+  await sql`
+    INSERT INTO workspace_activity (
+      workspace_id,
+      clerk_user_id,
+      kind,
+      label,
+      detail,
+      related_entity_type,
+      related_entity_id,
+      metadata
+    )
+    VALUES (
+      ${workspace.id},
+      ${clerkUserId},
+      'note_created',
+      ${`Note added: ${title}`},
+      ${bodyMd.slice(0, 240) || null},
+      'workspace_note',
+      ${note.id},
+      ${sql.json({ title })}
+    )
+  `;
 
-    return note;
-  });
-
-  return inserted;
+  return note;
 }
 
 export async function createWorkspaceDocument(
@@ -388,65 +384,61 @@ export async function createWorkspaceDocument(
 
   const safeMetadata: JsonValue = input.metadata ?? {};
 
-  const inserted = await sql.begin(async (tx) => {
-    const documentRows = await tx`
-      INSERT INTO workspace_documents (
-        workspace_id,
-        clerk_user_id,
-        title,
-        kind,
-        source_url,
-        storage_path,
-        mime_type,
-        source_provider,
-        file_size_bytes,
-        metadata
-      )
-      VALUES (
-        ${workspace.id},
-        ${clerkUserId},
-        ${title},
-        ${input.kind},
-        ${input.sourceUrl ?? null},
-        ${input.storagePath ?? null},
-        ${input.mimeType ?? null},
-        ${input.sourceProvider ?? null},
-        ${input.fileSizeBytes ?? null},
-        ${sql.json(safeMetadata)}
-      )
-      RETURNING *
-    `;
+  const documentRows = await sql<Record<string, unknown>[]>`
+    INSERT INTO workspace_documents (
+      workspace_id,
+      clerk_user_id,
+      title,
+      kind,
+      source_url,
+      storage_path,
+      mime_type,
+      source_provider,
+      file_size_bytes,
+      metadata
+    )
+    VALUES (
+      ${workspace.id},
+      ${clerkUserId},
+      ${title},
+      ${input.kind},
+      ${input.sourceUrl ?? null},
+      ${input.storagePath ?? null},
+      ${input.mimeType ?? null},
+      ${input.sourceProvider ?? null},
+      ${input.fileSizeBytes ?? null},
+      ${sql.json(safeMetadata)}
+    )
+    RETURNING *
+  `;
 
-    const document = mapDocument(documentRows[0] as Record<string, unknown>);
+  const document = mapDocument(documentRows[0]);
 
-    await tx`
-      INSERT INTO workspace_activity (
-        workspace_id,
-        clerk_user_id,
-        kind,
-        label,
-        detail,
-        related_entity_type,
-        related_entity_id,
-        metadata
-      )
-      VALUES (
-        ${workspace.id},
-        ${clerkUserId},
-        'document_added',
-        ${`Document linked: ${title}`},
-        ${input.sourceUrl ?? null},
-        'workspace_document',
-        ${document.id},
-        ${sql.json({
-          kind: input.kind,
-          sourceProvider: input.sourceProvider ?? null,
-        })}
-      )
-    `;
+  await sql`
+    INSERT INTO workspace_activity (
+      workspace_id,
+      clerk_user_id,
+      kind,
+      label,
+      detail,
+      related_entity_type,
+      related_entity_id,
+      metadata
+    )
+    VALUES (
+      ${workspace.id},
+      ${clerkUserId},
+      'document_added',
+      ${`Document linked: ${title}`},
+      ${input.sourceUrl ?? null},
+      'workspace_document',
+      ${document.id},
+      ${sql.json({
+        kind: input.kind,
+        sourceProvider: input.sourceProvider ?? null,
+      })}
+    )
+  `;
 
-    return document;
-  });
-
-  return inserted;
+  return document;
 }
