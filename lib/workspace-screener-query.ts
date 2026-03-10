@@ -1,4 +1,4 @@
-import { db } from "@/lib/db";
+import * as dbModule from "@/lib/db";
 import type {
   ScreenerFilters,
   ScreenerResultRow,
@@ -11,6 +11,10 @@ const MAX_LIMIT = 100;
 
 type InternalSymbolRow = {
   symbol: string;
+};
+
+type DbLike = {
+  execute: (query: string) => Promise<unknown>;
 };
 
 const SUPPORTED_FILTER_METADATA: ScreenerSupportedFilterMetadata = {
@@ -73,6 +77,28 @@ const SUPPORTED_FILTER_METADATA: ScreenerSupportedFilterMetadata = {
     },
   ],
 };
+
+function resolveDb(): DbLike {
+  const candidates: unknown[] = [
+    (dbModule as Record<string, unknown>).db,
+    (dbModule as Record<string, unknown>).database,
+    (dbModule as Record<string, unknown>).default,
+    dbModule,
+  ];
+
+  for (const candidate of candidates) {
+    if (
+      candidate &&
+      typeof candidate === "object" &&
+      "execute" in candidate &&
+      typeof (candidate as { execute?: unknown }).execute === "function"
+    ) {
+      return candidate as DbLike;
+    }
+  }
+
+  throw new Error("Database client export from '@/lib/db' does not expose an execute() method.");
+}
 
 function coerceNullableString(value: unknown): string | null {
   if (typeof value !== "string") {
@@ -164,6 +190,8 @@ function getUnsupportedRequestedFilters(filters: ScreenerFilters): string[] {
 }
 
 async function loadInternalUniverse(): Promise<ScreenerResultRow[]> {
+  const db = resolveDb();
+
   const result = await db.execute(`
     select distinct upper(symbol) as symbol
     from watchlist_items
@@ -179,7 +207,9 @@ async function loadInternalUniverse(): Promise<ScreenerResultRow[]> {
     "rows" in result &&
     Array.isArray((result as { rows?: unknown[] }).rows)
       ? ((result as { rows: InternalSymbolRow[] }).rows ?? [])
-      : [];
+      : Array.isArray(result)
+        ? (result as InternalSymbolRow[])
+        : [];
 
   return rows
     .map((row) => ({
