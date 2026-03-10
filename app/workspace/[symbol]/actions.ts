@@ -8,10 +8,27 @@ import {
   deleteWorkspaceNote,
   updateWorkspaceNote,
 } from "../../../lib/workspace-repository";
+import {
+  buildWorkspaceDocumentMetadata,
+  inferWorkspaceDocumentSourceProvider,
+} from "../../../lib/workspace-document-storage";
 import type { WorkspaceDocumentKind } from "../../../types/workspace";
 
 function getRequiredString(value: FormDataEntryValue | null): string {
   return typeof value === "string" ? value : "";
+}
+
+function getOptionalString(value: FormDataEntryValue | null): string | null {
+  return typeof value === "string" && value.trim() ? value.trim() : null;
+}
+
+function getOptionalNumber(value: FormDataEntryValue | null): number | null {
+  if (typeof value !== "string" || !value.trim()) {
+    return null;
+  }
+
+  const parsed = Number(value);
+  return Number.isFinite(parsed) && parsed >= 0 ? parsed : null;
 }
 
 function normalizeSymbol(symbol: string): string {
@@ -117,9 +134,18 @@ export async function createWorkspaceDocumentAction(
   const symbol = normalizeSymbol(getRequiredString(formData.get("symbol")));
   const title = getRequiredString(formData.get("title"));
   const kind = assertAllowedKind(getRequiredString(formData.get("kind")));
-  const sourceUrl = getRequiredString(formData.get("sourceUrl")) || null;
-  const sourceProvider = getRequiredString(formData.get("sourceProvider")) || null;
-  const mimeType = getRequiredString(formData.get("mimeType")) || null;
+  const sourceUrl = getOptionalString(formData.get("sourceUrl"));
+  const sourceProviderInput = getOptionalString(formData.get("sourceProvider"));
+  const mimeType = getOptionalString(formData.get("mimeType"));
+  const storagePath = getOptionalString(formData.get("storagePath"));
+  const fileSizeBytes = getOptionalNumber(formData.get("fileSizeBytes"));
+  const originalFilename = getOptionalString(formData.get("originalFilename"));
+
+  const sourceProvider = inferWorkspaceDocumentSourceProvider({
+    sourceUrl,
+    storagePath,
+    sourceProvider: sourceProviderInput,
+  });
 
   await createWorkspaceDocument(userId, symbol, {
     title,
@@ -127,7 +153,15 @@ export async function createWorkspaceDocumentAction(
     sourceUrl,
     sourceProvider,
     mimeType,
-    metadata: {},
+    storagePath,
+    fileSizeBytes,
+    metadata: buildWorkspaceDocumentMetadata({
+      originalFilename,
+      uploadedBy: userId,
+      storageProvider: sourceProvider,
+      sourceUrl,
+      storagePath,
+    }),
   });
 
   revalidatePath(`/workspace/${symbol}`);
