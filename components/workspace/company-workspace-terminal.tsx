@@ -5,6 +5,7 @@ import {
   createWorkspaceNoteAction,
   deleteWorkspaceNoteAction,
   updateWorkspaceNoteAction,
+  uploadWorkspaceDocumentAction,
 } from "../../app/workspace/[symbol]/actions";
 
 interface CompanyWorkspaceTerminalProps {
@@ -58,6 +59,22 @@ function formatDate(value: string): string {
   return new Intl.DateTimeFormat("en-US", {
     dateStyle: "medium",
   }).format(date);
+}
+
+function formatFileSize(value: number | null): string {
+  if (value === null || value <= 0) {
+    return "—";
+  }
+
+  if (value < 1024) {
+    return `${value} B`;
+  }
+
+  if (value < 1024 * 1024) {
+    return `${(value / 1024).toFixed(1)} KB`;
+  }
+
+  return `${(value / (1024 * 1024)).toFixed(1)} MB`;
 }
 
 function Card({
@@ -269,6 +286,86 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
             className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
           >
             Save Document
+          </button>
+        </div>
+      </form>
+    </details>
+  );
+}
+
+function UploadDocumentForm({ symbol }: { symbol: string }) {
+  return (
+    <details className="rounded-xl border border-white/10 bg-white/[0.03]">
+      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-slate-200">
+        Upload document
+      </summary>
+      <form
+        action={uploadWorkspaceDocumentAction}
+        className="grid gap-3 border-t border-white/10 p-4"
+      >
+        <input type="hidden" name="symbol" value={symbol} />
+        <div className="grid gap-1.5">
+          <label
+            htmlFor="workspace-upload-title"
+            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+          >
+            Title
+          </label>
+          <input
+            id="workspace-upload-title"
+            name="title"
+            maxLength={180}
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            placeholder="Optional — defaults to filename"
+          />
+        </div>
+        <div className="grid gap-1.5">
+          <label
+            htmlFor="workspace-upload-kind"
+            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+          >
+            Kind
+          </label>
+          <select
+            id="workspace-upload-kind"
+            name="kind"
+            defaultValue="other"
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none"
+          >
+            <option value="report">Report</option>
+            <option value="filing">Filing</option>
+            <option value="model">Model</option>
+            <option value="transcript">Transcript</option>
+            <option value="deck">Deck</option>
+            <option value="memo">Memo</option>
+            <option value="other">Other</option>
+          </select>
+        </div>
+        <div className="grid gap-1.5">
+          <label
+            htmlFor="workspace-upload-file"
+            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+          >
+            File
+          </label>
+          <input
+            id="workspace-upload-file"
+            name="file"
+            type="file"
+            required
+            accept=".pdf,.txt,.csv,.docx,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-950"
+          />
+        </div>
+        <p className="text-xs text-slate-500">
+          Supported: PDF, TXT, CSV, DOCX. Max 10 MB.
+        </p>
+        <div>
+          <button
+            type="submit"
+            className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
+          >
+            Upload Document
           </button>
         </div>
       </form>
@@ -655,7 +752,12 @@ export function CompanyWorkspaceTerminal({
           <Card
             title="Documents"
             description="Source materials linked to this workspace."
-            action={<CreateDocumentForm symbol={data.workspace.symbol} />}
+            action={
+              <div className="flex flex-col gap-2">
+                <UploadDocumentForm symbol={data.workspace.symbol} />
+                <CreateDocumentForm symbol={data.workspace.symbol} />
+              </div>
+            }
           >
             {data.documents.length === 0 ? (
               <EmptyState
@@ -664,39 +766,62 @@ export function CompanyWorkspaceTerminal({
               />
             ) : (
               <div className="space-y-3">
-                {data.documents.slice(0, 8).map((document) => (
-                  <div
-                    key={document.id}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
-                  >
-                    <div className="flex items-center justify-between gap-3">
-                      <div className="min-w-0">
-                        <h3 className="truncate text-sm font-medium text-white">
-                          {document.title}
-                        </h3>
-                        <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
-                          {document.kind}
-                          {document.sourceProvider
-                            ? ` · ${document.sourceProvider}`
-                            : ""}
-                        </p>
-                        {document.sourceUrl ? (
-                          <a
-                            href={document.sourceUrl}
-                            target="_blank"
-                            rel="noreferrer"
-                            className="mt-2 inline-block truncate text-xs text-cyan-300 hover:text-cyan-200"
-                          >
-                            Open source
-                          </a>
-                        ) : null}
+                {data.documents.slice(0, 8).map((document) => {
+                  const blobContentHref =
+                    document.sourceProvider === "netlify_blobs"
+                      ? `/api/workspaces/${encodeURIComponent(
+                          data.workspace.symbol,
+                        )}/documents/${encodeURIComponent(document.id)}/content`
+                      : null;
+
+                  return (
+                    <div
+                      key={document.id}
+                      className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
+                    >
+                      <div className="flex items-center justify-between gap-3">
+                        <div className="min-w-0">
+                          <h3 className="truncate text-sm font-medium text-white">
+                            {document.title}
+                          </h3>
+                          <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                            {document.kind}
+                            {document.sourceProvider
+                              ? ` · ${document.sourceProvider.replaceAll("_", " ")}`
+                              : ""}
+                          </p>
+                          <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
+                            <span>{formatFileSize(document.fileSizeBytes)}</span>
+                            {document.mimeType ? <span>{document.mimeType}</span> : null}
+                          </div>
+                          {blobContentHref ? (
+                            <a
+                              href={blobContentHref}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2 inline-block truncate text-xs text-cyan-300 hover:text-cyan-200"
+                            >
+                              Open attachment
+                            </a>
+                          ) : null}
+                          {!blobContentHref && document.sourceUrl ? (
+                            <a
+                              href={document.sourceUrl}
+                              target="_blank"
+                              rel="noreferrer"
+                              className="mt-2 inline-block truncate text-xs text-cyan-300 hover:text-cyan-200"
+                            >
+                              Open source
+                            </a>
+                          ) : null}
+                        </div>
+                        <span className="text-xs text-slate-400">
+                          {formatDate(document.createdAt)}
+                        </span>
                       </div>
-                      <span className="text-xs text-slate-400">
-                        {formatDate(document.createdAt)}
-                      </span>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             )}
           </Card>
@@ -708,7 +833,7 @@ export function CompanyWorkspaceTerminal({
             {data.activity.length === 0 ? (
               <EmptyState
                 title="No activity yet"
-                body="Workspace activity will populate as reports are generated, valuations are saved, and notes are added."
+                body="Workspace activity will populate as reports are generated, valuations are saved, notes are added."
               />
             ) : (
               <div className="space-y-3">
