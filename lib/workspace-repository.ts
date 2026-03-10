@@ -325,7 +325,7 @@ export async function createWorkspaceNote(
   }
 
   const inserted = await sql.begin(async (tx) => {
-    const noteRows = await tx<Record<string, unknown>[]>`
+    const noteRows = await tx`
       INSERT INTO workspace_notes (
         workspace_id,
         clerk_user_id,
@@ -343,7 +343,7 @@ export async function createWorkspaceNote(
       RETURNING *
     `;
 
-    const note = mapNote(noteRows[0]);
+    const note = mapNote(noteRows[0] as Record<string, unknown>);
 
     await tx`
       INSERT INTO workspace_activity (
@@ -389,7 +389,7 @@ export async function createWorkspaceDocument(
   const safeMetadata: JsonValue = input.metadata ?? {};
 
   const inserted = await sql.begin(async (tx) => {
-    const documentRows = await tx<Record<string, unknown>[]>`
+    const documentRows = await tx`
       INSERT INTO workspace_documents (
         workspace_id,
         clerk_user_id,
@@ -417,7 +417,7 @@ export async function createWorkspaceDocument(
       RETURNING *
     `;
 
-    const document = mapDocument(documentRows[0]);
+    const document = mapDocument(documentRows[0] as Record<string, unknown>);
 
     await tx`
       INSERT INTO workspace_activity (
