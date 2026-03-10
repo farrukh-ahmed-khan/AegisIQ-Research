@@ -12,8 +12,9 @@ export type WorkspaceScreenerFilters = {
 };
 
 export type WorkspaceScreenerQueryInput = {
-  workspaceId: string;
+  workspaceId?: string;
   filters?: WorkspaceScreenerFilters;
+  limit?: number;
 };
 
 export type WorkspaceScreenerResultRow = {
