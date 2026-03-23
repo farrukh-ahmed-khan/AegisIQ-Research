@@ -1,8 +1,8 @@
-const Busboy = require("busboy");
-const { neon } = require("@neondatabase/serverless");
-const { parseExcelBuffer } = require("../../lib/parseExcel");
+import Busboy from "busboy";
+import { neon } from "@neondatabase/serverless";
+import { parseExcelBuffer } from "../../lib/parseExcel";
 
-exports.handler = async function handler(event) {
+export const handler = async function handler(event) {
   try {
     if (event.httpMethod !== "POST") {
       return response(405, { error: "Method not allowed." });

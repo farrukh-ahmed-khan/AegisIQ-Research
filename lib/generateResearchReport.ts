@@ -1,4 +1,4 @@
-const OpenAI = require("openai");
+import OpenAI from "openai";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -73,6 +73,6 @@ Write like a professional equity research note, not marketing copy.
   return completion.choices[0].message.content;
 }
 
-module.exports = {
+export {
   generateResearchReport,
 };

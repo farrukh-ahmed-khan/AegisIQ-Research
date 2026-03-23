@@ -1,4 +1,4 @@
-const PDFDocument = require("pdfkit");
+import PDFDocument from "pdfkit";
 
 async function buildPdfReport({ request, analytics, narrative, aiReport }) {
   return new Promise((resolve, reject) => {
@@ -403,6 +403,6 @@ function formatDateTime(value) {
   return d.toLocaleString("en-US");
 }
 
-module.exports = {
+export {
   buildPdfReport,
 };

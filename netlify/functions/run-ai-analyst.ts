@@ -1,9 +1,10 @@
-const { neon } = require("@neondatabase/serverless");
-const { buildHistoryAnalytics } = require("../../lib/reportAnalytics");
-const { buildComparableSet } = require("../../lib/compsModel");
-const { runValuationEngine } = require("../../lib/valuationEngine");
+import { neon } from "@neondatabase/serverless";
+import { buildHistoryAnalytics } from "../../lib/reportAnalytics";
+import { runValuationEngine } from "../../lib/valuationEngine";
+import { buildComparableSet } from "../../lib/compsModel";
+import { runAiAnalystEngine } from "../../lib/aiAnalystEngine";
 
-exports.handler = async function handler(event) {
+export const handler = async function handler(event) {
   try {
     if (event.httpMethod !== "POST" && event.httpMethod !== "GET") {
       return response(405, { error: "Method not allowed." });
@@ -20,20 +21,18 @@ exports.handler = async function handler(event) {
 
     const sql = neon(process.env.DATABASE_URL);
 
-    const requests = await sql`
-      SELECT
-        id, ticker, live_price, market_cap, analyst_rating,
-        target_low, target_base, target_high
+    const requestRows = await sql`
+      SELECT *
       FROM report_requests
       WHERE id = ${id}
       LIMIT 1
     `;
 
-    if (!requests.length) {
+    if (!requestRows.length) {
       return response(404, { error: "Report request not found." });
     }
 
-    const request = requests[0];
+    const request = requestRows[0];
 
     const history = await sql`
       SELECT trade_date, open, high, low, close, volume
@@ -42,16 +41,16 @@ exports.handler = async function handler(event) {
       ORDER BY trade_date ASC
     `;
 
-    const analytics = buildHistoryAnalytics(history);
-
     const peerRows = await sql`
-      SELECT peer_ticker, peer_name
+      SELECT peer_ticker, peer_name, peer_sector, peer_industry, peer_market_cap
       FROM peer_selections
       WHERE report_request_id = ${id}
-      ORDER BY created_at DESC
+      ORDER BY created_at DESC, peer_ticker ASC
     `;
 
-    const placeholderComps = buildComparableSet({
+    const analytics = buildHistoryAnalytics(history);
+
+    const comps = buildComparableSet({
       ticker: request.ticker,
       lastClose: analytics.lastClose,
     });
@@ -82,23 +81,40 @@ exports.handler = async function handler(event) {
       },
       financials,
       compsData: {
-        averages: placeholderComps.averages,
+        averages: comps.averages,
         peers: peerRows,
       },
+    });
+
+    const analyst = await runAiAnalystEngine({
+      request,
+      analytics,
+      valuation,
+      marketData: {
+        live_price: request.live_price,
+        price_change_pct: request.price_change_pct,
+        market_cap: request.market_cap,
+      },
+      peers: peerRows,
     });
 
     await sql`
       UPDATE report_requests
       SET
+        ai_thesis = ${analyst.investment_thesis},
+        ai_risks = ${JSON.stringify(analyst.key_risks)},
+        ai_catalysts = ${JSON.stringify(analyst.catalysts)},
+        ai_recommendation_summary = ${analyst.recommendation_summary},
+        ai_generated_at = NOW(),
         analyst_rating = ${valuation.rating},
         target_low = ${valuation.targetRange.low},
         target_base = ${valuation.targetRange.base},
-        target_high = ${valuation.targetRange.high},
-        status = 'valued'
+        target_high = ${valuation.targetRange.high}
       WHERE id = ${id}
     `;
 
     return response(200, {
+      analyst,
       valuation,
     });
   } catch (error) {

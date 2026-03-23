@@ -90,7 +90,7 @@ function assertCanEditReport(user, report) {
   }
 }
 
-module.exports = {
+export {
   getUserRoles,
   hasRole,
   hasAnyRole,

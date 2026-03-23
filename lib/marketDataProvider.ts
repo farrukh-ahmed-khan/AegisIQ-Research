@@ -117,7 +117,7 @@ function toNumber(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-module.exports = {
+export {
   getCompanyProfile,
   getLiveQuote,
   getPeerTickers,

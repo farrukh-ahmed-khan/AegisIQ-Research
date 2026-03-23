@@ -1,11 +1,11 @@
-const { neon } = require("@neondatabase/serverless");
-const {
+import { neon } from "@neondatabase/serverless";
+import {
   getCompanyProfile,
   getLiveQuote,
   getPeerProfiles,
-} = require("../../lib/marketDataProvider");
+} from "../../lib/marketDataProvider";
 
-exports.handler = async function handler(event) {
+export const handler = async function handler(event) {
   try {
     if (event.httpMethod !== "POST") {
       return response(405, { error: "Method not allowed." });

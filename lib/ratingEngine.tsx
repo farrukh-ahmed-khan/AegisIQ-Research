@@ -48,6 +48,6 @@ function num(value) {
   return Number.isFinite(n) ? n : 0;
 }
 
-module.exports = {
+export {
   deriveAnalystRating,
 };

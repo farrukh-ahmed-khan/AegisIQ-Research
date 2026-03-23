@@ -50,6 +50,6 @@ function num(value) {
   return Number.isFinite(n) ? n : null;
 }
 
-module.exports = {
+export {
   buildComparableSet,
 };

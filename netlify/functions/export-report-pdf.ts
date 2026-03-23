@@ -1,9 +1,9 @@
-const { neon } = require("@neondatabase/serverless");
-const { buildHistoryAnalytics } = require("../../lib/reportAnalytics");
-const { buildPdfReport } = require("../../lib/buildPdfReport");
-const { generateResearchReport } = require("../../lib/generateResearchReport");
+import { neon } from "@neondatabase/serverless";
+import { buildHistoryAnalytics } from "../../lib/reportAnalytics";
+import { buildPdfReport } from "../../lib/buildPdfReport";
+import { generateResearchReport } from "../../lib/generateResearchReport";
 
-exports.handler = async function handler(event) {
+export const handler = async function handler(event) {
   try {
     if (event.httpMethod !== "GET") {
       return responseJson(405, { error: "Method not allowed." });

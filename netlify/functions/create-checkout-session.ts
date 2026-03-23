@@ -1,6 +1,6 @@
-const Stripe = require("stripe");
+import Stripe from "stripe";
 
-exports.handler = async function handler(event) {
+export const handler = async function handler(event) {
   try {
     if (event.httpMethod !== "POST") {
       return response(405, { error: "Method not allowed." });

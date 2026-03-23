@@ -1,4 +1,4 @@
-const XLSX = require("xlsx");
+import XLSX from "xlsx";
 
 function parseExcelBuffer(buffer) {
   const workbook = XLSX.read(buffer, { type: "buffer" });
@@ -100,6 +100,6 @@ function toInteger(value) {
   return n === null ? null : Math.trunc(n);
 }
 
-module.exports = {
+export {
   parseExcelBuffer,
 };

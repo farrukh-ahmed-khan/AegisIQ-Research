@@ -1,4 +1,4 @@
-const OpenAI = require("openai");
+import OpenAI from "openai";
 
 const client = new OpenAI({
   apiKey: process.env.OPENAI_API_KEY,
@@ -146,6 +146,6 @@ function formatPeers(peers) {
     .join("\n");
 }
 
-module.exports = {
+export {
   runAiAnalystEngine,
 };

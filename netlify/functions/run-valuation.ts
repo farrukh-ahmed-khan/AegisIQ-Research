@@ -1,25 +1,36 @@
-const { neon } = require("@neondatabase/serverless");
-const { buildHistoryAnalytics } = require("../../lib/reportAnalytics");
-const { generateResearchReport } = require("../../lib/generateResearchReport");
-const { buildComparableSet } = require("../../lib/compsModel");
-const { runValuationEngine } = require("../../lib/valuationEngine");
+import { neon } from "@neondatabase/serverless";
+import { buildHistoryAnalytics } from "../../lib/reportAnalytics";
+import { buildComparableSet } from "../../lib/compsModel";
+import { runValuationEngine } from "../../lib/valuationEngine";
 
-exports.handler = async function (event) {
+export const handler = async function handler(event) {
   try {
-    const id = event.queryStringParameters?.id;
+    if (event.httpMethod !== "POST" && event.httpMethod !== "GET") {
+      return response(405, { error: "Method not allowed." });
+    }
+
+    const id =
+      event.httpMethod === "GET"
+        ? event.queryStringParameters?.id
+        : JSON.parse(event.body || "{}").id;
 
     if (!id) {
-      return response(400, { error: "Missing request id" });
+      return response(400, { error: "Missing report request id." });
     }
 
     const sql = neon(process.env.DATABASE_URL);
 
     const requests = await sql`
-      SELECT * FROM report_requests WHERE id = ${id} LIMIT 1
+      SELECT
+        id, ticker, live_price, market_cap, analyst_rating,
+        target_low, target_base, target_high
+      FROM report_requests
+      WHERE id = ${id}
+      LIMIT 1
     `;
 
     if (!requests.length) {
-      return response(404, { error: "Request not found" });
+      return response(404, { error: "Report request not found." });
     }
 
     const request = requests[0];
@@ -33,7 +44,14 @@ exports.handler = async function (event) {
 
     const analytics = buildHistoryAnalytics(history);
 
-    const comps = buildComparableSet({
+    const peerRows = await sql`
+      SELECT peer_ticker, peer_name
+      FROM peer_selections
+      WHERE report_request_id = ${id}
+      ORDER BY created_at DESC
+    `;
+
+    const placeholderComps = buildComparableSet({
       ticker: request.ticker,
       lastClose: analytics.lastClose,
     });
@@ -64,60 +82,27 @@ exports.handler = async function (event) {
       },
       financials,
       compsData: {
-        averages: comps.averages,
+        averages: placeholderComps.averages,
+        peers: peerRows,
       },
-    });
-
-    const aiReport = await generateResearchReport({
-      ticker: request.ticker,
-      analytics,
-      dcf: valuation.dcf,
-      comps,
-      valuation,
     });
 
     await sql`
       UPDATE report_requests
       SET
-        ai_report = ${aiReport},
         analyst_rating = ${valuation.rating},
         target_low = ${valuation.targetRange.low},
         target_base = ${valuation.targetRange.base},
         target_high = ${valuation.targetRange.high},
-        status = 'report_generated'
+        status = 'valued'
       WHERE id = ${id}
     `;
 
-    await sql`DELETE FROM comparable_companies WHERE report_request_id = ${id}`;
-
-    for (const comp of comps.comps) {
-      await sql`
-        INSERT INTO comparable_companies
-          (report_request_id, ticker, company_name, market_cap, ev_revenue, ev_ebitda, pe_ratio)
-        VALUES
-          (
-            ${id},
-            ${comp.ticker},
-            ${comp.company_name},
-            ${comp.market_cap},
-            ${comp.ev_revenue},
-            ${comp.ev_ebitda},
-            ${comp.pe_ratio}
-          )
-      `;
-    }
-
     return response(200, {
-      report: aiReport,
-      analytics,
-      dcf: valuation.dcf,
-      comps,
       valuation,
-      rating: valuation.rating,
-      targetRange: valuation.targetRange,
     });
   } catch (error) {
-    return response(500, { error: error.message });
+    return response(500, { error: error.message || "Server error." });
   }
 };
 

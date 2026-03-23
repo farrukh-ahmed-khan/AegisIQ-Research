@@ -1,6 +1,6 @@
-const { neon } = require("@neondatabase/serverless");
+import { neon } from "@neondatabase/serverless";
 
-exports.handler = async function(event) {
+export const handler = async function(event) {
 
   const ticker = event.queryStringParameters.ticker;
 

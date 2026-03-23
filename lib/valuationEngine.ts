@@ -1,5 +1,5 @@
-const { buildRealDcfModel } = require("./realDcfModel");
-const { deriveAnalystRating } = require("./ratingEngine");
+import { buildRealDcfModel } from "./realDcfModel";
+import { deriveAnalystRating } from "./ratingEngine";
 
 function runValuationEngine({
   ticker,
@@ -204,6 +204,6 @@ function fmt(value) {
   return `$${n.toFixed(2)}`;
 }
 
-module.exports = {
+export {
   runValuationEngine,
 };

@@ -182,6 +182,6 @@ function emptyAnalytics() {
   };
 }
 
-module.exports = {
+export {
   buildHistoryAnalytics,
 };
