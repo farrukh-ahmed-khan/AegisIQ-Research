@@ -1,0 +1,55 @@
+﻿# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# Runtime data
+pids
+*.pid
+*.seed
+*.pid.lock
+
+# Dependency directories
+node_modules/
+
+# Next.js
+.next/
+out/
+
+# Build outputs
+build/
+dist/
+
+# Cache
+.cache/
+.npm/
+.eslintcache
+.turbo/
+
+# Coverage
+coverage/
+
+# Environment files
+.env
+.env.*
+
+# Local config
+*.local
+
+# OS / Editor
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+
+# Netlify
+.netlify/
+
+# Database / Drizzle
+.drizzle/
+
+# Misc
+*.tgz
