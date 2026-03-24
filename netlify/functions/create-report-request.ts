@@ -1,8 +1,8 @@
 import Busboy from "busboy";
 import { neon } from "@neondatabase/serverless";
-import { parseExcelBuffer } from "../../lib/parseExcel";
+import { parseExcelBuffer, NormalizedRow } from "../../lib/parseExcel";
 
-export const handler = async function handler(event) {
+export const handler = async function handler(event: any) {
   try {
     if (event.httpMethod !== "POST") {
       return response(405, { error: "Method not allowed." });
@@ -15,7 +15,12 @@ export const handler = async function handler(event) {
       return response(400, { error: "Expected multipart/form-data." });
     }
 
-    const form = await parseMultipart(event);
+    // ✅ Define type for parsed form
+    const form = (await parseMultipart(event)) as {
+      fields: Record<string, string>;
+      file: { filename: string; buffer: Buffer; fieldName: string } | null;
+    };
+
     const ticker = (form.fields.ticker || "").trim().toUpperCase();
     const period = (form.fields.period || "").trim().toUpperCase();
     const userId = (form.fields.userId || "").trim();
@@ -30,7 +35,7 @@ export const handler = async function handler(event) {
       return response(400, { error: "Excel file is required." });
     }
 
-    const rows = parseExcelBuffer(uploadedFile.buffer);
+    const rows: NormalizedRow[] = parseExcelBuffer(uploadedFile.buffer);
     const sql = neon(process.env.DATABASE_URL);
 
     const requestRows = await sql`
@@ -67,15 +72,20 @@ export const handler = async function handler(event) {
       requestId,
       rowsSaved: rows.length,
     });
-  } catch (error) {
-    return response(500, { error: error.message || "Server error." });
+  } catch (error: any) {
+    return response(500, { error: error?.message || "Server error." });
   }
 };
 
-function parseMultipart(event) {
+// ✅ Type-safe parseMultipart
+function parseMultipart(event: any): Promise<{
+  fields: Record<string, string>;
+  file: { fieldName: string; filename: string; buffer: Buffer } | null;
+}> {
   return new Promise((resolve, reject) => {
-    const fields = {};
-    let file = null;
+    const fields: Record<string, string> = {};
+    let file: { fieldName: string; filename: string; buffer: Buffer } | null =
+      null;
 
     const busboy = Busboy({
       headers: {
@@ -89,9 +99,8 @@ function parseMultipart(event) {
     });
 
     busboy.on("file", (name, stream, info) => {
-      const chunks = [];
-      const filename =
-        typeof info === "object" ? info.filename : "upload.xlsx";
+      const chunks: Buffer[] = [];
+      const filename = typeof info === "object" ? info.filename : "upload.xlsx";
 
       stream.on("data", (chunk) => chunks.push(chunk));
       stream.on("end", () => {
@@ -106,11 +115,14 @@ function parseMultipart(event) {
     busboy.on("finish", () => resolve({ fields, file }));
     busboy.on("error", reject);
 
-    busboy.end(Buffer.from(event.body, event.isBase64Encoded ? "base64" : "utf8"));
+    busboy.end(
+      Buffer.from(event.body, event.isBase64Encoded ? "base64" : "utf8"),
+    );
   });
 }
 
-function response(statusCode, body) {
+// Response helper
+function response(statusCode: number, body: any) {
   return {
     statusCode,
     headers: { "Content-Type": "application/json" },

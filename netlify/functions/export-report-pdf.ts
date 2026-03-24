@@ -1,17 +1,22 @@
+import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { buildHistoryAnalytics } from "../../lib/reportAnalytics";
 import { buildPdfReport } from "../../lib/buildPdfReport";
 import { generateResearchReport } from "../../lib/generateResearchReport";
 
-export const handler = async function handler(event) {
-  try {
-    if (event.httpMethod !== "GET") {
-      return responseJson(405, { error: "Method not allowed." });
-    }
+export const runtime = "nodejs"; // ensure Node runtime
+export const dynamic = "force-dynamic"; // disable caching
 
-    const id = event.queryStringParameters?.id;
+export async function GET(request: NextRequest) {
+  try {
+    const url = new URL(request.url);
+    const id = url.searchParams.get("id");
+
     if (!id) {
-      return responseJson(400, { error: "Missing report request id." });
+      return NextResponse.json(
+        { error: "Missing report request id." },
+        { status: 400 },
+      );
     }
 
     const sql = neon(process.env.DATABASE_URL);
@@ -24,10 +29,13 @@ export const handler = async function handler(event) {
     `;
 
     if (!requests.length) {
-      return responseJson(404, { error: "Report request not found." });
+      return NextResponse.json(
+        { error: "Report request not found." },
+        { status: 404 },
+      );
     }
 
-    const request = requests[0];
+    const requestData = requests[0];
 
     const history = await sql`
       SELECT trade_date, open, high, low, close, volume
@@ -39,7 +47,7 @@ export const handler = async function handler(event) {
     const analytics = buildHistoryAnalytics(history);
 
     const narrative = {
-      headline: `${request.ticker} preliminary quantitative summary`,
+      headline: `${requestData.ticker} preliminary quantitative summary`,
       thesis: analytics.investmentView,
       targetRange: {
         low: analytics.impliedRangeLow,
@@ -48,12 +56,16 @@ export const handler = async function handler(event) {
       },
     };
 
-    let aiReport = request.ai_report || "";
+    // AI Report generation
+    let aiReport = requestData.ai_report || "";
     if (!aiReport) {
       try {
         aiReport = await generateResearchReport({
-          ticker: request.ticker,
+          ticker: requestData.ticker,
           analytics,
+          dcf: null,
+          comps: null,
+          valuation: null,
         });
       } catch (err) {
         aiReport =
@@ -61,49 +73,50 @@ export const handler = async function handler(event) {
       }
     }
 
-    const pdfBuffer = await buildPdfReport({
-      request,
+    // Build PDF
+    const pdfBufferUnknown = await buildPdfReport({
+      request: requestData,
       analytics,
       narrative,
       aiReport,
     });
 
-    const fileName = `${request.ticker || "report"}-research-report.pdf`;
+    const pdfBuffer = pdfBufferUnknown as Buffer;
 
+    // Ensure it's a proper Buffer for NextResponse
+    const pdfBody = Buffer.isBuffer(pdfBuffer)
+      ? pdfBuffer
+      : Buffer.from(pdfBuffer);
+
+    const pdfBytes = new Uint8Array(pdfBody.byteLength);
+    pdfBytes.set(pdfBody);
+
+    const fileName = `${requestData.ticker || "report"}-research-report.pdf`;
+
+    // Update DB after generating PDF
     await sql`
       INSERT INTO report_exports (report_request_id, export_type, file_name)
       VALUES (${id}, 'pdf', ${fileName})
     `;
-
     await sql`
       UPDATE report_requests
       SET pdf_generated_at = NOW()
       WHERE id = ${id}
     `;
 
-    return {
-      statusCode: 200,
-      isBase64Encoded: true,
+    // ✅ Return PDF
+    return new NextResponse(pdfBytes.buffer, {
+      status: 200,
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${fileName}"`,
         "Cache-Control": "no-store",
       },
-      body: pdfBuffer.toString("base64"),
-    };
-  } catch (error) {
-    return responseJson(500, {
-      error: error.message || "Server error.",
     });
+  } catch (error: any) {
+    return NextResponse.json(
+      { error: error.message || "Server error." },
+      { status: 500 },
+    );
   }
-};
-
-function responseJson(statusCode, body) {
-  return {
-    statusCode,
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(body),
-  };
 }

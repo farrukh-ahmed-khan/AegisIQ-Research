@@ -1,6 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
-import { NextResponse } from "next/server";
-
+import { NextRequest, NextResponse } from "next/server";
 import { removeWatchlistItem } from "@/lib/workspace-screener-repository";
 
 interface RouteContext {
@@ -20,8 +19,8 @@ async function requireUserId(): Promise<string | null> {
 }
 
 export async function DELETE(
-  _request: Request,
-  context: RouteContext,
+  _request: NextRequest,
+  { params }: { params: Promise<{ watchlistId: string; symbol: string }> },
 ): Promise<NextResponse> {
   try {
     const userId = await requireUserId();
@@ -30,8 +29,7 @@ export async function DELETE(
       return jsonError("Unauthorized", 401);
     }
 
-    const watchlistId = context.params.watchlistId;
-    const symbol = context.params.symbol;
+    const { watchlistId, symbol } = await params;
 
     if (!watchlistId) {
       return jsonError("Watchlist id is required", 400);

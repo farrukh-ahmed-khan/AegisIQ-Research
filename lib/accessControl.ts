@@ -1,9 +1,11 @@
 function normalizeRole(value) {
-  return String(value || '').trim().toLowerCase();
+  return String(value || "")
+    .trim()
+    .toLowerCase();
 }
 
 function getUserRoles(user) {
-  if (!user || typeof user !== 'object') return [];
+  if (!user || typeof user !== "object") return [];
 
   const directRoles = Array.isArray(user.roles) ? user.roles : [];
   const publicRoles =
@@ -36,27 +38,32 @@ function hasAnyRole(user, roles) {
 }
 
 function isAdmin(user) {
-  return hasAnyRole(user, ['admin', 'administrator', 'superadmin']);
+  return hasAnyRole(user, ["admin", "administrator", "superadmin"]);
 }
 
 function isAnalyst(user) {
-  return hasAnyRole(user, ['analyst', 'senior-analyst', 'research', 'researcher']);
+  return hasAnyRole(user, [
+    "analyst",
+    "senior-analyst",
+    "research",
+    "researcher",
+  ]);
 }
 
 function isEditor(user) {
-  return hasAnyRole(user, ['editor', 'publisher', 'content-manager']);
+  return hasAnyRole(user, ["editor", "publisher", "content-manager"]);
 }
 
 function canViewReport(user, report) {
-  if (!report || typeof report !== 'object') return !!user;
+  if (!report || typeof report !== "object") return !!user;
 
   if (isAdmin(user)) return true;
 
-  const visibility = String(report.visibility || 'private').toLowerCase();
+  const visibility = String(report.visibility || "private").toLowerCase();
   const authorId = report.authorId || report.userId || report.ownerId;
   const userId = user && (user.id || user.userId || user.clerkUserId);
 
-  if (visibility === 'public' || visibility === 'published') return true;
+  if (visibility === "public" || visibility === "published") return true;
   if (authorId && userId && String(authorId) === String(userId)) return true;
   if (isAnalyst(user) || isEditor(user)) return true;
 
@@ -67,26 +74,33 @@ function canEditReport(user, report) {
   if (!user) return false;
   if (isAdmin(user)) return true;
 
-  const authorId = report && (report.authorId || report.userId || report.ownerId);
+  const authorId =
+    report && (report.authorId || report.userId || report.ownerId);
   const userId = user.id || user.userId || user.clerkUserId;
 
   if (authorId && userId && String(authorId) === String(userId)) return true;
   return isAnalyst(user) || isEditor(user);
 }
 
+class HttpError extends Error {
+  statusCode: number;
+
+  constructor(message: string, statusCode: number) {
+    super(message);
+    this.name = "HttpError";
+    this.statusCode = statusCode;
+  }
+}
+
 function assertCanViewReport(user, report) {
   if (!canViewReport(user, report)) {
-    const error = new Error('Forbidden');
-    error.statusCode = 403;
-    throw error;
+    throw new HttpError("Forbidden", 403);
   }
 }
 
 function assertCanEditReport(user, report) {
   if (!canEditReport(user, report)) {
-    const error = new Error('Forbidden');
-    error.statusCode = 403;
-    throw error;
+    throw new HttpError("Forbidden", 403);
   }
 }
 

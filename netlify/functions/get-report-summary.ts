@@ -1,6 +1,5 @@
 import { neon } from "@neondatabase/serverless";
 import { buildHistoryAnalytics } from "../../lib/reportAnalytics";
-import { assertReportOwner } from "../../lib/accessControl";
 
 export const handler = async function handler(event) {
   try {
@@ -115,6 +114,36 @@ export const handler = async function handler(event) {
     return response(500, { error: error.message || "Server error." });
   }
 };
+
+async function assertReportOwner({ reportId, userId }) {
+  if (!reportId) {
+    return { allowed: false, reason: "Missing report id." };
+  }
+
+  if (!userId) {
+    return { allowed: false, reason: "Missing user id." };
+  }
+
+  const sql = neon(process.env.DATABASE_URL);
+
+  const rows = await sql`
+    SELECT user_id
+    FROM report_requests
+    WHERE id = ${reportId}
+    LIMIT 1
+  `;
+
+  if (!rows.length) {
+    return { allowed: false, reason: "Report request not found." };
+  }
+
+  const ownerId = rows[0].user_id;
+  if (!ownerId || String(ownerId) !== String(userId)) {
+    return { allowed: false, reason: "Access denied." };
+  }
+
+  return { allowed: true };
+}
 
 function parseJsonArray(value) {
   if (!value) return [];

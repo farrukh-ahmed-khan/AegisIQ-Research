@@ -6,12 +6,6 @@ import {
   listWatchlistItems,
 } from "@/lib/workspace-screener-repository";
 
-interface RouteContext {
-  params: {
-    watchlistId: string;
-  };
-}
-
 interface AddWatchlistItemRequestBody {
   symbol?: unknown;
 }
@@ -27,23 +21,16 @@ async function requireUserId(): Promise<string | null> {
 
 export async function GET(
   _request: NextRequest,
-  context: RouteContext,
+  { params }: { params: Promise<{ watchlistId: string }> },
 ): Promise<NextResponse> {
   try {
     const userId = await requireUserId();
+    if (!userId) return jsonError("Unauthorized", 401);
 
-    if (!userId) {
-      return jsonError("Unauthorized", 401);
-    }
-
-    const watchlistId = context.params.watchlistId;
-
-    if (!watchlistId) {
-      return jsonError("Watchlist id is required", 400);
-    }
+    const { watchlistId } = await params;
+    if (!watchlistId) return jsonError("Watchlist id is required", 400);
 
     const items = await listWatchlistItems(userId, watchlistId);
-
     return NextResponse.json({ items });
   } catch (error) {
     console.error("Failed to list watchlist items", error);
@@ -53,43 +40,31 @@ export async function GET(
 
 export async function POST(
   request: NextRequest,
-  context: RouteContext,
+  { params }: { params: Promise<{ watchlistId: string }> },
 ): Promise<NextResponse> {
   try {
     const userId = await requireUserId();
+    if (!userId) return jsonError("Unauthorized", 401);
 
-    if (!userId) {
-      return jsonError("Unauthorized", 401);
-    }
-
-    const watchlistId = context.params.watchlistId;
-
-    if (!watchlistId) {
-      return jsonError("Watchlist id is required", 400);
-    }
+    const { watchlistId } = await params;
+    if (!watchlistId) return jsonError("Watchlist id is required", 400);
 
     const body = (await request.json()) as AddWatchlistItemRequestBody;
-
-    if (typeof body.symbol !== "string") {
+    if (typeof body.symbol !== "string")
       return jsonError("Invalid symbol", 400);
-    }
 
     const item = await addWatchlistItem(userId, watchlistId, {
       symbol: body.symbol,
     });
-
     return NextResponse.json({ item }, { status: 201 });
   } catch (error) {
     console.error("Failed to add watchlist item", error);
 
     if (error instanceof Error) {
-      if (error.message === "symbol_required") {
+      if (error.message === "symbol_required")
         return jsonError("Symbol is required", 400);
-      }
-
-      if (error.message === "watchlist_not_found") {
+      if (error.message === "watchlist_not_found")
         return jsonError("Watchlist not found", 404);
-      }
     }
 
     return jsonError("Failed to add watchlist item", 500);

@@ -1,8 +1,9 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import styles from "./dashboard.module.css";
 
-export default function DashboardPage() {
+export default function Dashboard() {
   const [reports, setReports] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -11,55 +12,70 @@ export default function DashboardPage() {
   }, []);
 
   async function loadReports() {
-    const res = await fetch("/.netlify/functions/list-reports");
+    const res = await fetch("/.netlify/functions/list-published-reports");
     const json = await res.json();
     setReports(json.reports || []);
     setLoading(false);
   }
 
   return (
-    <main style={pageStyle}>
-      <div style={{ maxWidth: 1120, margin: "0 auto", display: "grid", gap: 24 }}>
-        <section style={heroStyle}>
-          <div style={badgeStyle}>AegisIQ Dashboard</div>
-          <h1 style={{ margin: "12px 0 8px 0", fontSize: 42 }}>Research Report History</h1>
-          <p style={{ margin: 0, color: "rgba(255,255,255,0.84)", fontSize: 18 }}>
-            Review saved report requests, ratings, and target ranges.
+    <main className={styles.page}>
+      <div className={styles.glowBlue} />
+      <div className={styles.glowGold} />
+
+      <div className={styles.container}>
+        <section className={styles.hero}>
+          <div className={styles.badge}>AegisIQ Library</div>
+          <h1 className={styles.title}>Published Research Reports</h1>
+          <p className={styles.subtitle}>
+            Review published research summaries and reopen any report page.
           </p>
         </section>
 
-        <section style={cardStyle}>
+        <section className={styles.card}>
           {loading ? (
-            <p>Loading reports...</p>
+            <p className={styles.infoText}>Loading published reports...</p>
           ) : reports.length === 0 ? (
-            <p>No reports found yet.</p>
+            <p className={styles.infoText}>No published reports yet.</p>
           ) : (
-            <div style={{ overflowX: "auto" }}>
-              <table style={tableStyle}>
+            <div className={styles.tableWrap}>
+              <table className={styles.table}>
                 <thead>
                   <tr>
-                    <th>ID</th>
-                    <th>Ticker</th>
-                    <th>Period</th>
-                    <th>Status</th>
-                    <th>Rating</th>
-                    <th>Base Target</th>
-                    <th>Created</th>
-                    <th>Open</th>
+                    <th className={styles.tableHeadCell}>ID</th>
+                    <th className={styles.tableHeadCell}>Title</th>
+                    <th className={styles.tableHeadCell}>Rating</th>
+                    <th className={styles.tableHeadCell}>Base Target</th>
+                    <th className={styles.tableHeadCell}>Published</th>
+                    <th className={styles.tableHeadCell}>PDF</th>
+                    <th className={styles.tableHeadCell}>Open</th>
                   </tr>
                 </thead>
                 <tbody>
                   {reports.map((report) => (
-                    <tr key={report.id}>
-                      <td>{report.id}</td>
-                      <td>{report.ticker}</td>
-                      <td>{report.period}</td>
-                      <td>{report.status}</td>
-                      <td>{report.analyst_rating || "—"}</td>
-                      <td>{formatMoney(report.target_base)}</td>
-                      <td>{formatDateTime(report.created_at)}</td>
-                      <td>
-                        <a href={`/report/${report.id}`} style={linkStyle}>
+                    <tr key={report.id} className={styles.tableRow}>
+                      <td className={styles.tableCell}>{report.id}</td>
+                      <td className={styles.tableCell}>
+                        {report.report_title ||
+                          `${report.ticker} Research Report`}
+                      </td>
+                      <td className={styles.tableCell}>
+                        {report.analyst_rating || "—"}
+                      </td>
+                      <td className={styles.tableCell}>
+                        {formatMoney(report.target_base)}
+                      </td>
+                      <td className={styles.tableCell}>
+                        {formatDateTime(report.published_at)}
+                      </td>
+                      <td className={styles.tableCell}>
+                        {report.pdf_generated_at ? "Yes" : "No"}
+                      </td>
+                      <td className={styles.tableCell}>
+                        <a
+                          href={`/report/${report.id}`}
+                          className={styles.link}
+                        >
                           View
                         </a>
                       </td>
@@ -90,46 +106,3 @@ function formatDateTime(value) {
   if (Number.isNaN(d.getTime())) return String(value);
   return d.toLocaleString("en-US");
 }
-
-const pageStyle = {
-  minHeight: "100vh",
-  padding: 40,
-  background: "linear-gradient(135deg,#07111f,#0b1f3b,#123d6b)",
-};
-
-const heroStyle = {
-  color: "white",
-  padding: 30,
-  borderRadius: 20,
-  background: "rgba(255,255,255,0.08)",
-  border: "1px solid rgba(255,255,255,0.12)",
-};
-
-const badgeStyle = {
-  display: "inline-block",
-  padding: "8px 12px",
-  borderRadius: 999,
-  background: "rgba(255,255,255,0.12)",
-  fontSize: 12,
-  textTransform: "uppercase",
-  letterSpacing: "0.08em",
-};
-
-const cardStyle = {
-  background: "white",
-  padding: 28,
-  borderRadius: 18,
-  boxShadow: "0 18px 50px rgba(0,0,0,0.18)",
-};
-
-const tableStyle = {
-  width: "100%",
-  borderCollapse: "collapse",
-  fontSize: 14,
-};
-
-const linkStyle = {
-  color: "#0b3d91",
-  fontWeight: 700,
-  textDecoration: "none",
-};

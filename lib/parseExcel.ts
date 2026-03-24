@@ -1,6 +1,21 @@
+// lib/parseExcel.ts
 import XLSX from "xlsx";
 
-function parseExcelBuffer(buffer) {
+// Type for normalized row
+export interface NormalizedRow {
+  ticker: string | null;
+  date: string | null;
+  open: number | null;
+  high: number | null;
+  low: number | null;
+  close: number | null;
+  volume: number | null;
+}
+
+// Parse Excel buffer into array of normalized rows
+export function parseExcelBuffer(
+  buffer: ArrayBuffer | Uint8Array,
+): NormalizedRow[] {
   const workbook = XLSX.read(buffer, { type: "buffer" });
   const firstSheetName = workbook.SheetNames[0];
 
@@ -9,7 +24,9 @@ function parseExcelBuffer(buffer) {
   }
 
   const worksheet = workbook.Sheets[firstSheetName];
-  const rows = XLSX.utils.sheet_to_json(worksheet, { defval: null });
+  const rows = XLSX.utils.sheet_to_json<Record<string, any>>(worksheet, {
+    defval: null,
+  });
 
   if (!rows.length) {
     throw new Error("The worksheet is empty.");
@@ -23,20 +40,21 @@ function parseExcelBuffer(buffer) {
         row.open !== null &&
         row.high !== null &&
         row.low !== null &&
-        row.close !== null
+        row.close !== null,
     );
 
   if (!normalized.length) {
     throw new Error(
-      "No valid stock-history rows found. Expected columns like Date, Open, High, Low, Close, Volume."
+      "No valid stock-history rows found. Expected columns like Date, Open, High, Low, Close, Volume.",
     );
   }
 
   return normalized;
 }
 
-function normalizeRow(row) {
-  const mapped = {};
+// Normalize individual row
+function normalizeRow(row: Record<string, any>): NormalizedRow {
+  const mapped: Partial<NormalizedRow> = {};
   const keys = Object.keys(row);
 
   for (const key of keys) {
@@ -54,8 +72,8 @@ function normalizeRow(row) {
   }
 
   return {
-    ticker: mapped.ticker || null,
-    date: mapped.date || null,
+    ticker: mapped.ticker ?? null,
+    date: mapped.date ?? null,
     open: mapped.open ?? null,
     high: mapped.high ?? null,
     low: mapped.low ?? null,
@@ -64,13 +82,16 @@ function normalizeRow(row) {
   };
 }
 
-function normalizeDate(value) {
+// Normalize date values from Excel
+function normalizeDate(value: any): string | null {
   if (!value) return null;
 
+  // If already a Date object
   if (value instanceof Date && !isNaN(value.getTime())) {
     return value.toISOString().slice(0, 10);
   }
 
+  // If Excel numeric date
   if (typeof value === "number") {
     const parsed = XLSX.SSF.parse_date_code(value);
     if (!parsed) return null;
@@ -80,6 +101,7 @@ function normalizeDate(value) {
     return `${yyyy}-${mm}-${dd}`;
   }
 
+  // If string
   const text = String(value).trim();
   const date = new Date(text);
   if (!isNaN(date.getTime())) {
@@ -89,17 +111,15 @@ function normalizeDate(value) {
   return null;
 }
 
-function toNumber(value) {
+// Convert value to number or null
+function toNumber(value: any): number | null {
   if (value === null || value === undefined || value === "") return null;
   const n = Number(String(value).replace(/,/g, ""));
   return Number.isFinite(n) ? n : null;
 }
 
-function toInteger(value) {
+// Convert value to integer or null
+function toInteger(value: any): number | null {
   const n = toNumber(value);
   return n === null ? null : Math.trunc(n);
 }
-
-export {
-  parseExcelBuffer,
-};
