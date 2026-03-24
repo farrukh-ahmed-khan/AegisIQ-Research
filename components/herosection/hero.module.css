@@ -1,0 +1,229 @@
+.hero {
+  position: relative;
+  min-height: 100vh;
+  display: flex;
+  align-items: center;
+  padding-top: 80px;
+  overflow: hidden;
+}
+
+.bgImage {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.overlayGradient {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to right, rgba(10,15,26,0.9), rgba(10,15,26,0.7), rgba(10,15,26,0.4));
+}
+
+.overlayTop {
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(to top, var(--background), transparent, rgba(10,15,26,0.5));
+}
+
+.glowOrb1 {
+  position: absolute;
+  top: 25%;
+  left: 25%;
+  width: 24rem;
+  height: 24rem;
+  background: rgba(59, 130, 246, 0.1);
+  border-radius: 50%;
+  filter: blur(48px);
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+.glowOrb2 {
+  position: absolute;
+  bottom: 25%;
+  right: 33%;
+  width: 16rem;
+  height: 16rem;
+  background: rgba(212, 168, 67, 0.08);
+  border-radius: 50%;
+  filter: blur(48px);
+  animation: pulseGlow 3s ease-in-out infinite;
+}
+
+@keyframes pulseGlow {
+  0%, 100% { opacity: 0.4; }
+  50% { opacity: 0.8; }
+}
+
+.container {
+  max-width: 1400px;
+  margin: 0 auto;
+  padding: 0 1.5rem;
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 3rem;
+  align-items: center;
+  position: relative;
+  z-index: 10;
+}
+
+.content {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.title {
+  font-size: 3.5rem;
+  font-weight: 700;
+  line-height: 1.1;
+  letter-spacing: -0.02em;
+}
+
+.goldText {
+  background: linear-gradient(135deg, #e8c36a, #d4a843, #b8862d);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.subtitle {
+  font-size: 1.125rem;
+  color: var(--muted);
+  max-width: 28rem;
+  line-height: 1.7;
+}
+
+.buttons {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 1rem;
+}
+
+.ctaBtn {
+  padding: 0.875rem 2rem;
+  border-radius: 9999px;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  font-size: 1rem;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.2s;
+  box-shadow: 0 0 20px -5px rgba(212, 168, 67, 0.3);
+}
+
+.ctaBtn:hover {
+  filter: brightness(1.1);
+}
+
+.demoBtn {
+  padding: 0.875rem 2rem;
+  border-radius: 9999px;
+  border: 1px solid rgba(226, 232, 240, 0.3);
+  background: transparent;
+  color: rgba(226, 232, 240, 0.8);
+  font-size: 1rem;
+  cursor: pointer;
+  font-family: inherit;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.demoBtn:hover {
+  color: var(--foreground);
+  border-color: rgba(226, 232, 240, 0.6);
+}
+
+.searchRow {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  max-width: 28rem;
+  margin-top: 0.5rem;
+}
+
+.searchWrapper {
+  position: relative;
+  flex: 1;
+}
+
+.searchIcon {
+  position: absolute;
+  left: 0.75rem;
+  top: 50%;
+  transform: translateY(-50%);
+  color: var(--muted);
+  width: 16px;
+  height: 16px;
+}
+
+.searchInput {
+  width: 100%;
+  padding: 0.75rem 1rem 0.75rem 2.5rem;
+  border-radius: 0.5rem;
+  background: rgba(30, 41, 59, 0.6);
+  border: 1px solid var(--border);
+  color: var(--foreground);
+  font-family: inherit;
+  font-size: 0.95rem;
+  backdrop-filter: blur(4px);
+  outline: none;
+  transition: box-shadow 0.2s;
+}
+
+.searchInput::placeholder {
+  color: var(--muted);
+}
+
+.searchInput:focus {
+  box-shadow: 0 0 0 2px var(--primary);
+}
+
+.analyzeBtn {
+  padding: 0.75rem 1.25rem;
+  border-radius: 0.5rem;
+  background: var(--primary);
+  color: var(--primary-foreground);
+  font-weight: 600;
+  font-size: 0.875rem;
+  border: none;
+  cursor: pointer;
+  font-family: inherit;
+  transition: filter 0.2s;
+  white-space: nowrap;
+}
+
+.analyzeBtn:hover {
+  filter: brightness(1.1);
+}
+
+.imageWrapper {
+  position: relative;
+  border-radius: 1rem;
+  overflow: hidden;
+  box-shadow: 0 0 40px -10px rgba(59, 130, 246, 0.4), 0 0 80px -20px rgba(59, 130, 246, 0.2);
+}
+
+.dashboardImg {
+  width: 100%;
+  height: auto;
+  border-radius: 1rem;
+}
+
+@media (max-width: 1024px) {
+  .container {
+    grid-template-columns: 1fr;
+  }
+  .imageWrapper {
+    display: none;
+  }
+  .title {
+    font-size: 2.5rem;
+  }
+}
