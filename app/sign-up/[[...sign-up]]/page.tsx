@@ -1,17 +1,42 @@
 import { SignUp } from "@clerk/nextjs";
+import styles from "./sign-up.module.css";
 
 export default function SignUpPage() {
   return (
-    <main className="mx-auto flex min-h-[80vh] max-w-5xl flex-col items-center justify-center px-6 py-16">
-      <div className="w-full max-w-md rounded-2xl border border-slate-200 p-6 shadow-sm">
-        <h1 className="text-2xl font-semibold text-slate-900">Create account</h1>
-        <p className="mt-2 text-sm text-slate-600">
-          Start building research reports with AegisIQ.
-        </p>
-        <div className="mt-6">
-          <SignUp />
+    <main className={styles.page}>
+      <div className={styles.glowBlue} />
+      <div className={styles.glowGold} />
+
+      <section className={styles.container}>
+        <div className={styles.contentCard}>
+          <span className={styles.badge}>Get Started</span>
+          <h1 className={styles.title}>Create your AegisIQ account</h1>
+          <p className={styles.subtitle}>
+            Start building faster equity research workflows with AI support.
+          </p>
+
+          <div className={styles.authWrap}>
+            <SignUp routing="path" path="/sign-up" signInUrl="/sign-in" />
+          </div>
         </div>
-      </div>
+
+        <div className={styles.sideCard}>
+          <h2 className={styles.sideTitle}>Why teams choose AegisIQ</h2>
+          <ul className={styles.sideList}>
+            <li>
+              Combine market data, valuation logic, and narrative in one
+              workflow.
+            </li>
+            <li>
+              Export polished reports for IC meetings and client communication.
+            </li>
+            <li>
+              Scale analyst output with repeatable, transparent research
+              processes.
+            </li>
+          </ul>
+        </div>
+      </section>
     </main>
   );
 }

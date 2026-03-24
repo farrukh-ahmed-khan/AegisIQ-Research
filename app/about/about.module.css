@@ -1,0 +1,165 @@
+.section {
+  padding: 100px 0;
+  background: hsl(222 47% 6%);
+  min-height: 100vh;
+  position: relative;
+  overflow: hidden;
+}
+
+.glow1 {
+  position: absolute;
+  top: 10%;
+  left: 15%;
+  width: 500px;
+  height: 500px;
+  background: hsl(217 80% 52% / 0.06);
+  border-radius: 50%;
+  filter: blur(100px);
+}
+
+.glow2 {
+  position: absolute;
+  bottom: 20%;
+  right: 10%;
+  width: 400px;
+  height: 400px;
+  background: hsl(43 80% 55% / 0.05);
+  border-radius: 50%;
+  filter: blur(100px);
+}
+
+.container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 0 24px;
+  position: relative;
+  z-index: 1;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 16px;
+  border-radius: 999px;
+  background: hsl(217 80% 52% / 0.1);
+  border: 1px solid hsl(217 80% 52% / 0.3);
+  color: hsl(217 90% 70%);
+  font-size: 0.8rem;
+  font-weight: 500;
+  letter-spacing: 0.05em;
+  text-transform: uppercase;
+  margin-bottom: 16px;
+}
+
+.heading {
+  font-size: 2.8rem;
+  font-weight: 800;
+  color: hsl(210 40% 96%);
+  margin-bottom: 16px;
+  line-height: 1.2;
+}
+
+.headingAccent {
+  background: linear-gradient(135deg, hsl(43 85% 70%), hsl(43 80% 55%));
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+}
+
+.subtitle {
+  color: hsl(215 20% 60%);
+  font-size: 1.1rem;
+  line-height: 1.8;
+  margin-bottom: 48px;
+  max-width: 700px;
+}
+
+.missionCard {
+  background: hsl(222 44% 10%);
+  border: 1px solid hsl(222 30% 18%);
+  border-radius: 16px;
+  padding: 36px 32px;
+  margin-bottom: 32px;
+  transition: border-color 0.3s, box-shadow 0.3s;
+}
+
+.missionCard:hover {
+  border-color: hsl(43 80% 55% / 0.3);
+  box-shadow: 0 0 30px -10px hsl(43 80% 55% / 0.15);
+}
+
+.cardTitle {
+  font-size: 1.3rem;
+  font-weight: 700;
+  color: hsl(210 40% 96%);
+  margin-bottom: 12px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+}
+
+.cardIcon {
+  width: 40px;
+  height: 40px;
+  border-radius: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+}
+
+.iconGold {
+  background: hsl(43 80% 55% / 0.15);
+  color: hsl(43 85% 70%);
+}
+
+.iconBlue {
+  background: hsl(217 80% 52% / 0.15);
+  color: hsl(217 90% 70%);
+}
+
+.cardDesc {
+  color: hsl(215 20% 60%);
+  font-size: 0.95rem;
+  line-height: 1.7;
+}
+
+.valuesGrid {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 24px;
+  margin-top: 48px;
+}
+
+@media (max-width: 768px) {
+  .valuesGrid {
+    grid-template-columns: 1fr;
+  }
+  .heading {
+    font-size: 2rem;
+  }
+}
+
+.valueCard {
+  background: hsl(222 44% 10%);
+  border: 1px solid hsl(222 30% 18%);
+  border-radius: 16px;
+  padding: 28px 24px;
+  transition: transform 0.3s, border-color 0.3s;
+}
+
+.valueCard:hover {
+  transform: translateY(-3px);
+  border-color: hsl(217 80% 52% / 0.3);
+}
+
+.valueTitle {
+  font-size: 1.05rem;
+  font-weight: 600;
+  color: hsl(210 40% 96%);
+  margin-bottom: 8px;
+}
+
+.valueDesc {
+  color: hsl(215 20% 60%);
+  font-size: 0.88rem;
+  line-height: 1.6;
+}

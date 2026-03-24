@@ -14,7 +14,7 @@
     "load:security-master": "tsx scripts/load-security-master.ts"
   },
   "dependencies": {
-    "@clerk/nextjs": "^5.7.5",
+    "@clerk/nextjs": "^6.0.0",
     "@neondatabase/serverless": "^0.9.0",
     "@netlify/blobs": "^8.0.0",
     "@react-pdf/renderer": "^3.4.4",
