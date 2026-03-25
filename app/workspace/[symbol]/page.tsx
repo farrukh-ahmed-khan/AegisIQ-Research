@@ -2,6 +2,7 @@ import { notFound } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { CompanyWorkspaceTerminal } from "../../../components/workspace/company-workspace-terminal";
 import { getWorkspaceTerminalViewModel } from "../../../lib/workspace-repository";
+import styles from "./workspace-symbol.module.css";
 
 interface WorkspacePageProps {
   params: Promise<{
@@ -35,5 +36,11 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
 
   const data = await getWorkspaceTerminalViewModel(userId, symbol);
 
-  return <CompanyWorkspaceTerminal data={data} />;
+  return (
+    <main className={styles.page}>
+      <div className={styles.glowBlue} />
+      <div className={styles.glowGold} />
+      <CompanyWorkspaceTerminal data={data} />
+    </main>
+  );
 }

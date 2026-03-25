@@ -13,6 +13,121 @@ import type {
 
 type JsonValue = Record<string, unknown>;
 
+let workspaceSchemaReadyPromise: Promise<void> | null = null;
+
+async function ensureWorkspaceSchema(): Promise<void> {
+  if (!workspaceSchemaReadyPromise) {
+    workspaceSchemaReadyPromise = (async () => {
+      await sql`CREATE EXTENSION IF NOT EXISTS "pgcrypto"`;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS company_workspaces (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          clerk_user_id text NOT NULL,
+          symbol text NOT NULL,
+          company_name text,
+          exchange text,
+          primary_currency text NOT NULL DEFAULT 'USD',
+          coverage_status text NOT NULL DEFAULT 'active',
+          last_price numeric(18,6),
+          last_price_at timestamptz,
+          latest_rating text,
+          latest_target_price numeric(18,6),
+          latest_report_id uuid,
+          metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now(),
+          CONSTRAINT company_workspaces_unique_user_symbol UNIQUE (clerk_user_id, symbol)
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS workspace_notes (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          workspace_id uuid NOT NULL REFERENCES company_workspaces(id) ON DELETE CASCADE,
+          clerk_user_id text NOT NULL,
+          title text NOT NULL,
+          body_md text NOT NULL DEFAULT '',
+          is_pinned boolean NOT NULL DEFAULT false,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS workspace_documents (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          workspace_id uuid NOT NULL REFERENCES company_workspaces(id) ON DELETE CASCADE,
+          clerk_user_id text NOT NULL,
+          title text NOT NULL,
+          kind text NOT NULL DEFAULT 'other',
+          source_url text,
+          storage_path text,
+          mime_type text,
+          source_provider text,
+          file_size_bytes bigint,
+          metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS valuation_snapshots (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          workspace_id uuid NOT NULL REFERENCES company_workspaces(id) ON DELETE CASCADE,
+          clerk_user_id text NOT NULL,
+          model_name text NOT NULL,
+          fair_value numeric(18,6),
+          price_target numeric(18,6),
+          upside_downside_pct numeric(10,4),
+          assumptions jsonb NOT NULL DEFAULT '{}'::jsonb,
+          outputs jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS report_runs (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          workspace_id uuid REFERENCES company_workspaces(id) ON DELETE SET NULL,
+          clerk_user_id text NOT NULL,
+          symbol text NOT NULL,
+          report_type text NOT NULL DEFAULT 'equity_research',
+          status text NOT NULL DEFAULT 'queued',
+          started_at timestamptz,
+          completed_at timestamptz,
+          error_message text,
+          pdf_url text,
+          input_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+          output_payload jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now(),
+          updated_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+
+      await sql`
+        CREATE TABLE IF NOT EXISTS workspace_activity (
+          id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+          workspace_id uuid NOT NULL REFERENCES company_workspaces(id) ON DELETE CASCADE,
+          clerk_user_id text NOT NULL,
+          kind text NOT NULL,
+          label text NOT NULL,
+          detail text,
+          actor_name text,
+          actor_clerk_user_id text,
+          related_entity_type text,
+          related_entity_id uuid,
+          metadata jsonb NOT NULL DEFAULT '{}'::jsonb,
+          created_at timestamptz NOT NULL DEFAULT now()
+        )
+      `;
+    })();
+  }
+
+  return workspaceSchemaReadyPromise;
+}
+
 function asRecord(value: unknown): Record<string, unknown> {
   if (value && typeof value === "object" && !Array.isArray(value)) {
     return value as Record<string, unknown>;
@@ -91,8 +206,9 @@ function mapDocument(row: Record<string, unknown>): WorkspaceDocument {
     sourceUrl: asStringOrNull(row.source_url),
     storagePath: asStringOrNull(row.storage_path),
     mimeType: asStringOrNull(row.mime_type),
-    sourceProvider:
-      asStringOrNull(row.source_provider) as WorkspaceDocument["sourceProvider"],
+    sourceProvider: asStringOrNull(
+      row.source_provider,
+    ) as WorkspaceDocument["sourceProvider"],
     fileSizeBytes: asNumberOrNull(row.file_size_bytes),
     metadata: asRecord(row.metadata),
     createdAt: String(row.created_at),
@@ -155,6 +271,8 @@ async function ensureWorkspace(
   clerkUserId: string,
   rawSymbol: string,
 ): Promise<CompanyWorkspace> {
+  await ensureWorkspaceSchema();
+
   const symbol = assertValidSymbol(rawSymbol);
 
   const rows = await sql<Record<string, unknown>[]>`
@@ -566,15 +684,13 @@ export async function createWorkspaceDocument(
       ${detail},
       'workspace_document',
       ${document.id},
-      ${sql.json(
-        {
-          kind: input.kind,
-          sourceProvider: input.sourceProvider ?? null,
-          sourceUrl: input.sourceUrl ?? null,
-          storagePath: input.storagePath ?? null,
-          fileSizeBytes: input.fileSizeBytes ?? null,
-        } as never
-      )}
+      ${sql.json({
+        kind: input.kind,
+        sourceProvider: input.sourceProvider ?? null,
+        sourceUrl: input.sourceUrl ?? null,
+        storagePath: input.storagePath ?? null,
+        fileSizeBytes: input.fileSizeBytes ?? null,
+      } as never)}
     )
   `;
 

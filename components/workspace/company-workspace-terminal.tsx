@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CompanyWorkspaceTerminalViewModel } from "../../types/workspace";
+import styles from "./company-workspace-terminal.module.css";
 import {
   createWorkspaceDocumentAction,
   createWorkspaceNoteAction,
@@ -89,54 +90,38 @@ function Card({
   children: React.ReactNode;
 }) {
   return (
-    <section className="rounded-2xl border border-white/10 bg-[#0f172a]/90 shadow-[0_8px_30px_rgba(0,0,0,0.22)] backdrop-blur">
-      <div className="flex items-start justify-between gap-4 border-b border-white/10 px-5 py-4">
+    <section className={styles.card}>
+      <div className={styles.cardHeader}>
         <div>
-          <h2 className="text-sm font-semibold uppercase tracking-[0.18em] text-slate-200">
-            {title}
-          </h2>
+          <h2 className={styles.sectionTitle}>{title}</h2>
           {description ? (
-            <p className="mt-1 text-sm text-slate-400">{description}</p>
+            <p className={styles.subtleText}>{description}</p>
           ) : null}
         </div>
-        {action ? <div className="shrink-0">{action}</div> : null}
+        {action ? <div className={styles.shrink0}>{action}</div> : null}
       </div>
-      <div className="p-5">{children}</div>
+      <div className={styles.cardBody}>{children}</div>
     </section>
   );
 }
 
-function EmptyState({
-  title,
-  body,
-}: {
-  title: string;
-  body: string;
-}) {
+function EmptyState({ title, body }: { title: string; body: string }) {
   return (
-    <div className="rounded-xl border border-dashed border-white/10 bg-white/[0.02] px-4 py-6">
-      <p className="text-sm font-medium text-slate-200">{title}</p>
-      <p className="mt-1 text-sm text-slate-400">{body}</p>
+    <div className={styles.emptyState}>
+      <p className={styles.labelText}>{title}</p>
+      <p className={styles.subtleText}>{body}</p>
     </div>
   );
 }
 
 function CreateNoteForm({ symbol }: { symbol: string }) {
   return (
-    <details className="rounded-xl border border-white/10 bg-white/[0.03]">
-      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-slate-200">
-        Add note
-      </summary>
-      <form
-        action={createWorkspaceNoteAction}
-        className="grid gap-3 border-t border-white/10 p-4"
-      >
+    <details className={styles.detailsPanel}>
+      <summary className={styles.detailsSummary}>Add note</summary>
+      <form action={createWorkspaceNoteAction} className={styles.formGrid}>
         <input type="hidden" name="symbol" value={symbol} />
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="workspace-note-title"
-            className="text-xs uppercase tracking-[0.14em] text-slate-400"
-          >
+        <div className={styles.fieldGroup}>
+          <label htmlFor="workspace-note-title" className={styles.fieldLabel}>
             Title
           </label>
           <input
@@ -144,38 +129,28 @@ function CreateNoteForm({ symbol }: { symbol: string }) {
             name="title"
             required
             maxLength={140}
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            className={styles.fieldInput}
             placeholder="Investment thesis update"
           />
         </div>
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="workspace-note-body"
-            className="text-xs uppercase tracking-[0.14em] text-slate-400"
-          >
+        <div className={styles.fieldGroup}>
+          <label htmlFor="workspace-note-body" className={styles.fieldLabel}>
             Body
           </label>
           <textarea
             id="workspace-note-body"
             name="bodyMd"
             rows={5}
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            className={styles.fieldInput}
             placeholder="Key catalysts, risks, valuation thoughts, and management observations."
           />
         </div>
-        <label className="inline-flex items-center gap-2 text-sm text-slate-300">
-          <input
-            type="checkbox"
-            name="isPinned"
-            className="h-4 w-4 rounded border-white/10 bg-[#111827]"
-          />
+        <label className={styles.inlineCheck}>
+          <input type="checkbox" name="isPinned" className={styles.checkbox} />
           Pin note
         </label>
         <div>
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
-          >
+          <button type="submit" className={styles.primaryButton}>
             Save Note
           </button>
         </div>
@@ -186,19 +161,14 @@ function CreateNoteForm({ symbol }: { symbol: string }) {
 
 function CreateDocumentForm({ symbol }: { symbol: string }) {
   return (
-    <details className="rounded-xl border border-white/10 bg-white/[0.03]">
-      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-slate-200">
-        Link document
-      </summary>
-      <form
-        action={createWorkspaceDocumentAction}
-        className="grid gap-3 border-t border-white/10 p-4"
-      >
+    <details className={styles.detailsPanel}>
+      <summary className={styles.detailsSummary}>Link document</summary>
+      <form action={createWorkspaceDocumentAction} className={styles.formGrid}>
         <input type="hidden" name="symbol" value={symbol} />
-        <div className="grid gap-1.5">
+        <div className={styles.fieldGroup}>
           <label
             htmlFor="workspace-document-title"
-            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+            className={styles.fieldLabel}
           >
             Title
           </label>
@@ -207,14 +177,14 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
             name="title"
             required
             maxLength={180}
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            className={styles.fieldInput}
             placeholder="Q4 earnings transcript"
           />
         </div>
-        <div className="grid gap-1.5">
+        <div className={styles.fieldGroup}>
           <label
             htmlFor="workspace-document-kind"
-            className="text-xs uppercase tracking-[0.14em] text-slate-400"
+            className={styles.fieldLabel}
           >
             Kind
           </label>
@@ -222,7 +192,7 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
             id="workspace-document-kind"
             name="kind"
             defaultValue="other"
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none"
+            className={styles.fieldInput}
           >
             <option value="report">Report</option>
             <option value="filing">Filing</option>
@@ -233,26 +203,23 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
             <option value="other">Other</option>
           </select>
         </div>
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="workspace-document-url"
-            className="text-xs uppercase tracking-[0.14em] text-slate-400"
-          >
+        <div className={styles.fieldGroup}>
+          <label htmlFor="workspace-document-url" className={styles.fieldLabel}>
             Source URL
           </label>
           <input
             id="workspace-document-url"
             name="sourceUrl"
             type="url"
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            className={styles.fieldInput}
             placeholder="https://..."
           />
         </div>
-        <div className="grid gap-3 sm:grid-cols-2">
-          <div className="grid gap-1.5">
+        <div className={styles.twoColGrid}>
+          <div className={styles.fieldGroup}>
             <label
               htmlFor="workspace-document-provider"
-              className="text-xs uppercase tracking-[0.14em] text-slate-400"
+              className={styles.fieldLabel}
             >
               Provider
             </label>
@@ -260,14 +227,14 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
               id="workspace-document-provider"
               name="sourceProvider"
               maxLength={80}
-              className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+              className={styles.fieldInput}
               placeholder="SEC, IR site, Internal"
             />
           </div>
-          <div className="grid gap-1.5">
+          <div className={styles.fieldGroup}>
             <label
               htmlFor="workspace-document-mimetype"
-              className="text-xs uppercase tracking-[0.14em] text-slate-400"
+              className={styles.fieldLabel}
             >
               MIME Type
             </label>
@@ -275,16 +242,13 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
               id="workspace-document-mimetype"
               name="mimeType"
               maxLength={120}
-              className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+              className={styles.fieldInput}
               placeholder="application/pdf"
             />
           </div>
         </div>
         <div>
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
-          >
+          <button type="submit" className={styles.primaryButton}>
             Save Document
           </button>
         </div>
@@ -295,42 +259,31 @@ function CreateDocumentForm({ symbol }: { symbol: string }) {
 
 function UploadDocumentForm({ symbol }: { symbol: string }) {
   return (
-    <details className="rounded-xl border border-white/10 bg-white/[0.03]">
-      <summary className="cursor-pointer list-none px-4 py-3 text-sm font-medium text-slate-200">
-        Upload document
-      </summary>
-      <form
-        action={uploadWorkspaceDocumentAction}
-        className="grid gap-3 border-t border-white/10 p-4"
-      >
+    <details className={styles.detailsPanel}>
+      <summary className={styles.detailsSummary}>Upload document</summary>
+      <form action={uploadWorkspaceDocumentAction} className={styles.formGrid}>
         <input type="hidden" name="symbol" value={symbol} />
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="workspace-upload-title"
-            className="text-xs uppercase tracking-[0.14em] text-slate-400"
-          >
+        <div className={styles.fieldGroup}>
+          <label htmlFor="workspace-upload-title" className={styles.fieldLabel}>
             Title
           </label>
           <input
             id="workspace-upload-title"
             name="title"
             maxLength={180}
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0 placeholder:text-slate-500"
+            className={styles.fieldInput}
             placeholder="Optional — defaults to filename"
           />
         </div>
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="workspace-upload-kind"
-            className="text-xs uppercase tracking-[0.14em] text-slate-400"
-          >
+        <div className={styles.fieldGroup}>
+          <label htmlFor="workspace-upload-kind" className={styles.fieldLabel}>
             Kind
           </label>
           <select
             id="workspace-upload-kind"
             name="kind"
             defaultValue="other"
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none"
+            className={styles.fieldInput}
           >
             <option value="report">Report</option>
             <option value="filing">Filing</option>
@@ -341,11 +294,8 @@ function UploadDocumentForm({ symbol }: { symbol: string }) {
             <option value="other">Other</option>
           </select>
         </div>
-        <div className="grid gap-1.5">
-          <label
-            htmlFor="workspace-upload-file"
-            className="text-xs uppercase tracking-[0.14em] text-slate-400"
-          >
+        <div className={styles.fieldGroup}>
+          <label htmlFor="workspace-upload-file" className={styles.fieldLabel}>
             File
           </label>
           <input
@@ -354,17 +304,14 @@ function UploadDocumentForm({ symbol }: { symbol: string }) {
             type="file"
             required
             accept=".pdf,.txt,.csv,.docx,application/pdf,text/plain,text/csv,application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white file:mr-3 file:rounded-lg file:border-0 file:bg-cyan-500 file:px-3 file:py-2 file:text-sm file:font-medium file:text-slate-950"
+            className={styles.fileInput}
           />
         </div>
-        <p className="text-xs text-slate-500">
+        <p className={styles.mutedXs}>
           Supported: PDF, TXT, CSV, DOCX. Max 10 MB.
         </p>
         <div>
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
-          >
+          <button type="submit" className={styles.primaryButton}>
             Upload Document
           </button>
         </div>
@@ -387,57 +334,48 @@ function EditNoteForm({
   isPinned: boolean;
 }) {
   return (
-    <details className="mt-4 rounded-xl border border-white/10 bg-[#0b1220]">
-      <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium uppercase tracking-[0.14em] text-cyan-300 hover:text-cyan-200">
-        Edit Note
-      </summary>
+    <details className={styles.noteEditPanel}>
+      <summary className={styles.summaryAccent}>Edit Note</summary>
       <form
         action={updateWorkspaceNoteAction}
-        className="grid gap-3 border-t border-white/10 p-3"
+        className={styles.formGridCompact}
       >
         <input type="hidden" name="symbol" value={symbol} />
         <input type="hidden" name="noteId" value={noteId} />
 
-        <div className="grid gap-1.5">
-          <label className="text-xs uppercase tracking-[0.14em] text-slate-400">
-            Title
-          </label>
+        <div className={styles.fieldGroup}>
+          <label className={styles.fieldLabel}>Title</label>
           <input
             name="title"
             required
             maxLength={140}
             defaultValue={title}
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0"
+            className={styles.fieldInput}
           />
         </div>
 
-        <div className="grid gap-1.5">
-          <label className="text-xs uppercase tracking-[0.14em] text-slate-400">
-            Body
-          </label>
+        <div className={styles.fieldGroup}>
+          <label className={styles.fieldLabel}>Body</label>
           <textarea
             name="bodyMd"
             rows={4}
             defaultValue={bodyMd}
-            className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0"
+            className={styles.fieldInput}
           />
         </div>
 
-        <label className="inline-flex items-center gap-2 text-sm text-slate-300">
+        <label className={styles.inlineCheck}>
           <input
             type="checkbox"
             name="isPinned"
             defaultChecked={isPinned}
-            className="h-4 w-4 rounded border-white/10 bg-[#111827]"
+            className={styles.checkbox}
           />
           Pin note
         </label>
 
         <div>
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
-          >
+          <button type="submit" className={styles.primaryButton}>
             Update Note
           </button>
         </div>
@@ -454,19 +392,17 @@ function DeleteNoteForm({
   noteId: string;
 }) {
   return (
-    <details className="mt-3 rounded-xl border border-red-500/20 bg-red-500/[0.04]">
-      <summary className="cursor-pointer list-none px-3 py-2 text-xs font-medium uppercase tracking-[0.14em] text-red-300 hover:text-red-200">
-        Delete Note
-      </summary>
+    <details className={styles.noteDeletePanel}>
+      <summary className={styles.summaryDanger}>Delete Note</summary>
       <form
         action={deleteWorkspaceNoteAction}
-        className="grid gap-3 border-t border-red-500/20 p-3"
+        className={styles.formGridCompactDanger}
       >
         <input type="hidden" name="symbol" value={symbol} />
         <input type="hidden" name="noteId" value={noteId} />
 
-        <div className="text-xs text-slate-400">
-          Type <span className="font-semibold text-red-200">DELETE</span> to
+        <div className={styles.fieldLabel}>
+          Type <span className={styles.dangerTextStrong}>DELETE</span> to
           confirm permanent removal.
         </div>
 
@@ -474,15 +410,12 @@ function DeleteNoteForm({
           name="confirmation"
           required
           maxLength={12}
-          className="rounded-xl border border-white/10 bg-[#111827] px-3 py-2 text-sm text-white outline-none ring-0"
+          className={styles.fieldInput}
           placeholder="DELETE"
         />
 
         <div>
-          <button
-            type="submit"
-            className="inline-flex items-center rounded-xl border border-red-400/30 bg-red-500/10 px-4 py-2 text-sm font-medium text-red-100 transition hover:bg-red-500/20"
-          >
+          <button type="submit" className={styles.dangerButton}>
             Confirm Delete
           </button>
         </div>
@@ -498,149 +431,135 @@ export function CompanyWorkspaceTerminal({
   const latestReport = data.reports[0];
 
   return (
-    <div className="min-h-screen bg-[radial-gradient(circle_at_top,_rgba(59,130,246,0.14),_transparent_30%),linear-gradient(180deg,#020617_0%,#0b1120_100%)] text-white">
-      <div className="mx-auto flex w-full max-w-7xl flex-col gap-6 px-4 py-6 sm:px-6 lg:px-8">
-        <header className="rounded-3xl border border-white/10 bg-white/[0.04] px-6 py-6 shadow-[0_10px_40px_rgba(0,0,0,0.28)] backdrop-blur">
-          <div className="flex flex-col gap-6 lg:flex-row lg:items-end lg:justify-between">
-            <div className="space-y-3">
-              <div className="inline-flex items-center rounded-full border border-cyan-400/25 bg-cyan-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.2em] text-cyan-200">
+    <div className={`${styles.terminalTheme}`}>
+      <div className={`${styles.shell} `}>
+        <header className={`${styles.hero}`}>
+          <div className={styles.heroLayout}>
+            <div className={styles.stackMd}>
+              <div className={`${styles.heroBadge} `}>
                 Company Workspace Terminal
               </div>
 
               <div>
-                <div className="flex flex-wrap items-center gap-3">
-                  <h1 className="text-3xl font-semibold tracking-tight text-white sm:text-4xl">
-                    {data.workspace.symbol}
+                <div className={styles.inlineWrap}>
+                  <h1 className={styles.symbolTitle}>
+                    {data?.workspace?.symbol}
                   </h1>
-                  {data.workspace.exchange ? (
-                    <span className="rounded-full border border-white/10 bg-white/[0.04] px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-slate-300">
-                      {data.workspace.exchange}
+                  {data.workspace?.exchange ? (
+                    <span className={styles.pill}>
+                      {data.workspace?.exchange}
                     </span>
                   ) : null}
-                  <span className="rounded-full border border-emerald-400/20 bg-emerald-400/10 px-3 py-1 text-xs font-medium uppercase tracking-[0.16em] text-emerald-200">
-                    {data.workspace.coverageStatus}
+                  <span className={styles.pillSuccess}>
+                    {data?.workspace?.coverageStatus}
                   </span>
                 </div>
-                <p className="mt-2 text-base text-slate-300">
-                  {data.workspace.companyName ?? "Coverage workspace"}
+                <p className={styles.bodyText}>
+                  {data?.workspace?.companyName ?? "Coverage workspace"}
                 </p>
               </div>
             </div>
 
-            <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-              <div className="rounded-2xl border border-white/10 bg-[#111827] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                  Last Price
-                </div>
-                <div className="mt-2 text-lg font-semibold text-white">
+            <div className={styles.metricsGrid}>
+              <div className={styles.metricCard}>
+                <div className={styles.metricLabel}>Last Price</div>
+                <div className={styles.metricValue}>
                   {formatCurrency(
-                    data.workspace.lastPrice,
-                    data.workspace.primaryCurrency,
+                    data.workspace?.lastPrice,
+                    data.workspace?.primaryCurrency,
                   )}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-[#111827] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                  Rating
-                </div>
-                <div className="mt-2 text-lg font-semibold text-white">
-                  {data.workspace.latestRating ?? "—"}
+              <div className={styles.metricCard}>
+                <div className={styles.metricLabel}>Rating</div>
+                <div className={styles.metricValue}>
+                  {data?.workspace?.latestRating ?? "—"}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-[#111827] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                  Target Price
-                </div>
-                <div className="mt-2 text-lg font-semibold text-white">
+              <div className={styles.metricCard}>
+                <div className={styles.metricLabel}>Target Price</div>
+                <div className={styles.metricValue}>
                   {formatCurrency(
-                    data.workspace.latestTargetPrice,
-                    data.workspace.primaryCurrency,
+                    data?.workspace?.latestTargetPrice,
+                    data?.workspace?.primaryCurrency,
                   )}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-[#111827] px-4 py-3">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                  Updated
-                </div>
-                <div className="mt-2 text-sm font-medium text-white">
-                  {formatDateTime(data.workspace.updatedAt)}
+              <div className={styles.metricCard}>
+                <div className={styles.metricLabel}>Updated</div>
+                <div className={styles.metricSubValue}>
+                  {formatDateTime(data?.workspace?.updatedAt)}
                 </div>
               </div>
             </div>
           </div>
 
-          <div className="mt-6 flex flex-wrap gap-3">
+          <div className={styles.actionRow}>
             <Link
-              href={`/reports/new?symbol=${encodeURIComponent(data.workspace.symbol)}`}
-              className="inline-flex items-center rounded-xl bg-cyan-500 px-4 py-2 text-sm font-medium text-slate-950 transition hover:bg-cyan-400"
+              href={`/reports/new?symbol=${encodeURIComponent(data?.workspace?.symbol)}`}
+              className={styles.primaryButton}
             >
               Generate Report
             </Link>
             <Link
-              href={`/valuation?symbol=${encodeURIComponent(data.workspace.symbol)}`}
-              className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/[0.08]"
+              href={`/valuation?symbol=${encodeURIComponent(data?.workspace?.symbol)}`}
+              className={styles.secondaryButton}
             >
               Open Valuation
             </Link>
             <Link
-              href={`/ai-analyst?symbol=${encodeURIComponent(data.workspace.symbol)}`}
-              className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/[0.08]"
+              href={`/ai-analyst?symbol=${encodeURIComponent(data?.workspace?.symbol)}`}
+              className={styles.secondaryButton}
             >
               AI Analyst
             </Link>
           </div>
         </header>
 
-        <div className="grid gap-6 lg:grid-cols-[1.2fr_0.8fr]">
+        <div className={styles.twoPanelGrid}>
           <Card
             title="Research Pipeline"
             description="Core research status for this coverage name."
           >
-            <div className="grid gap-4 sm:grid-cols-3">
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                  Latest Valuation
-                </div>
-                <div className="mt-2 text-xl font-semibold text-white">
+            <div className={styles.kpiGrid}>
+              <div className={styles.surfaceCard}>
+                <div className={styles.metricLabel}>Latest Valuation</div>
+                <div className={styles.kpiValue}>
                   {latestValuation
                     ? formatCurrency(
-                        latestValuation.fairValue,
-                        data.workspace.primaryCurrency,
+                        latestValuation?.fairValue,
+                        data?.workspace?.primaryCurrency,
                       )
                     : "—"}
                 </div>
-                <div className="mt-1 text-sm text-slate-400">
+                <div className={styles.subtleText}>
                   {latestValuation
                     ? latestValuation.modelName
                     : "No snapshot saved"}
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                  Upside / Downside
-                </div>
-                <div className="mt-2 text-xl font-semibold text-white">
+              <div className={styles.surfaceCard}>
+                <div className={styles.metricLabel}>Upside / Downside</div>
+                <div className={styles.kpiValue}>
                   {latestValuation
                     ? formatPercent(latestValuation.upsideDownsidePct)
                     : "—"}
                 </div>
-                <div className="mt-1 text-sm text-slate-400">
+                <div className={styles.subtleText}>
                   Relative to latest market price
                 </div>
               </div>
 
-              <div className="rounded-2xl border border-white/10 bg-white/[0.03] p-4">
-                <div className="text-[11px] uppercase tracking-[0.16em] text-slate-400">
-                  Latest Report Run
-                </div>
-                <div className="mt-2 text-xl font-semibold capitalize text-white">
+              <div className={styles.surfaceCard}>
+                <div className={styles.metricLabel}>Latest Report Run</div>
+                <div className={styles.kpiValueCaps}>
                   {latestReport?.status ?? "—"}
                 </div>
-                <div className="mt-1 text-sm text-slate-400">
+                <div className={styles.subtleText}>
                   {latestReport
                     ? formatDateTime(latestReport.createdAt)
                     : "No report runs yet"}
@@ -653,39 +572,33 @@ export function CompanyWorkspaceTerminal({
             title="Terminal Actions"
             description="Fast launch points for the existing platform modules."
           >
-            <div className="grid gap-3">
+            <div className={styles.stackSm}>
               <Link
                 href={`/reports/new?symbol=${encodeURIComponent(data.workspace.symbol)}`}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
+                className={styles.actionCard}
               >
-                <div className="text-sm font-medium text-white">
-                  New Institutional Report
-                </div>
-                <div className="mt-1 text-sm text-slate-400">
+                <div className={styles.cardTitle}>New Institutional Report</div>
+                <div className={styles.subtleText}>
                   Launch report generation with the current symbol preloaded.
                 </div>
               </Link>
 
               <Link
                 href={`/reports?symbol=${encodeURIComponent(data.workspace.symbol)}`}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
+                className={styles.actionCard}
               >
-                <div className="text-sm font-medium text-white">
-                  Report History
-                </div>
-                <div className="mt-1 text-sm text-slate-400">
+                <div className={styles.cardTitle}>Report History</div>
+                <div className={styles.subtleText}>
                   Review previous report runs and exported PDFs.
                 </div>
               </Link>
 
               <Link
                 href={`/ai-analyst?symbol=${encodeURIComponent(data.workspace.symbol)}`}
-                className="rounded-2xl border border-white/10 bg-white/[0.03] p-4 transition hover:bg-white/[0.06]"
+                className={styles.actionCard}
               >
-                <div className="text-sm font-medium text-white">
-                  AI Analyst Session
-                </div>
-                <div className="mt-1 text-sm text-slate-400">
+                <div className={styles.cardTitle}>AI Analyst Session</div>
+                <div className={styles.subtleText}>
                   Open analyst Q&A and research drafting for this company.
                 </div>
               </Link>
@@ -693,7 +606,7 @@ export function CompanyWorkspaceTerminal({
           </Card>
         </div>
 
-        <div className="grid gap-6 xl:grid-cols-[1.15fr_0.85fr_0.85fr]">
+        <div className={styles.threePanelGrid}>
           <Card
             title="Research Notes"
             description="Pinned and recent internal note coverage."
@@ -705,29 +618,22 @@ export function CompanyWorkspaceTerminal({
                 body="Use this workspace to centralize thesis updates, risks, catalysts, and management observations."
               />
             ) : (
-              <div className="space-y-3">
+              <div className={styles.stackMd}>
                 {data.notes.slice(0, 8).map((note) => (
-                  <div
-                    key={note.id}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
+                  <div key={note.id} className={styles.surfaceCard}>
+                    <div className={styles.rowBetweenStart}>
                       <div>
-                        <h3 className="text-sm font-medium text-white">
-                          {note.title}
-                        </h3>
-                        <p className="mt-1 text-xs text-slate-400">
+                        <h3 className={styles.cardTitle}>{note.title}</h3>
+                        <p className={styles.metaSubtleText}>
                           Updated {formatDateTime(note.updatedAt)}
                         </p>
                       </div>
                       {note.isPinned ? (
-                        <span className="rounded-full border border-amber-400/20 bg-amber-400/10 px-2.5 py-1 text-[11px] font-medium uppercase tracking-[0.16em] text-amber-200">
-                          Pinned
-                        </span>
+                        <span className={styles.pillWarning}>Pinned</span>
                       ) : null}
                     </div>
 
-                    <p className="mt-3 whitespace-pre-wrap text-sm text-slate-300">
+                    <p className={styles.preText}>
                       {note.bodyMd || "Empty note"}
                     </p>
 
@@ -753,7 +659,7 @@ export function CompanyWorkspaceTerminal({
             title="Documents"
             description="Source materials linked to this workspace."
             action={
-              <div className="flex flex-col gap-2">
+              <div className={styles.stackTiny}>
                 <UploadDocumentForm symbol={data.workspace.symbol} />
                 <CreateDocumentForm symbol={data.workspace.symbol} />
               </div>
@@ -765,7 +671,7 @@ export function CompanyWorkspaceTerminal({
                 body="Reports, transcripts, decks, and filings will appear here once attached to the workspace."
               />
             ) : (
-              <div className="space-y-3">
+              <div className={styles.stackMd}>
                 {data.documents.slice(0, 8).map((document) => {
                   const blobContentHref =
                     document.sourceProvider === "netlify_blobs"
@@ -775,31 +681,32 @@ export function CompanyWorkspaceTerminal({
                       : null;
 
                   return (
-                    <div
-                      key={document.id}
-                      className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
-                    >
-                      <div className="flex items-center justify-between gap-3">
-                        <div className="min-w-0">
-                          <h3 className="truncate text-sm font-medium text-white">
+                    <div key={document.id} className={styles.surfaceCard}>
+                      <div className={styles.rowBetweenCenter}>
+                        <div className={styles.minW0}>
+                          <h3 className={styles.truncateTitle}>
                             {document.title}
                           </h3>
-                          <p className="mt-1 text-xs uppercase tracking-[0.16em] text-slate-400">
+                          <p className={styles.metaLabel}>
                             {document.kind}
                             {document.sourceProvider
                               ? ` · ${document.sourceProvider.replaceAll("_", " ")}`
                               : ""}
                           </p>
-                          <div className="mt-2 flex flex-wrap gap-3 text-xs text-slate-500">
-                            <span>{formatFileSize(document.fileSizeBytes)}</span>
-                            {document.mimeType ? <span>{document.mimeType}</span> : null}
+                          <div className={styles.metaRow}>
+                            <span>
+                              {formatFileSize(document.fileSizeBytes)}
+                            </span>
+                            {document.mimeType ? (
+                              <span>{document.mimeType}</span>
+                            ) : null}
                           </div>
                           {blobContentHref ? (
                             <a
                               href={blobContentHref}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-2 inline-block truncate text-xs text-cyan-300 hover:text-cyan-200"
+                              className={styles.inlineLink}
                             >
                               Open attachment
                             </a>
@@ -809,13 +716,13 @@ export function CompanyWorkspaceTerminal({
                               href={document.sourceUrl}
                               target="_blank"
                               rel="noreferrer"
-                              className="mt-2 inline-block truncate text-xs text-cyan-300 hover:text-cyan-200"
+                              className={styles.inlineLink}
                             >
                               Open source
                             </a>
                           ) : null}
                         </div>
-                        <span className="text-xs text-slate-400">
+                        <span className={styles.timeStamp}>
                           {formatDate(document.createdAt)}
                         </span>
                       </div>
@@ -836,24 +743,17 @@ export function CompanyWorkspaceTerminal({
                 body="Workspace activity will populate as reports are generated, valuations are saved, notes are added."
               />
             ) : (
-              <div className="space-y-3">
+              <div className={styles.stackMd}>
                 {data.activity.slice(0, 10).map((event) => (
-                  <div
-                    key={event.id}
-                    className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
-                  >
-                    <div className="flex items-start justify-between gap-3">
+                  <div key={event.id} className={styles.surfaceCard}>
+                    <div className={styles.rowBetweenStart}>
                       <div>
-                        <h3 className="text-sm font-medium text-white">
-                          {event.label}
-                        </h3>
+                        <h3 className={styles.cardTitle}>{event.label}</h3>
                         {event.detail ? (
-                          <p className="mt-1 text-sm text-slate-300">
-                            {event.detail}
-                          </p>
+                          <p className={styles.bodyText}>{event.detail}</p>
                         ) : null}
                       </div>
-                      <span className="whitespace-nowrap text-xs text-slate-400">
+                      <span className={styles.timeStamp}>
                         {formatDateTime(event.createdAt)}
                       </span>
                     </div>
@@ -874,31 +774,31 @@ export function CompanyWorkspaceTerminal({
               body="Generated reports for this symbol will appear here as they are created."
             />
           ) : (
-            <div className="grid gap-3">
+            <div className={styles.stackSm}>
               {data.reports.map((report) => (
-                <div
-                  key={report.id}
-                  className="rounded-xl border border-white/10 bg-white/[0.03] p-4"
-                >
-                  <div className="flex flex-col gap-3 md:flex-row md:items-center md:justify-between">
+                <div key={report.id} className={styles.surfaceCard}>
+                  <div className={styles.reportRow}>
                     <div>
-                      <div className="text-sm font-medium capitalize text-white">
+                      <div className={styles.cardTitleCaps}>
                         {report.reportType.replaceAll("_", " ")}
                       </div>
-                      <div className="mt-1 text-sm text-slate-400">
-                        Status: <span className="capitalize">{report.status}</span>
+                      <div className={styles.subtleText}>
+                        Status:{" "}
+                        <span className={styles.capitalize}>
+                          {report.status}
+                        </span>
                       </div>
-                      <div className="mt-1 text-xs text-slate-500">
+                      <div className={styles.mutedXs}>
                         Created {formatDateTime(report.createdAt)}
                       </div>
                     </div>
-                    <div className="flex flex-wrap gap-2">
+                    <div className={styles.inlineGap2}>
                       {report.pdfUrl ? (
                         <a
                           href={report.pdfUrl}
                           target="_blank"
                           rel="noreferrer"
-                          className="inline-flex items-center rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium text-white transition hover:bg-white/[0.08]"
+                          className={styles.secondaryButton}
                         >
                           Open PDF
                         </a>

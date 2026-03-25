@@ -3,10 +3,12 @@ import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
+import { useAuth, UserButton } from "@clerk/nextjs";
 import styles from "./navbar.module.css";
 
 export default function SiteNavbar() {
   const router = useRouter();
+  const { isSignedIn } = useAuth();
   const [mobileOpen, setMobileOpen] = useState(false);
 
   return (
@@ -36,12 +38,18 @@ export default function SiteNavbar() {
           <a href="/contact" className={styles.link}>
             Contact
           </a>
-          <button
-            onClick={() => router.push("/sign-up")}
-            className={styles.signupBtn}
-          >
-            Sign Up
-          </button>
+          {isSignedIn ? (
+            <div className={styles.userProfile}>
+              <UserButton afterSignOutUrl="/" />
+            </div>
+          ) : (
+            <button
+              onClick={() => router.push("/sign-up")}
+              className={styles.signupBtn}
+            >
+              Sign Up
+            </button>
+          )}
         </div>
 
         <button
@@ -65,7 +73,18 @@ export default function SiteNavbar() {
         <a href="#contact" className={styles.link}>
           Contact
         </a>
-        <button className={styles.signupBtn}>Sign Up</button>
+        {isSignedIn ? (
+          <div className={styles.userProfileMobile}>
+            <UserButton afterSignOutUrl="/" />
+          </div>
+        ) : (
+          <button
+            className={styles.signupBtn}
+            onClick={() => router.push("/sign-up")}
+          >
+            Sign Up
+          </button>
+        )}
       </div>
     </nav>
   );
