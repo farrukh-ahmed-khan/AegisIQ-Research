@@ -11,7 +11,8 @@
     "start": "next start",
     "lint": "next lint",
     "seed:securities": "tsx scripts/seed-securities.ts",
-    "load:security-master": "tsx scripts/load-security-master.ts"
+    "load:security-master": "tsx scripts/load-security-master.ts",
+    "load:security-master:fmp": "tsx scripts/load-security-master-fmp.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.0.0",

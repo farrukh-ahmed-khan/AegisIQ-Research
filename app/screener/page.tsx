@@ -39,27 +39,7 @@ const INITIAL_QUERY_STATE: ScreenerQueryState = {
   securityType: "",
 };
 
-function buildQueryString(
-  query: ScreenerQueryState,
-  coverageMode: ScreenerCoverageMode | null,
-) {
-  const params = new URLSearchParams();
-
-  if (query.search.trim()) {
-    params.set("search", query.search.trim());
-  }
-
-  if (coverageMode === "security_master") {
-    for (const key of SECURITY_MASTER_FILTER_ORDER) {
-      const value = query[key]?.trim();
-      if (value) {
-        params.set(key, value);
-      }
-    }
-  }
-
-  return params.toString();
-}
+const DEFAULT_SCREENER_WORKSPACE_ID = "global_screener";
 
 function normalizeSupportedFilters(
   filters: Partial<SupportedFiltersMap> | null | undefined,
@@ -146,14 +126,32 @@ export default function ScreenerPage() {
     setError(null);
 
     try {
-      const queryString = buildQueryString(query, coverageMode);
-      const response = await fetch(
-        `/api/screener${queryString ? `?${queryString}` : ""}`,
-        {
-          method: "GET",
-          cache: "no-store",
+      const filters: Record<string, unknown> = {};
+
+      if (query.search.trim()) {
+        filters.search = query.search.trim();
+      }
+
+      if (coverageMode === "security_master") {
+        for (const key of SECURITY_MASTER_FILTER_ORDER) {
+          const value = query[key]?.trim();
+          if (value) {
+            filters[key] = value;
+          }
+        }
+      }
+
+      const response = await fetch("/api/screener/query", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
         },
-      );
+        cache: "no-store",
+        body: JSON.stringify({
+          workspaceId: DEFAULT_SCREENER_WORKSPACE_ID,
+          filters,
+        }),
+      });
 
       if (!response.ok) {
         throw new Error(
