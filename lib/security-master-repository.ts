@@ -23,6 +23,7 @@ export type SecurityMasterQueryFilters = {
   symbol?: string | string[];
   search?: string;
   limit?: number;
+  offset?: number;
 };
 
 export type SecurityMasterRecord = {
@@ -210,11 +211,10 @@ export async function getSecurityMasterSupportedFilters(
   };
 }
 
-export async function querySecurityMaster(
-  _workspaceId?: string,
-  filters?: SecurityMasterQueryFilters,
-): Promise<SecurityMasterRecord[]> {
-  const params: Array<string | number> = [];
+function buildWhereClause(
+  filters: SecurityMasterQueryFilters | undefined,
+  params: Array<string | number>,
+): string {
   const whereClauses: string[] = [];
 
   if (filters?.sector && filters.sector.length > 0) {
@@ -246,12 +246,38 @@ export async function querySecurityMaster(
     whereClauses.push(searchClause);
   }
 
-  const whereSql =
-    whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+  return whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
+}
+
+export async function countSecurityMasterQuery(
+  _workspaceId?: string,
+  filters?: SecurityMasterQueryFilters,
+): Promise<number> {
+  const params: Array<string | number> = [];
+  const whereSql = buildWhereClause(filters, params);
+
+  const rows = await sql.unsafe<RawCountRow[]>(
+    `SELECT COUNT(*)::int AS count FROM securities ${whereSql}`,
+    params,
+  );
+
+  return parseCount(rows[0]?.count);
+}
+
+export async function querySecurityMaster(
+  _workspaceId?: string,
+  filters?: SecurityMasterQueryFilters,
+): Promise<SecurityMasterRecord[]> {
+  const params: Array<string | number> = [];
+  const whereSql = buildWhereClause(filters, params);
 
   const limit = normalizeLimit(filters?.limit);
   params.push(limit);
   const limitPlaceholder = `$${params.length}`;
+
+  const offset = Math.max(0, Math.trunc(filters?.offset ?? 0));
+  params.push(offset);
+  const offsetPlaceholder = `$${params.length}`;
 
   const rows = await sql.unsafe<RawSecurityRow[]>(
     `
@@ -269,6 +295,7 @@ export async function querySecurityMaster(
       ${whereSql}
       ORDER BY symbol ASC
       LIMIT ${limitPlaceholder}
+      OFFSET ${offsetPlaceholder}
     `,
     params,
   );

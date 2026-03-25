@@ -29,6 +29,8 @@ export interface ScreenerApiResponse {
   supportedFilters: SupportedFiltersMap;
   results: ScreenerResultRow[];
   total: number;
+  page?: number;
+  pageSize?: number;
 }
 
 export interface ScreenerQueryState {
@@ -39,4 +41,6 @@ export interface ScreenerQueryState {
   country: string;
   currency: string;
   securityType: string;
+  page: number;
+  pageSize: number;
 }

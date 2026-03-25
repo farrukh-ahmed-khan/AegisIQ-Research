@@ -1,4 +1,5 @@
 import {
+  countSecurityMasterQuery,
   querySecurityMaster,
   type SecurityMasterQueryFilters,
   type SecurityMasterRecord,
@@ -85,11 +86,14 @@ export function normalizeSecurityMasterFilters(
 export async function runSecurityMasterScreenerQuery(
   input: SecurityMasterScreenerQueryInput,
 ): Promise<SecurityMasterScreenerQueryResult> {
-  const results = await querySecurityMaster(input.workspaceId, input.filters);
+  const [results, total] = await Promise.all([
+    querySecurityMaster(input.workspaceId, input.filters),
+    countSecurityMasterQuery(input.workspaceId, input.filters),
+  ]);
 
   return {
     results,
-    total: results.length,
+    total,
   };
 }
 

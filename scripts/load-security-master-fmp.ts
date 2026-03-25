@@ -430,6 +430,36 @@ function chunkArray<T>(items: T[], size: number): T[][] {
   return chunks;
 }
 
+function parseCSVLine(line: string): string[] {
+  const result: string[] = [];
+  let current = "";
+  let inQuotes = false;
+  for (let i = 0; i < line.length; i++) {
+    const ch = line[i];
+    if (inQuotes) {
+      if (ch === '"' && line[i + 1] === '"') { current += '"'; i++; }
+      else if (ch === '"') { inQuotes = false; }
+      else { current += ch; }
+    } else {
+      if (ch === '"') { inQuotes = true; }
+      else if (ch === ',') { result.push(current); current = ""; }
+      else { current += ch; }
+    }
+  }
+  result.push(current);
+  return result;
+}
+
+function parseCSV(text: string): Record<string, string>[] {
+  const lines = text.trim().split("\n");
+  if (lines.length < 2) return [];
+  const headers = parseCSVLine(lines[0]);
+  return lines.slice(1).map((line) => {
+    const values = parseCSVLine(line);
+    return Object.fromEntries(headers.map((h, i) => [h.trim(), values[i] ?? ""]));
+  });
+}
+
 async function upsertBatch(rows: SecurityRow[]) {
   if (rows.length === 0) return;
 
@@ -478,7 +508,7 @@ async function upsertBatch(rows: SecurityRow[]) {
 async function fetchStockList(apiKey: string): Promise<any[]> {
   const url = `https://financialmodelingprep.com/stable/profile-bulk?part=0&apikey=${encodeURIComponent(apiKey)}`;
   const response = await fetch(url, {
-    headers: { Accept: "application/json" },
+    headers: { Accept: "text/csv" },
   });
 
   if (!response.ok) {
@@ -489,8 +519,8 @@ async function fetchStockList(apiKey: string): Promise<any[]> {
     );
   }
 
-  const data = await response.json();
-  return Array.isArray(data) ? data : [];
+  const text = await response.text();
+  return parseCSV(text);
 }
 
 async function loadSecurityMaster() {
