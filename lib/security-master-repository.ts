@@ -4,6 +4,9 @@ export type SecurityMasterFilterKey =
   | "sector"
   | "industry"
   | "exchange"
+  | "primaryExchange"
+  | "region"
+  | "isActive"
   | "country"
   | "currency"
   | "securityType";
@@ -17,6 +20,9 @@ export type SecurityMasterQueryFilters = {
   sector?: string[];
   industry?: string[];
   exchange?: string[];
+  primaryExchange?: string[];
+  region?: string[];
+  isActive?: string[];
   country?: string[];
   currency?: string[];
   securityType?: string[];
@@ -34,6 +40,12 @@ export type SecurityMasterRecord = {
   sector?: string | null;
   industry?: string | null;
   exchange?: string | null;
+  primaryExchange?: string | null;
+  region?: string | null;
+  isActive?: boolean;
+  normalizedCompanyName?: string | null;
+  isin?: string | null;
+  figi?: string | null;
   country?: string | null;
   currency?: string | null;
   securityType?: string | null;
@@ -47,6 +59,19 @@ type RawValueRow = {
   value: string | null;
 };
 
+type RawColumnRow = {
+  columnName: string;
+};
+
+type AvailableColumns = {
+  normalizedCompanyName: boolean;
+  primaryExchange: boolean;
+  region: boolean;
+  isActive: boolean;
+  isin: boolean;
+  figi: boolean;
+};
+
 type RawSecurityRow = {
   id: string;
   symbol: string;
@@ -54,6 +79,12 @@ type RawSecurityRow = {
   sector: string | null;
   industry: string | null;
   exchange: string | null;
+  primaryExchange: string | null;
+  region: string | null;
+  isActive: boolean | null;
+  normalizedCompanyName: string | null;
+  isin: string | null;
+  figi: string | null;
   country: string | null;
   currency: string | null;
   securityType: string | null;
@@ -61,6 +92,8 @@ type RawSecurityRow = {
 
 const DEFAULT_LIMIT = 50;
 const MAX_LIMIT = 200;
+
+let availableColumnsPromise: Promise<AvailableColumns> | null = null;
 
 function parseCount(value: number | string | undefined): number {
   if (typeof value === "number") {
@@ -98,6 +131,12 @@ function mapSecurityRow(row: RawSecurityRow): SecurityMasterRecord {
     sector: row.sector,
     industry: row.industry,
     exchange: row.exchange,
+    primaryExchange: row.primaryExchange,
+    region: row.region,
+    isActive: row.isActive ?? true,
+    normalizedCompanyName: row.normalizedCompanyName,
+    isin: row.isin,
+    figi: row.figi,
     country: row.country,
     currency: row.currency,
     securityType: row.securityType,
@@ -135,6 +174,7 @@ function normalizeSymbolValues(value: string | string[] | undefined): string[] {
 function buildSearchClause(
   filters: SecurityMasterQueryFilters,
   params: Array<string | number>,
+  includeNormalizedCompanyName: boolean,
 ): string | undefined {
   const symbolValues = normalizeSymbolValues(filters.symbol);
 
@@ -142,7 +182,10 @@ function buildSearchClause(
     return buildInClause("UPPER(symbol)", symbolValues, params);
   }
 
-  if (typeof filters.search !== "string" || filters.search.trim().length === 0) {
+  if (
+    typeof filters.search !== "string" ||
+    filters.search.trim().length === 0
+  ) {
     return undefined;
   }
 
@@ -154,14 +197,45 @@ function buildSearchClause(
   params.push(`%${trimmedSearch.toUpperCase()}%`);
   const symbolPlaceholder = `$${params.length}`;
 
+  if (includeNormalizedCompanyName) {
+    params.push(`%${trimmedSearch.toLowerCase()}%`);
+    const normalizedCompanyNamePlaceholder = `$${params.length}`;
+
+    return `(company_name ILIKE ${companyNamePlaceholder} OR normalized_company_name LIKE ${normalizedCompanyNamePlaceholder} OR UPPER(symbol) LIKE ${symbolPlaceholder})`;
+  }
+
   return `(company_name ILIKE ${companyNamePlaceholder} OR UPPER(symbol) LIKE ${symbolPlaceholder})`;
 }
 
-async function getDistinctNonEmptyValues(columnName: string): Promise<string[]> {
+function normalizeIsActiveValues(values: string[] | undefined): boolean[] {
+  if (!values || values.length === 0) {
+    return [];
+  }
+
+  const normalized = new Set<boolean>();
+
+  for (const value of values) {
+    const token = value.trim().toLowerCase();
+
+    if (["active", "true", "1", "yes", "y"].includes(token)) {
+      normalized.add(true);
+    }
+
+    if (["inactive", "false", "0", "no", "n"].includes(token)) {
+      normalized.add(false);
+    }
+  }
+
+  return Array.from(normalized.values());
+}
+
+async function getDistinctNonEmptyValues(
+  columnName: string,
+): Promise<string[]> {
   const rows = await sql.unsafe<RawValueRow[]>(
     `
       SELECT DISTINCT ${columnName} AS value
-      FROM securities
+      FROM public.securities
       WHERE ${columnName} IS NOT NULL
         AND BTRIM(${columnName}) <> ''
       ORDER BY ${columnName} ASC
@@ -171,7 +245,39 @@ async function getDistinctNonEmptyValues(columnName: string): Promise<string[]> 
 
   return rows
     .map((row) => row.value)
-    .filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+    .filter(
+      (value): value is string =>
+        typeof value === "string" && value.trim().length > 0,
+    );
+}
+
+async function getAvailableColumns(): Promise<AvailableColumns> {
+  if (!availableColumnsPromise) {
+    availableColumnsPromise = (async () => {
+      const rows = await sql.unsafe<RawColumnRow[]>(
+        `
+          SELECT column_name AS "columnName"
+          FROM information_schema.columns
+          WHERE table_schema = current_schema()
+            AND table_name = 'securities'
+        `,
+        [],
+      );
+
+      const set = new Set(rows.map((row) => row.columnName));
+
+      return {
+        normalizedCompanyName: set.has("normalized_company_name"),
+        primaryExchange: set.has("primary_exchange"),
+        region: set.has("region"),
+        isActive: set.has("is_active"),
+        isin: set.has("isin"),
+        figi: set.has("figi"),
+      };
+    })();
+  }
+
+  return availableColumnsPromise;
 }
 
 export async function getSecurityMasterCoverageCount(
@@ -180,7 +286,7 @@ export async function getSecurityMasterCoverageCount(
   const rows = await sql.unsafe<RawCountRow[]>(
     `
       SELECT COUNT(*)::int AS count
-      FROM securities
+      FROM public.securities
     `,
     [],
   );
@@ -191,20 +297,58 @@ export async function getSecurityMasterCoverageCount(
 export async function getSecurityMasterSupportedFilters(
   _workspaceId?: string,
 ): Promise<SecurityMasterSupportedFilters> {
-  const [sector, industry, exchange, country, currency, securityType] =
-    await Promise.all([
-      getDistinctNonEmptyValues("sector"),
-      getDistinctNonEmptyValues("industry"),
-      getDistinctNonEmptyValues("exchange"),
-      getDistinctNonEmptyValues("country"),
-      getDistinctNonEmptyValues("currency"),
-      getDistinctNonEmptyValues("security_type"),
-    ]);
+  const availableColumns = await getAvailableColumns();
+
+  const [
+    sector,
+    industry,
+    exchange,
+    primaryExchange,
+    region,
+    country,
+    currency,
+    securityType,
+    isActiveRows,
+  ] = await Promise.all([
+    getDistinctNonEmptyValues("sector"),
+    getDistinctNonEmptyValues("industry"),
+    getDistinctNonEmptyValues("exchange"),
+    availableColumns.primaryExchange
+      ? getDistinctNonEmptyValues("primary_exchange")
+      : Promise.resolve([]),
+    availableColumns.region
+      ? getDistinctNonEmptyValues("region")
+      : Promise.resolve([]),
+    getDistinctNonEmptyValues("country"),
+    getDistinctNonEmptyValues("currency"),
+    getDistinctNonEmptyValues("security_type"),
+    availableColumns.isActive
+      ? sql.unsafe<Array<{ isActive: boolean | null }>>(
+          `
+              SELECT DISTINCT is_active AS "isActive"
+              FROM public.securities
+              WHERE is_active IS NOT NULL
+            `,
+          [],
+        )
+      : Promise.resolve([]),
+  ]);
+
+  const isActive: string[] = [];
+  if (isActiveRows.some((row) => row.isActive === true)) {
+    isActive.push("Active");
+  }
+  if (isActiveRows.some((row) => row.isActive === false)) {
+    isActive.push("Inactive");
+  }
 
   return {
     sector,
     industry,
     exchange,
+    primaryExchange,
+    region,
+    isActive,
     country,
     currency,
     securityType,
@@ -214,6 +358,7 @@ export async function getSecurityMasterSupportedFilters(
 function buildWhereClause(
   filters: SecurityMasterQueryFilters | undefined,
   params: Array<string | number>,
+  availableColumns: AvailableColumns,
 ): string {
   const whereClauses: string[] = [];
 
@@ -229,6 +374,30 @@ function buildWhereClause(
     whereClauses.push(buildInClause("exchange", filters.exchange, params));
   }
 
+  if (
+    availableColumns.primaryExchange &&
+    filters?.primaryExchange &&
+    filters.primaryExchange.length > 0
+  ) {
+    whereClauses.push(
+      buildInClause("primary_exchange", filters.primaryExchange, params),
+    );
+  }
+
+  if (availableColumns.region && filters?.region && filters.region.length > 0) {
+    whereClauses.push(buildInClause("region", filters.region, params));
+  }
+
+  if (availableColumns.isActive) {
+    const isActiveValues = normalizeIsActiveValues(filters?.isActive);
+    if (isActiveValues.length === 1) {
+      params.push(isActiveValues[0] ? 1 : 0);
+      whereClauses.push(`is_active = ($${params.length} = 1)`);
+    } else if (isActiveValues.length === 2) {
+      whereClauses.push("is_active IN (true, false)");
+    }
+  }
+
   if (filters?.country && filters.country.length > 0) {
     whereClauses.push(buildInClause("country", filters.country, params));
   }
@@ -238,10 +407,16 @@ function buildWhereClause(
   }
 
   if (filters?.securityType && filters.securityType.length > 0) {
-    whereClauses.push(buildInClause("security_type", filters.securityType, params));
+    whereClauses.push(
+      buildInClause("security_type", filters.securityType, params),
+    );
   }
 
-  const searchClause = buildSearchClause(filters ?? {}, params);
+  const searchClause = buildSearchClause(
+    filters ?? {},
+    params,
+    availableColumns.normalizedCompanyName,
+  );
   if (searchClause) {
     whereClauses.push(searchClause);
   }
@@ -253,8 +428,10 @@ export async function countSecurityMasterQuery(
   _workspaceId?: string,
   filters?: SecurityMasterQueryFilters,
 ): Promise<number> {
+  const availableColumns = await getAvailableColumns();
+
   const params: Array<string | number> = [];
-  const whereSql = buildWhereClause(filters, params);
+  const whereSql = buildWhereClause(filters, params, availableColumns);
 
   const rows = await sql.unsafe<RawCountRow[]>(
     `SELECT COUNT(*)::int AS count FROM securities ${whereSql}`,
@@ -268,8 +445,10 @@ export async function querySecurityMaster(
   _workspaceId?: string,
   filters?: SecurityMasterQueryFilters,
 ): Promise<SecurityMasterRecord[]> {
+  const availableColumns = await getAvailableColumns();
+
   const params: Array<string | number> = [];
-  const whereSql = buildWhereClause(filters, params);
+  const whereSql = buildWhereClause(filters, params, availableColumns);
 
   const limit = normalizeLimit(filters?.limit);
   params.push(limit);
@@ -285,13 +464,19 @@ export async function querySecurityMaster(
         id,
         symbol,
         company_name AS "companyName",
+        ${availableColumns.normalizedCompanyName ? "normalized_company_name" : "NULL::text"} AS "normalizedCompanyName",
         sector,
         industry,
         exchange,
+        ${availableColumns.primaryExchange ? "primary_exchange" : "NULL::text"} AS "primaryExchange",
+        ${availableColumns.region ? "region" : "NULL::text"} AS region,
+        ${availableColumns.isActive ? "is_active" : "NULL::boolean"} AS "isActive",
+        ${availableColumns.isin ? "isin" : "NULL::text"} AS isin,
+        ${availableColumns.figi ? "figi" : "NULL::text"} AS figi,
         country,
         currency,
         security_type AS "securityType"
-      FROM securities
+      FROM public.securities
       ${whereSql}
       ORDER BY symbol ASC
       LIMIT ${limitPlaceholder}

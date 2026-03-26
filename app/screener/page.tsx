@@ -1,7 +1,16 @@
 "use client";
 
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { Table, Input, Select, Button, Tag, Space, ConfigProvider, theme } from "antd";
+import {
+  Table,
+  Input,
+  Select,
+  Button,
+  Tag,
+  Space,
+  ConfigProvider,
+  theme,
+} from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import styles from "./screener.module.css";
 import type {
@@ -17,6 +26,9 @@ const SECURITY_MASTER_FILTER_ORDER: ScreenerFilterKey[] = [
   "sector",
   "industry",
   "exchange",
+  "primaryExchange",
+  "region",
+  "isActive",
   "country",
   "currency",
   "securityType",
@@ -26,6 +38,9 @@ const SECURITY_MASTER_FILTER_LABELS: Record<ScreenerFilterKey, string> = {
   sector: "Sector",
   industry: "Industry",
   exchange: "Exchange",
+  primaryExchange: "Primary Exchange",
+  region: "Region",
+  isActive: "Active Status",
   country: "Country",
   currency: "Currency",
   securityType: "Security Type",
@@ -38,6 +53,9 @@ const INITIAL_QUERY_STATE: ScreenerQueryState = {
   sector: "",
   industry: "",
   exchange: "",
+  primaryExchange: "",
+  region: "",
+  isActive: "",
   country: "",
   currency: "",
   securityType: "",
@@ -54,6 +72,11 @@ function normalizeSupportedFilters(
     sector: Array.isArray(filters?.sector) ? filters!.sector : [],
     industry: Array.isArray(filters?.industry) ? filters!.industry : [],
     exchange: Array.isArray(filters?.exchange) ? filters!.exchange : [],
+    primaryExchange: Array.isArray(filters?.primaryExchange)
+      ? filters!.primaryExchange
+      : [],
+    region: Array.isArray(filters?.region) ? filters!.region : [],
+    isActive: Array.isArray(filters?.isActive) ? filters!.isActive : [],
     country: Array.isArray(filters?.country) ? filters!.country : [],
     currency: Array.isArray(filters?.currency) ? filters!.currency : [],
     securityType: Array.isArray(filters?.securityType)
@@ -103,7 +126,11 @@ const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
     key: "symbol",
     width: 110,
     render: (val: string) => (
-      <span style={{ fontWeight: 600, color: "#faad14", fontFamily: "monospace" }}>{val}</span>
+      <span
+        style={{ fontWeight: 600, color: "#faad14", fontFamily: "monospace" }}
+      >
+        {val}
+      </span>
     ),
     sorter: (a, b) => a.symbol.localeCompare(b.symbol),
   },
@@ -119,6 +146,20 @@ const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
     dataIndex: "exchange",
     key: "exchange",
     width: 100,
+    render: (val: string | null) => val ?? "—",
+  },
+  {
+    title: "Primary Exchange",
+    dataIndex: "primaryExchange",
+    key: "primaryExchange",
+    width: 140,
+    render: (val: string | null) => val ?? "—",
+  },
+  {
+    title: "Region",
+    dataIndex: "region",
+    key: "region",
+    width: 110,
     render: (val: string | null) => val ?? "—",
   },
   {
@@ -147,8 +188,19 @@ const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
     dataIndex: "securityType",
     key: "securityType",
     width: 100,
-    render: (val: string | null) =>
-      val ? <Tag color="blue">{val}</Tag> : "—",
+    render: (val: string | null) => (val ? <Tag color="blue">{val}</Tag> : "—"),
+  },
+  {
+    title: "Status",
+    dataIndex: "isActive",
+    key: "isActive",
+    width: 90,
+    render: (val: boolean | null | undefined) =>
+      val === false ? (
+        <Tag color="red">Inactive</Tag>
+      ) : (
+        <Tag color="green">Active</Tag>
+      ),
   },
 ];
 
@@ -181,7 +233,9 @@ export default function ScreenerPage() {
       setIsLoading(true);
       setError(null);
 
-      const activeQuery = overrideQuery ? { ...query, ...overrideQuery } : query;
+      const activeQuery = overrideQuery
+        ? { ...query, ...overrideQuery }
+        : query;
 
       try {
         const filters: Record<string, unknown> = {};
@@ -210,7 +264,9 @@ export default function ScreenerPage() {
         });
 
         if (!response.ok) {
-          throw new Error(`Screener request failed with status ${response.status}`);
+          throw new Error(
+            `Screener request failed with status ${response.status}`,
+          );
         }
 
         const payload = (await response.json()) as ScreenerApiResponse;
@@ -220,7 +276,9 @@ export default function ScreenerPage() {
         });
       } catch (err) {
         const message =
-          err instanceof Error ? err.message : "Failed to load screener results.";
+          err instanceof Error
+            ? err.message
+            : "Failed to load screener results.";
         setError(message);
       } finally {
         setIsLoading(false);
@@ -248,6 +306,9 @@ export default function ScreenerPage() {
       sector: "",
       industry: "",
       exchange: "",
+      primaryExchange: "",
+      region: "",
+      isActive: "",
       country: "",
       currency: "",
       securityType: "",
@@ -279,7 +340,9 @@ export default function ScreenerPage() {
   const currentPageSize = data?.pageSize ?? query.pageSize;
 
   const isNoInternalCoverage =
-    coverageMode === "security_master" && coverageCount === 0 && rows.length === 0;
+    coverageMode === "security_master" &&
+    coverageCount === 0 &&
+    rows.length === 0;
 
   return (
     <ConfigProvider
@@ -305,8 +368,9 @@ export default function ScreenerPage() {
           <div className={styles.hero}>
             <h1 className={styles.title}>Screener</h1>
             <p className={styles.subtitle}>
-              Screen internal coverage safely. Security-master-backed filters only
-              appear when the stored internal company dataset supports them.
+              Screen internal coverage safely. Security-master-backed filters
+              only appear when the stored internal company dataset supports
+              them.
             </p>
           </div>
 
@@ -324,7 +388,11 @@ export default function ScreenerPage() {
                 </span>
               </div>
               <p className={styles.panelText}>
-                {renderCoverageMessage(coverageMode, coverageCount, supportedFilters)}
+                {renderCoverageMessage(
+                  coverageMode,
+                  coverageCount,
+                  supportedFilters,
+                )}
               </p>
             </div>
           </div>
@@ -334,7 +402,11 @@ export default function ScreenerPage() {
               <h2 className={styles.sectionTitle}>Filters</h2>
             </div>
 
-            <Space wrap size="middle" style={{ width: "100%", marginBottom: 16 }}>
+            <Space
+              wrap
+              size="middle"
+              style={{ width: "100%", marginBottom: 16 }}
+            >
               <Input.Search
                 value={query.search}
                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -379,8 +451,8 @@ export default function ScreenerPage() {
           {coverageMode === "watchlist_fallback" ? (
             <div className={styles.warningPanel}>
               <p className={styles.warningText}>
-                Watchlist fallback is active. Security-master-only company filters are
-                intentionally hidden.
+                Watchlist fallback is active. Security-master-only company
+                filters are intentionally hidden.
               </p>
             </div>
           ) : null}

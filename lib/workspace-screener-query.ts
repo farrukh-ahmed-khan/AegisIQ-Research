@@ -31,6 +31,9 @@ export type WorkspaceScreenerQueryResult = {
     sector: string[];
     industry: string[];
     exchange: string[];
+    primaryExchange: string[];
+    region: string[];
+    isActive: string[];
     country: string[];
     currency: string[];
     securityType: string[];
@@ -51,6 +54,9 @@ export async function runWorkspaceScreenerQuery(
       sector: [],
       industry: [],
       exchange: [],
+      primaryExchange: [],
+      region: [],
+      isActive: [],
       country: [],
       currency: [],
       securityType: [],

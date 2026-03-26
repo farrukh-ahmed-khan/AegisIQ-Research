@@ -27,13 +27,16 @@ export async function POST(request: NextRequest) {
     if (!body.workspaceId || typeof body.workspaceId !== "string") {
       return NextResponse.json(
         { error: "workspaceId is required." },
-        { status: 400 }
+        { status: 400 },
       );
     }
 
     const workspaceId = body.workspaceId;
 
-    const rawPage = typeof body.page === "number" && body.page >= 1 ? Math.trunc(body.page) : 1;
+    const rawPage =
+      typeof body.page === "number" && body.page >= 1
+        ? Math.trunc(body.page)
+        : 1;
     const rawPageSize =
       typeof body.pageSize === "number" && body.pageSize >= 1
         ? Math.min(Math.trunc(body.pageSize), MAX_PAGE_SIZE)
@@ -79,6 +82,9 @@ export async function POST(request: NextRequest) {
         sector: [],
         industry: [],
         exchange: [],
+        primaryExchange: [],
+        region: [],
+        isActive: [],
         country: [],
         currency: [],
         securityType: [],
@@ -89,7 +95,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(
       { error: "Unable to execute screener query." },
-      { status: 500 }
+      { status: 500 },
     );
   }
 }

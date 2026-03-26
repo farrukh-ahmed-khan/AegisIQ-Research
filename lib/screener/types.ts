@@ -4,6 +4,9 @@ export type ScreenerFilterKey =
   | "sector"
   | "industry"
   | "exchange"
+  | "primaryExchange"
+  | "region"
+  | "isActive"
   | "country"
   | "currency"
   | "securityType";
@@ -18,6 +21,12 @@ export interface ScreenerResultRow {
   sector?: string | null;
   industry?: string | null;
   exchange?: string | null;
+  primaryExchange?: string | null;
+  region?: string | null;
+  isActive?: boolean;
+  normalizedCompanyName?: string | null;
+  isin?: string | null;
+  figi?: string | null;
   country?: string | null;
   currency?: string | null;
   securityType?: string | null;
@@ -38,6 +47,9 @@ export interface ScreenerQueryState {
   sector: string;
   industry: string;
   exchange: string;
+  primaryExchange: string;
+  region: string;
+  isActive: string;
   country: string;
   currency: string;
   securityType: string;

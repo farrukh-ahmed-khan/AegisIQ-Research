@@ -7,7 +7,13 @@ type SeedSecurity = {
   id: string;
   symbol: string;
   companyName: string | null;
+  normalizedCompanyName: string | null;
   exchange: string | null;
+  primaryExchange: string | null;
+  region: string | null;
+  isActive: boolean;
+  isin: string | null;
+  figi: string | null;
   country: string | null;
   currency: string | null;
   securityType: string | null;
@@ -31,6 +37,134 @@ function normalizeSymbol(value: unknown): string | null {
   return normalized ? normalized.toUpperCase() : null;
 }
 
+function normalizeCompanyName(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const compact = value
+    .toLowerCase()
+    .replace(/[.,'"()]/g, " ")
+    .replace(
+      /\b(inc|incorporated|corp|corporation|ltd|limited|plc|sa|ag|nv|holdings?)\b/g,
+      " ",
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+
+  return compact.length > 0 ? compact : null;
+}
+
+function canonicalPrimaryExchange(value: string | null): string | null {
+  if (!value) {
+    return null;
+  }
+
+  const normalized = value.trim().toUpperCase();
+
+  if (normalized.includes("NASDAQ")) return "NASDAQ";
+  if (normalized.includes("NEW YORK") || normalized === "NYSE") return "NYSE";
+  if (normalized.includes("AMEX") || normalized.includes("AMERICAN"))
+    return "AMEX";
+
+  return normalized;
+}
+
+function deriveRegion(country: string | null): string | null {
+  if (!country) return null;
+
+  const token = country.trim().toUpperCase();
+  if (
+    [
+      "US",
+      "USA",
+      "UNITED STATES",
+      "CA",
+      "CAN",
+      "CANADA",
+      "MX",
+      "MEX",
+      "MEXICO",
+    ].includes(token)
+  )
+    return "North America";
+  if (
+    [
+      "GB",
+      "UK",
+      "UNITED KINGDOM",
+      "DE",
+      "GERMANY",
+      "FR",
+      "FRANCE",
+      "IT",
+      "ITALY",
+      "ES",
+      "SPAIN",
+      "NL",
+      "NETHERLANDS",
+      "SE",
+      "SWEDEN",
+      "CH",
+      "SWITZERLAND",
+    ].includes(token)
+  )
+    return "Europe";
+  if (
+    [
+      "JP",
+      "JAPAN",
+      "CN",
+      "CHINA",
+      "HK",
+      "HONG KONG",
+      "SG",
+      "SINGAPORE",
+      "IN",
+      "INDIA",
+      "KR",
+      "SOUTH KOREA",
+      "AU",
+      "AUSTRALIA",
+      "NZ",
+      "NEW ZEALAND",
+    ].includes(token)
+  )
+    return "APAC";
+  if (
+    [
+      "BR",
+      "BRAZIL",
+      "AR",
+      "ARGENTINA",
+      "CL",
+      "CHILE",
+      "CO",
+      "COLOMBIA",
+      "PE",
+      "PERU",
+    ].includes(token)
+  )
+    return "LATAM";
+  if (
+    [
+      "AE",
+      "UAE",
+      "SA",
+      "SAUDI ARABIA",
+      "QA",
+      "QATAR",
+      "ZA",
+      "SOUTH AFRICA",
+      "EG",
+      "EGYPT",
+    ].includes(token)
+  )
+    return "MEA";
+
+  return "Other";
+}
+
 function normalizeRow(input: unknown): SeedSecurity | null {
   if (!input || typeof input !== "object") {
     return null;
@@ -48,8 +182,14 @@ function normalizeRow(input: unknown): SeedSecurity | null {
     id,
     symbol,
     companyName: normalizeText(row.companyName),
+    normalizedCompanyName: normalizeCompanyName(normalizeText(row.companyName)),
     exchange: normalizeText(row.exchange),
+    primaryExchange: canonicalPrimaryExchange(normalizeText(row.exchange)),
     country: normalizeText(row.country),
+    region: deriveRegion(normalizeText(row.country)),
+    isActive: true,
+    isin: normalizeText(row.isin),
+    figi: normalizeText(row.figi),
     currency: normalizeText(row.currency),
     securityType: normalizeText(row.securityType),
     sector: normalizeText(row.sector),
@@ -68,6 +208,9 @@ function chunkArray<T>(items: T[], size: number): T[][] {
 }
 
 async function upsertBatch(rows: SeedSecurity[]): Promise<void> {
+  // Ensure search_path is set to public schema
+  await sql.unsafe(`SET search_path TO public`, []);
+
   const values: Array<string | null> = [];
   const tuples: string[] = [];
 
@@ -78,7 +221,13 @@ async function upsertBatch(rows: SeedSecurity[]): Promise<void> {
       row.id,
       row.symbol,
       row.companyName,
+      row.normalizedCompanyName,
       row.exchange,
+      row.primaryExchange,
+      row.region,
+      row.isActive ? "1" : "0",
+      row.isin,
+      row.figi,
       row.country,
       row.currency,
       row.securityType,
@@ -87,7 +236,7 @@ async function upsertBatch(rows: SeedSecurity[]): Promise<void> {
     );
 
     tuples.push(
-      `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, $${base + 8}, $${base + 9}, NOW(), NOW())`,
+      `($${base + 1}, $${base + 2}, $${base + 3}, $${base + 4}, $${base + 5}, $${base + 6}, $${base + 7}, ($${base + 8} = '1'), $${base + 9}, $${base + 10}, $${base + 11}, $${base + 12}, $${base + 13}, $${base + 14}, $${base + 15}, NOW(), NOW())`,
     );
   }
 
@@ -97,7 +246,13 @@ async function upsertBatch(rows: SeedSecurity[]): Promise<void> {
         id,
         symbol,
         company_name,
+        normalized_company_name,
         exchange,
+        primary_exchange,
+        region,
+        is_active,
+        isin,
+        figi,
         country,
         currency,
         security_type,
@@ -112,7 +267,13 @@ async function upsertBatch(rows: SeedSecurity[]): Promise<void> {
       DO UPDATE SET
         symbol = EXCLUDED.symbol,
         company_name = EXCLUDED.company_name,
+        normalized_company_name = EXCLUDED.normalized_company_name,
         exchange = EXCLUDED.exchange,
+        primary_exchange = EXCLUDED.primary_exchange,
+        region = EXCLUDED.region,
+        is_active = EXCLUDED.is_active,
+        isin = EXCLUDED.isin,
+        figi = EXCLUDED.figi,
         country = EXCLUDED.country,
         currency = EXCLUDED.currency,
         security_type = EXCLUDED.security_type,
@@ -125,7 +286,11 @@ async function upsertBatch(rows: SeedSecurity[]): Promise<void> {
 }
 
 async function loadSecurityMaster(): Promise<void> {
-  const seedPath = path.join(process.cwd(), "data", "security-master.seed.json");
+  const seedPath = path.join(
+    process.cwd(),
+    "data",
+    "security-master.seed.json",
+  );
   const raw = await fs.readFile(seedPath, "utf8");
   const parsed = JSON.parse(raw) as unknown[];
 
