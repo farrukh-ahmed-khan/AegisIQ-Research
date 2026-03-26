@@ -12,7 +12,9 @@
     "lint": "next lint",
     "seed:securities": "tsx scripts/seed-securities.ts",
     "load:security-master": "tsx scripts/load-security-master.ts",
-    "load:security-master:fmp": "tsx scripts/load-security-master-fmp.ts"
+    "load:security-master:fmp": "tsx scripts/load-security-master-fmp.ts",
+    "seed:fundamentals": "tsx scripts/seed-fundamentals.ts",
+    "prefetch:fundamentals": "tsx scripts/prefetch-fundamentals.ts"
   },
   "dependencies": {
     "@clerk/nextjs": "^6.0.0",
