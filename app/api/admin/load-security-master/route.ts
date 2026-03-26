@@ -65,7 +65,11 @@ export async function POST(request: NextRequest) {
 
     const { sql } = await import("@/lib/db");
 
-    const seedPath = path.join(process.cwd(), "data", "security-master.seed.json");
+    const seedPath = path.join(
+      process.cwd(),
+      "data",
+      "security-master.seed.json",
+    );
     const raw = await fs.readFile(seedPath, "utf8");
     const parsed = JSON.parse(raw) as unknown[];
 
