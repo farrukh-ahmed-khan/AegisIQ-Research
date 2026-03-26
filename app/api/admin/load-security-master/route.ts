@@ -2,8 +2,6 @@ import { NextRequest, NextResponse } from "next/server";
 import fs from "node:fs/promises";
 import path from "node:path";
 
-import { sql } from "@/lib/db";
-
 type SeedSecurity = {
   id: string;
   symbol: string;
@@ -64,6 +62,8 @@ export async function POST(request: NextRequest) {
     if (!expectedToken || token !== expectedToken) {
       return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
     }
+
+    const { sql } = await import("@/lib/db");
 
     const seedPath = path.join(process.cwd(), "data", "security-master.seed.json");
     const raw = await fs.readFile(seedPath, "utf8");
