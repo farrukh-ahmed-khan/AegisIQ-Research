@@ -10,10 +10,14 @@ import {
   Space,
   ConfigProvider,
   theme,
+  Checkbox,
+  InputNumber,
+  Divider,
 } from "antd";
 import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
 import styles from "./screener.module.css";
 import type {
+  MarketCapBucket,
   ScreenerApiResponse,
   ScreenerCoverageMode,
   ScreenerFilterKey,
@@ -46,6 +50,15 @@ const SECURITY_MASTER_FILTER_LABELS: Record<ScreenerFilterKey, string> = {
   securityType: "Security Type",
 };
 
+const MARKET_CAP_BUCKET_OPTIONS: { label: string; value: MarketCapBucket }[] = [
+  { label: "Nano (<$50M)", value: "nano" },
+  { label: "Micro ($50M–$300M)", value: "micro" },
+  { label: "Small ($300M–$2B)", value: "small" },
+  { label: "Mid ($2B–$10B)", value: "mid" },
+  { label: "Large ($10B–$200B)", value: "large" },
+  { label: "Mega (>$200B)", value: "mega" },
+];
+
 const DEFAULT_PAGE_SIZE = 50;
 
 const INITIAL_QUERY_STATE: ScreenerQueryState = {
@@ -61,6 +74,18 @@ const INITIAL_QUERY_STATE: ScreenerQueryState = {
   securityType: "",
   page: 1,
   pageSize: DEFAULT_PAGE_SIZE,
+  marketCapBuckets: [],
+  peRatioMin: "",
+  peRatioMax: "",
+  evToEbitdaMin: "",
+  evToEbitdaMax: "",
+  priceToBookMin: "",
+  priceToBookMax: "",
+  priceToSalesMin: "",
+  priceToSalesMax: "",
+  revenueGrowthMin: "",
+  earningsGrowthMin: "",
+  fcfGrowthMin: "",
 };
 
 const DEFAULT_SCREENER_WORKSPACE_ID = "global_screener";
@@ -119,16 +144,39 @@ function renderCoverageMessage(
   return "Loading screener coverage...";
 }
 
+function fmtMarketCap(v: number | null | undefined): string {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (!isFinite(n)) return "—";
+  if (n >= 1e12) return `$${(n / 1e12).toFixed(2)}T`;
+  if (n >= 1e9) return `$${(n / 1e9).toFixed(2)}B`;
+  if (n >= 1e6) return `$${(n / 1e6).toFixed(1)}M`;
+  return `$${n.toLocaleString()}`;
+}
+
+function fmtMultiple(v: number | null | undefined): string {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (!isFinite(n)) return "—";
+  return `${n.toFixed(1)}×`;
+}
+
+function fmtPct(v: number | null | undefined): string {
+  if (v == null) return "—";
+  const n = Number(v);
+  if (!isFinite(n)) return "—";
+  return `${(n * 100).toFixed(1)}%`;
+}
+
 const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
   {
     title: "Symbol",
     dataIndex: "symbol",
     key: "symbol",
-    width: 110,
+    width: 100,
+    fixed: "left",
     render: (val: string) => (
-      <span
-        style={{ fontWeight: 600, color: "#faad14", fontFamily: "monospace" }}
-      >
+      <span style={{ fontWeight: 600, color: "#faad14", fontFamily: "monospace" }}>
         {val}
       </span>
     ),
@@ -142,27 +190,6 @@ const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
       row.companyName ?? row.name ?? "—",
   },
   {
-    title: "Exchange",
-    dataIndex: "exchange",
-    key: "exchange",
-    width: 100,
-    render: (val: string | null) => val ?? "—",
-  },
-  {
-    title: "Primary Exchange",
-    dataIndex: "primaryExchange",
-    key: "primaryExchange",
-    width: 140,
-    render: (val: string | null) => val ?? "—",
-  },
-  {
-    title: "Region",
-    dataIndex: "region",
-    key: "region",
-    width: 110,
-    render: (val: string | null) => val ?? "—",
-  },
-  {
     title: "Sector",
     dataIndex: "sector",
     key: "sector",
@@ -170,31 +197,112 @@ const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
     render: (val: string | null) => val ?? "—",
   },
   {
-    title: "Country",
-    dataIndex: "country",
-    key: "country",
+    title: "Exchange",
+    dataIndex: "exchange",
+    key: "exchange",
     width: 90,
     render: (val: string | null) => val ?? "—",
   },
   {
-    title: "Currency",
-    dataIndex: "currency",
-    key: "currency",
+    title: "Region",
+    dataIndex: "region",
+    key: "region",
     width: 90,
+    render: (val: string | null) => val ?? "—",
+  },
+  {
+    title: "Mkt Cap",
+    dataIndex: "marketCap",
+    key: "marketCap",
+    width: 100,
+    sorter: (a, b) => Number(a.marketCap ?? 0) - Number(b.marketCap ?? 0),
+    render: (val: number | null) => (
+      <span style={{ color: "#94a3b8" }}>{fmtMarketCap(val)}</span>
+    ),
+  },
+  {
+    title: "P/E",
+    dataIndex: "peRatio",
+    key: "peRatio",
+    width: 80,
+    sorter: (a, b) => Number(a.peRatio ?? 0) - Number(b.peRatio ?? 0),
+    render: (val: number | null) => (
+      <span style={{ color: "#94a3b8" }}>{fmtMultiple(val)}</span>
+    ),
+  },
+  {
+    title: "EV/EBITDA",
+    dataIndex: "evToEbitda",
+    key: "evToEbitda",
+    width: 100,
+    sorter: (a, b) => Number(a.evToEbitda ?? 0) - Number(b.evToEbitda ?? 0),
+    render: (val: number | null) => (
+      <span style={{ color: "#94a3b8" }}>{fmtMultiple(val)}</span>
+    ),
+  },
+  {
+    title: "P/B",
+    dataIndex: "priceToBook",
+    key: "priceToBook",
+    width: 75,
+    sorter: (a, b) => Number(a.priceToBook ?? 0) - Number(b.priceToBook ?? 0),
+    render: (val: number | null) => (
+      <span style={{ color: "#94a3b8" }}>{fmtMultiple(val)}</span>
+    ),
+  },
+  {
+    title: "P/S",
+    dataIndex: "priceToSales",
+    key: "priceToSales",
+    width: 75,
+    sorter: (a, b) => Number(a.priceToSales ?? 0) - Number(b.priceToSales ?? 0),
+    render: (val: number | null) => (
+      <span style={{ color: "#94a3b8" }}>{fmtMultiple(val)}</span>
+    ),
+  },
+  {
+    title: "Rev Growth",
+    dataIndex: "revenueGrowthYoy",
+    key: "revenueGrowthYoy",
+    width: 100,
+    sorter: (a, b) => Number(a.revenueGrowthYoy ?? -Infinity) - Number(b.revenueGrowthYoy ?? -Infinity),
+    render: (val: number | null) => {
+      if (val == null) return <span style={{ color: "#94a3b8" }}>—</span>;
+      const color = val >= 0 ? "#52c41a" : "#ff4d4f";
+      return <span style={{ color }}>{fmtPct(val)}</span>;
+    },
+  },
+  {
+    title: "Earn Growth",
+    dataIndex: "earningsGrowthYoy",
+    key: "earningsGrowthYoy",
+    width: 110,
+    sorter: (a, b) => Number(a.earningsGrowthYoy ?? -Infinity) - Number(b.earningsGrowthYoy ?? -Infinity),
+    render: (val: number | null) => {
+      if (val == null) return <span style={{ color: "#94a3b8" }}>—</span>;
+      const color = val >= 0 ? "#52c41a" : "#ff4d4f";
+      return <span style={{ color }}>{fmtPct(val)}</span>;
+    },
+  },
+  {
+    title: "Country",
+    dataIndex: "country",
+    key: "country",
+    width: 85,
     render: (val: string | null) => val ?? "—",
   },
   {
     title: "Type",
     dataIndex: "securityType",
     key: "securityType",
-    width: 100,
+    width: 90,
     render: (val: string | null) => (val ? <Tag color="blue">{val}</Tag> : "—"),
   },
   {
     title: "Status",
     dataIndex: "isActive",
     key: "isActive",
-    width: 90,
+    width: 85,
     render: (val: boolean | null | undefined) =>
       val === false ? (
         <Tag color="red">Inactive</Tag>
@@ -251,6 +359,23 @@ export default function ScreenerPage() {
           }
         }
 
+        // Phase 12 — advanced filters (always sent)
+        if (activeQuery.marketCapBuckets.length > 0) {
+          filters.marketCapBucket = activeQuery.marketCapBuckets;
+        }
+        const p = (v: string) => { const n = parseFloat(v); return isFinite(n) ? n : undefined; };
+        if (p(activeQuery.peRatioMin) !== undefined) filters.peRatioMin = p(activeQuery.peRatioMin);
+        if (p(activeQuery.peRatioMax) !== undefined) filters.peRatioMax = p(activeQuery.peRatioMax);
+        if (p(activeQuery.evToEbitdaMin) !== undefined) filters.evToEbitdaMin = p(activeQuery.evToEbitdaMin);
+        if (p(activeQuery.evToEbitdaMax) !== undefined) filters.evToEbitdaMax = p(activeQuery.evToEbitdaMax);
+        if (p(activeQuery.priceToBookMin) !== undefined) filters.priceToBookMin = p(activeQuery.priceToBookMin);
+        if (p(activeQuery.priceToBookMax) !== undefined) filters.priceToBookMax = p(activeQuery.priceToBookMax);
+        if (p(activeQuery.priceToSalesMin) !== undefined) filters.priceToSalesMin = p(activeQuery.priceToSalesMin);
+        if (p(activeQuery.priceToSalesMax) !== undefined) filters.priceToSalesMax = p(activeQuery.priceToSalesMax);
+        if (p(activeQuery.revenueGrowthMin) !== undefined) filters.revenueGrowthMin = p(activeQuery.revenueGrowthMin);
+        if (p(activeQuery.earningsGrowthMin) !== undefined) filters.earningsGrowthMin = p(activeQuery.earningsGrowthMin);
+        if (p(activeQuery.fcfGrowthMin) !== undefined) filters.fcfGrowthMin = p(activeQuery.fcfGrowthMin);
+
         const response = await fetch("/api/screener/query", {
           method: "POST",
           headers: { "Content-Type": "application/json" },
@@ -300,20 +425,16 @@ export default function ScreenerPage() {
     setQuery((current) => ({ ...current, [key]: value, page: 1 }));
   };
 
-  const clearSecurityMasterFilters = () => {
+  const handleNumericChange = (field: keyof ScreenerQueryState, value: number | null) => {
     setQuery((current) => ({
       ...current,
-      sector: "",
-      industry: "",
-      exchange: "",
-      primaryExchange: "",
-      region: "",
-      isActive: "",
-      country: "",
-      currency: "",
-      securityType: "",
+      [field]: value !== null && isFinite(value) ? String(value) : "",
       page: 1,
     }));
+  };
+
+  const clearAllFilters = () => {
+    setQuery({ ...INITIAL_QUERY_STATE });
   };
 
   const handleTableChange = (pagination: TablePaginationConfig) => {
@@ -334,6 +455,20 @@ export default function ScreenerPage() {
     (key) => query[key].trim().length > 0,
   );
 
+  const hasActiveAdvancedFilters =
+    query.marketCapBuckets.length > 0 ||
+    query.peRatioMin !== "" || query.peRatioMax !== "" ||
+    query.evToEbitdaMin !== "" || query.evToEbitdaMax !== "" ||
+    query.priceToBookMin !== "" || query.priceToBookMax !== "" ||
+    query.priceToSalesMin !== "" || query.priceToSalesMax !== "" ||
+    query.revenueGrowthMin !== "" || query.earningsGrowthMin !== "" ||
+    query.fcfGrowthMin !== "";
+
+  const hasAnyActiveFilters =
+    query.search.trim().length > 0 ||
+    hasActiveSecurityMasterFilters ||
+    hasActiveAdvancedFilters;
+
   const rows = data?.results ?? [];
   const total = data?.total ?? 0;
   const currentPage = data?.page ?? query.page;
@@ -343,6 +478,20 @@ export default function ScreenerPage() {
     coverageMode === "security_master" &&
     coverageCount === 0 &&
     rows.length === 0;
+
+  const numericInput = (
+    field: keyof ScreenerQueryState,
+    placeholder: string,
+    width = 90,
+  ) => (
+    <InputNumber
+      value={query[field] !== "" ? parseFloat(query[field] as string) : null}
+      onChange={(v) => handleNumericChange(field, v)}
+      placeholder={placeholder}
+      style={{ width }}
+      controls={false}
+    />
+  );
 
   return (
     <ConfigProvider
@@ -368,9 +517,8 @@ export default function ScreenerPage() {
           <div className={styles.hero}>
             <h1 className={styles.title}>Screener</h1>
             <p className={styles.subtitle}>
-              Screen internal coverage safely. Security-master-backed filters
-              only appear when the stored internal company dataset supports
-              them.
+              Filter securities by sector, valuation multiples, growth rates,
+              and market cap. Fundamentals columns show where data is available.
             </p>
           </div>
 
@@ -402,11 +550,8 @@ export default function ScreenerPage() {
               <h2 className={styles.sectionTitle}>Filters</h2>
             </div>
 
-            <Space
-              wrap
-              size="middle"
-              style={{ width: "100%", marginBottom: 16 }}
-            >
+            {/* Search + security master filters */}
+            <Space wrap size="middle" style={{ width: "100%", marginBottom: 16 }}>
               <Input.Search
                 value={query.search}
                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -425,25 +570,99 @@ export default function ScreenerPage() {
                     placeholder={SECURITY_MASTER_FILTER_LABELS[key]}
                     allowClear
                     style={{ minWidth: 160 }}
-                    options={[
-                      ...supportedFilters[key].map((opt) => ({
-                        label: opt,
-                        value: opt,
-                      })),
-                    ]}
+                    options={supportedFilters[key].map((opt) => ({
+                      label: opt,
+                      value: opt,
+                    }))}
                   />
                 ))}
             </Space>
+
+            <Divider style={{ borderColor: "#2a2d3a", margin: "12px 0" }} />
+
+            {/* Market Cap Buckets */}
+            <div style={{ marginBottom: 14 }}>
+              <div className={styles.fieldLabel} style={{ marginBottom: 8 }}>
+                Market Cap
+              </div>
+              <Checkbox.Group
+                value={query.marketCapBuckets}
+                onChange={(vals) =>
+                  setQuery((q) => ({
+                    ...q,
+                    marketCapBuckets: vals as MarketCapBucket[],
+                    page: 1,
+                  }))
+                }
+                options={MARKET_CAP_BUCKET_OPTIONS}
+              />
+            </div>
+
+            <Divider style={{ borderColor: "#2a2d3a", margin: "12px 0" }} />
+
+            {/* Valuation Filters */}
+            <div style={{ marginBottom: 14 }}>
+              <div className={styles.fieldLabel} style={{ marginBottom: 10 }}>
+                Valuation
+              </div>
+              <Space wrap size="middle">
+                <Space size={4}>
+                  <span className={styles.fieldLabel}>P/E</span>
+                  {numericInput("peRatioMin", "Min")}
+                  <span style={{ color: "#64748b" }}>–</span>
+                  {numericInput("peRatioMax", "Max")}
+                </Space>
+                <Space size={4}>
+                  <span className={styles.fieldLabel}>EV/EBITDA</span>
+                  {numericInput("evToEbitdaMin", "Min")}
+                  <span style={{ color: "#64748b" }}>–</span>
+                  {numericInput("evToEbitdaMax", "Max")}
+                </Space>
+                <Space size={4}>
+                  <span className={styles.fieldLabel}>P/B</span>
+                  {numericInput("priceToBookMin", "Min")}
+                  <span style={{ color: "#64748b" }}>–</span>
+                  {numericInput("priceToBookMax", "Max")}
+                </Space>
+                <Space size={4}>
+                  <span className={styles.fieldLabel}>P/S</span>
+                  {numericInput("priceToSalesMin", "Min")}
+                  <span style={{ color: "#64748b" }}>–</span>
+                  {numericInput("priceToSalesMax", "Max")}
+                </Space>
+              </Space>
+            </div>
+
+            <Divider style={{ borderColor: "#2a2d3a", margin: "12px 0" }} />
+
+            {/* Growth Filters */}
+            <div style={{ marginBottom: 14 }}>
+              <div className={styles.fieldLabel} style={{ marginBottom: 10 }}>
+                Growth (YoY min %) — enter as decimal, e.g. 0.1 = 10%
+              </div>
+              <Space wrap size="middle">
+                <Space size={4}>
+                  <span className={styles.fieldLabel}>Revenue Growth ≥</span>
+                  {numericInput("revenueGrowthMin", "e.g. 0.1", 110)}
+                </Space>
+                <Space size={4}>
+                  <span className={styles.fieldLabel}>Earnings Growth ≥</span>
+                  {numericInput("earningsGrowthMin", "e.g. 0.05", 110)}
+                </Space>
+                <Space size={4}>
+                  <span className={styles.fieldLabel}>FCF Growth ≥</span>
+                  {numericInput("fcfGrowthMin", "e.g. 0.0", 110)}
+                </Space>
+              </Space>
+            </div>
 
             <div className={styles.actionRow}>
               <Button type="primary" onClick={handleRunScreen}>
                 Run Screen
               </Button>
 
-              {showSecurityMasterFilters && hasActiveSecurityMasterFilters ? (
-                <Button onClick={clearSecurityMasterFilters}>
-                  Clear Filters
-                </Button>
+              {hasAnyActiveFilters ? (
+                <Button onClick={clearAllFilters}>Clear All Filters</Button>
               ) : null}
             </div>
           </section>
@@ -479,7 +698,7 @@ export default function ScreenerPage() {
               rowKey={(row) => row.id ?? row.symbol}
               loading={isLoading}
               size="middle"
-              scroll={{ x: 800 }}
+              scroll={{ x: 1200 }}
               pagination={{
                 current: currentPage,
                 pageSize: currentPageSize,
