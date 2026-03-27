@@ -24,13 +24,32 @@ const annualOnly = args.includes("--fast");
 const LIMIT = limitArg ? parseInt(limitArg.split("=")[1], 10) : 999_999;
 const BATCH = 30;         // parallel requests per batch (Ultimate plan supports high concurrency)
 const DELAY_MS = 50;      // minimal delay between batches
+const fillMissing = args.includes("--fill-ratios"); // re-process symbols that have financials but missing valuation ratios
 
 async function getSymbolsToFetch(): Promise<string[]> {
   if (symbolsArg) {
     return symbolsArg.split("=")[1].split(",").map((s) => s.trim().toUpperCase());
   }
 
-  // Symbols in securities table that have NO entry in financials yet
+  if (fillMissing) {
+    // Symbols that HAVE financials but are missing pe_ratio in valuation_metrics
+    // (e.g. Chinese stocks where FMP didn't return pre-calculated ratios)
+    const rows = await sql<{ symbol: string }[]>`
+      SELECT DISTINCT f.symbol
+      FROM financials f
+      WHERE EXISTS (
+        SELECT 1 FROM valuation_metrics vm
+        WHERE vm.symbol = f.symbol
+          AND vm.pe_ratio IS NULL
+          AND vm.price_to_book IS NULL
+      )
+      ORDER BY f.symbol ASC
+      LIMIT ${LIMIT}
+    `;
+    return rows.map((r) => r.symbol);
+  }
+
+  // Default: symbols with NO entry in financials yet
   const rows = await sql<{ symbol: string }[]>`
     SELECT s.symbol
     FROM securities s
@@ -82,7 +101,8 @@ async function main() {
     return;
   }
 
-  console.log(`Fetching fundamentals for ${symbols.length} symbols (batch=${BATCH}, fast=${annualOnly})…\n`);
+  const mode = fillMissing ? "fill-ratios" : annualOnly ? "fast" : "full";
+  console.log(`Fetching fundamentals for ${symbols.length} symbols (batch=${BATCH}, mode=${mode})…\n`);
 
   let success = 0;
   let failed = 0;

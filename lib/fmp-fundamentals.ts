@@ -367,6 +367,85 @@ export async function fetchAndStoreFundamentals(
       source: "fmp",
     };
 
+    // ── Derived metrics fallback ─────────────────────────────────────────────
+    // FMP often omits pre-calculated ratios for non-US markets (e.g. Chinese
+    // stocks). Compute them from raw financial data when they are null.
+    // P/E uses price÷eps (same local currency). P/B, P/S, EV multiples use
+    // shares×price as local market cap divided by the financial statement value
+    // (both denominator and implied numerator are in the same reported currency).
+    if (latestInc) {
+      const price      = q ? n(q.price) : null;
+      const eps        = q ? n(q.eps)   : null;
+      const latestBal  = balAnnualMap.get(latestInc.date);
+      const latestCash = cashAnnualMap.get(latestInc.date);
+
+      const netIncome  = n(latestInc.netIncome);
+      const revenue    = n(latestInc.revenue);
+      const ebitda     = n(latestInc.ebitda);
+      const equity     = latestBal ? n(latestBal.totalStockholdersEquity) : null;
+      const totalDebt  = latestBal ? n(latestBal.totalDebt) : null;
+      const cashVal    = latestBal ? n(latestBal.cashAndCashEquivalents) : null;
+      const shares     = latestBal ? n(latestBal.sharesOutstanding ?? latestBal.commonStock) : null;
+      const fcf        = latestCash ? n(latestCash.freeCashFlow) : null;
+
+      // Local market cap = price × shares (avoids USD/local-currency mismatch)
+      const localMktCap =
+        price != null && shares != null && shares > 0
+          ? price * shares
+          : valuationInput.marketCap;
+
+      // P/E — price ÷ eps (most accurate, same currency)
+      if (valuationInput.peRatio == null && price != null && eps != null && eps > 0) {
+        valuationInput.peRatio = price / eps;
+      }
+      // P/E fallback — local market cap ÷ net income
+      if (valuationInput.peRatio == null && localMktCap != null && localMktCap > 0 && netIncome != null && netIncome > 0) {
+        valuationInput.peRatio = localMktCap / netIncome;
+      }
+
+      // P/B — local market cap ÷ total equity
+      if (valuationInput.priceToBook == null && localMktCap != null && localMktCap > 0 && equity != null && equity > 0) {
+        valuationInput.priceToBook = localMktCap / equity;
+      }
+
+      // P/S — local market cap ÷ revenue
+      if (valuationInput.priceToSales == null && localMktCap != null && localMktCap > 0 && revenue != null && revenue > 0) {
+        valuationInput.priceToSales = localMktCap / revenue;
+      }
+
+      // Enterprise value — local market cap + debt − cash
+      if (valuationInput.enterpriseValue == null && localMktCap != null && totalDebt != null && cashVal != null) {
+        valuationInput.enterpriseValue = localMktCap + totalDebt - cashVal;
+      }
+      const ev = valuationInput.enterpriseValue;
+
+      // EV/EBITDA
+      if (valuationInput.evToEbitda == null && ev != null && ev > 0 && ebitda != null && ebitda > 0) {
+        valuationInput.evToEbitda = ev / ebitda;
+      }
+
+      // EV/Revenue
+      if (valuationInput.evToRevenue == null && ev != null && ev > 0 && revenue != null && revenue > 0) {
+        valuationInput.evToRevenue = ev / revenue;
+      }
+
+      // P/FCF
+      if (valuationInput.priceToFcf == null && localMktCap != null && localMktCap > 0 && fcf != null && fcf > 0) {
+        valuationInput.priceToFcf = localMktCap / fcf;
+      }
+
+      // Earnings yield (inverse of P/E)
+      if (valuationInput.earningsYield == null && valuationInput.peRatio != null && valuationInput.peRatio > 0) {
+        valuationInput.earningsYield = 1 / valuationInput.peRatio;
+      }
+
+      // Book value per share
+      if (valuationInput.bookValuePerShare == null && equity != null && shares != null && shares > 0) {
+        valuationInput.bookValuePerShare = equity / shares;
+      }
+    }
+    // ────────────────────────────────────────────────────────────────────────
+
     ops.push(upsertValuationMetric(valuationInput).catch(() => null));
 
     await Promise.all(ops);
