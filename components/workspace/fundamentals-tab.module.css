@@ -1,0 +1,247 @@
+/* ─── Container ─────────────────────────────────────────────────────────────── */
+.section {
+  display: grid;
+  gap: 1.5rem;
+}
+
+/* ─── Section header ──────────────────────────────────────────────────────── */
+.sectionHead {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 0.75rem;
+  flex-wrap: wrap;
+}
+
+.sectionTitle {
+  margin: 0;
+  font-size: 0.8rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.18em;
+  color: hsl(215 24% 84%);
+}
+
+.pill {
+  display: inline-flex;
+  align-items: center;
+  border-radius: 999px;
+  padding: 0.2rem 0.65rem;
+  font-size: 0.72rem;
+  font-weight: 500;
+  letter-spacing: 0.14em;
+  text-transform: uppercase;
+  border: 1px solid hsl(217 80% 52% / 0.35);
+  background: hsl(217 80% 52% / 0.12);
+  color: hsl(217 90% 72%);
+}
+
+/* ─── Grid layouts ────────────────────────────────────────────────────────── */
+.kpiGrid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0.75rem;
+}
+
+@media (min-width: 640px) {
+  .kpiGrid {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+}
+
+@media (min-width: 1024px) {
+  .kpiGrid {
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+  }
+}
+
+.twoCol {
+  display: grid;
+  gap: 1.5rem;
+}
+
+@media (min-width: 900px) {
+  .twoCol {
+    grid-template-columns: 1fr 1fr;
+  }
+}
+
+/* ─── KPI Card ────────────────────────────────────────────────────────────── */
+.kpiCard {
+  border-radius: 0.875rem;
+  border: 1px solid hsl(222 30% 22%);
+  background: hsl(222 42% 8%);
+  padding: 0.875rem 1rem;
+}
+
+.kpiLabel {
+  font-size: 0.69rem;
+  text-transform: uppercase;
+  letter-spacing: 0.16em;
+  color: hsl(215 18% 58%);
+}
+
+.kpiValue {
+  margin-top: 0.375rem;
+  font-size: 1.1rem;
+  font-weight: 600;
+  color: hsl(210 40% 96%);
+}
+
+.kpiValue.positive {
+  color: hsl(155 72% 68%);
+}
+
+.kpiValue.negative {
+  color: hsl(0 82% 76%);
+}
+
+.kpiSub {
+  margin-top: 0.2rem;
+  font-size: 0.75rem;
+  color: hsl(215 18% 54%);
+}
+
+/* ─── Ratio row ───────────────────────────────────────────────────────────── */
+.ratioTable {
+  display: grid;
+  gap: 0.25rem;
+}
+
+.ratioRow {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.45rem 0;
+  border-bottom: 1px solid hsl(222 30% 18%);
+  gap: 0.5rem;
+}
+
+.ratioRow:last-child {
+  border-bottom: none;
+}
+
+.ratioLabel {
+  font-size: 0.8rem;
+  color: hsl(215 20% 66%);
+}
+
+.ratioValue {
+  font-size: 0.85rem;
+  font-weight: 500;
+  color: hsl(210 40% 96%);
+}
+
+.ratioValue.positive {
+  color: hsl(155 72% 68%);
+}
+
+.ratioValue.negative {
+  color: hsl(0 82% 76%);
+}
+
+/* ─── Historical table ────────────────────────────────────────────────────── */
+.tableWrapper {
+  overflow-x: auto;
+  border-radius: 0.75rem;
+  border: 1px solid hsl(222 30% 22%);
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.table thead tr {
+  background: hsl(222 42% 8%);
+}
+
+.table th {
+  padding: 0.6rem 0.875rem;
+  text-align: right;
+  font-size: 0.69rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: hsl(215 18% 58%);
+  white-space: nowrap;
+}
+
+.table th:first-child {
+  text-align: left;
+}
+
+.table td {
+  padding: 0.55rem 0.875rem;
+  text-align: right;
+  color: hsl(210 40% 90%);
+  border-top: 1px solid hsl(222 30% 16%);
+  white-space: nowrap;
+}
+
+.table td:first-child {
+  text-align: left;
+  color: hsl(215 24% 78%);
+  font-weight: 500;
+}
+
+.table tbody tr:hover td {
+  background: hsl(222 42% 11%);
+}
+
+/* ─── Empty state ──────────────────────────────────────────────────────────── */
+.emptyState {
+  border-radius: 0.75rem;
+  border: 1px dashed hsl(222 30% 22%);
+  background: hsl(222 42% 8% / 0.55);
+  padding: 2rem 1rem;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: hsl(215 24% 78%);
+}
+
+.emptyBody {
+  margin-top: 0.375rem;
+  font-size: 0.8rem;
+  color: hsl(215 18% 56%);
+}
+
+/* ─── Card ─────────────────────────────────────────────────────────────────── */
+.card {
+  border-radius: 1rem;
+  border: 1px solid hsl(222 30% 22%);
+  background: hsl(222 44% 10% / 0.92);
+  box-shadow: 0 8px 30px hsl(0 0% 0% / 0.22);
+}
+
+.cardHead {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 1rem;
+  padding: 1rem 1.25rem;
+  border-bottom: 1px solid hsl(222 30% 22%);
+}
+
+.cardBody {
+  padding: 1.25rem;
+}
+
+.subText {
+  margin-top: 0.2rem;
+  font-size: 0.8rem;
+  color: hsl(215 18% 56%);
+}
+
+/* ─── Source badge ─────────────────────────────────────────────────────────── */
+.sourceBadge {
+  font-size: 0.7rem;
+  color: hsl(215 18% 50%);
+  margin-top: 0.75rem;
+}

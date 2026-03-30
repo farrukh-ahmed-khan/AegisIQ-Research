@@ -30,6 +30,19 @@ export type SecurityMasterQueryFilters = {
   search?: string;
   limit?: number;
   offset?: number;
+  // Phase 12 — fundamentals-based filters
+  marketCapBucket?: string[];
+  peRatioMin?: number;
+  peRatioMax?: number;
+  evToEbitdaMin?: number;
+  evToEbitdaMax?: number;
+  priceToBookMin?: number;
+  priceToBookMax?: number;
+  priceToSalesMin?: number;
+  priceToSalesMax?: number;
+  revenueGrowthMin?: number;
+  earningsGrowthMin?: number;
+  fcfGrowthMin?: number;
 };
 
 export type SecurityMasterRecord = {
@@ -49,6 +62,15 @@ export type SecurityMasterRecord = {
   country?: string | null;
   currency?: string | null;
   securityType?: string | null;
+  // Phase 12 — fundamentals fields
+  marketCap?: number | null;
+  peRatio?: number | null;
+  evToEbitda?: number | null;
+  priceToBook?: number | null;
+  priceToSales?: number | null;
+  revenueGrowthYoy?: number | null;
+  earningsGrowthYoy?: number | null;
+  fcfGrowthYoy?: number | null;
 };
 
 type RawCountRow = {
@@ -88,6 +110,15 @@ type RawSecurityRow = {
   country: string | null;
   currency: string | null;
   securityType: string | null;
+  // Phase 12
+  marketCap: number | null;
+  peRatio: number | null;
+  evToEbitda: number | null;
+  priceToBook: number | null;
+  priceToSales: number | null;
+  revenueGrowthYoy: number | null;
+  earningsGrowthYoy: number | null;
+  fcfGrowthYoy: number | null;
 };
 
 const DEFAULT_LIMIT = 50;
@@ -140,6 +171,14 @@ function mapSecurityRow(row: RawSecurityRow): SecurityMasterRecord {
     country: row.country,
     currency: row.currency,
     securityType: row.securityType,
+    marketCap: row.marketCap,
+    peRatio: row.peRatio,
+    evToEbitda: row.evToEbitda,
+    priceToBook: row.priceToBook,
+    priceToSales: row.priceToSales,
+    revenueGrowthYoy: row.revenueGrowthYoy,
+    earningsGrowthYoy: row.earningsGrowthYoy,
+    fcfGrowthYoy: row.fcfGrowthYoy,
   };
 }
 
@@ -179,7 +218,7 @@ function buildSearchClause(
   const symbolValues = normalizeSymbolValues(filters.symbol);
 
   if (symbolValues.length > 0) {
-    return buildInClause("UPPER(symbol)", symbolValues, params);
+    return buildInClause("UPPER(s.symbol)", symbolValues, params);
   }
 
   if (
@@ -201,10 +240,10 @@ function buildSearchClause(
     params.push(`%${trimmedSearch.toLowerCase()}%`);
     const normalizedCompanyNamePlaceholder = `$${params.length}`;
 
-    return `(company_name ILIKE ${companyNamePlaceholder} OR normalized_company_name LIKE ${normalizedCompanyNamePlaceholder} OR UPPER(symbol) LIKE ${symbolPlaceholder})`;
+    return `(s.company_name ILIKE ${companyNamePlaceholder} OR s.normalized_company_name LIKE ${normalizedCompanyNamePlaceholder} OR UPPER(s.symbol) LIKE ${symbolPlaceholder})`;
   }
 
-  return `(company_name ILIKE ${companyNamePlaceholder} OR UPPER(symbol) LIKE ${symbolPlaceholder})`;
+  return `(s.company_name ILIKE ${companyNamePlaceholder} OR UPPER(s.symbol) LIKE ${symbolPlaceholder})`;
 }
 
 function normalizeIsActiveValues(values: string[] | undefined): boolean[] {
@@ -355,6 +394,63 @@ export async function getSecurityMasterSupportedFilters(
   };
 }
 
+const MARKET_CAP_BUCKETS: Record<string, { min?: number; max?: number }> = {
+  nano:  { max: 50_000_000 },
+  micro: { min: 50_000_000,    max: 300_000_000 },
+  small: { min: 300_000_000,   max: 2_000_000_000 },
+  mid:   { min: 2_000_000_000, max: 10_000_000_000 },
+  large: { min: 10_000_000_000, max: 200_000_000_000 },
+  mega:  { min: 200_000_000_000 },
+};
+
+function buildMarketCapBucketClause(
+  buckets: string[],
+  params: Array<string | number>,
+): string | undefined {
+  const valid = buckets.filter((b) => b in MARKET_CAP_BUCKETS);
+  if (valid.length === 0) return undefined;
+
+  const parts = valid.map((bucket) => {
+    const { min, max } = MARKET_CAP_BUCKETS[bucket];
+    if (min !== undefined && max !== undefined) {
+      params.push(min);
+      const minIdx = params.length;
+      params.push(max);
+      const maxIdx = params.length;
+      return `(vm.market_cap >= $${minIdx} AND vm.market_cap < $${maxIdx})`;
+    }
+    if (min !== undefined) {
+      params.push(min);
+      return `vm.market_cap >= $${params.length}`;
+    }
+    if (max !== undefined) {
+      params.push(max);
+      return `vm.market_cap < $${params.length}`;
+    }
+    return null;
+  }).filter(Boolean);
+
+  return parts.length > 0 ? `(${parts.join(" OR ")})` : undefined;
+}
+
+function buildNumericClause(
+  column: string,
+  min: number | undefined,
+  max: number | undefined,
+  params: Array<string | number>,
+): string[] {
+  const clauses: string[] = [];
+  if (min !== undefined && Number.isFinite(min)) {
+    params.push(min);
+    clauses.push(`${column} >= $${params.length}`);
+  }
+  if (max !== undefined && Number.isFinite(max)) {
+    params.push(max);
+    clauses.push(`${column} <= $${params.length}`);
+  }
+  return clauses;
+}
+
 function buildWhereClause(
   filters: SecurityMasterQueryFilters | undefined,
   params: Array<string | number>,
@@ -363,15 +459,15 @@ function buildWhereClause(
   const whereClauses: string[] = [];
 
   if (filters?.sector && filters.sector.length > 0) {
-    whereClauses.push(buildInClause("sector", filters.sector, params));
+    whereClauses.push(buildInClause("s.sector", filters.sector, params));
   }
 
   if (filters?.industry && filters.industry.length > 0) {
-    whereClauses.push(buildInClause("industry", filters.industry, params));
+    whereClauses.push(buildInClause("s.industry", filters.industry, params));
   }
 
   if (filters?.exchange && filters.exchange.length > 0) {
-    whereClauses.push(buildInClause("exchange", filters.exchange, params));
+    whereClauses.push(buildInClause("s.exchange", filters.exchange, params));
   }
 
   if (
@@ -380,35 +476,35 @@ function buildWhereClause(
     filters.primaryExchange.length > 0
   ) {
     whereClauses.push(
-      buildInClause("primary_exchange", filters.primaryExchange, params),
+      buildInClause("s.primary_exchange", filters.primaryExchange, params),
     );
   }
 
   if (availableColumns.region && filters?.region && filters.region.length > 0) {
-    whereClauses.push(buildInClause("region", filters.region, params));
+    whereClauses.push(buildInClause("s.region", filters.region, params));
   }
 
   if (availableColumns.isActive) {
     const isActiveValues = normalizeIsActiveValues(filters?.isActive);
     if (isActiveValues.length === 1) {
       params.push(isActiveValues[0] ? 1 : 0);
-      whereClauses.push(`is_active = ($${params.length} = 1)`);
+      whereClauses.push(`s.is_active = ($${params.length} = 1)`);
     } else if (isActiveValues.length === 2) {
-      whereClauses.push("is_active IN (true, false)");
+      whereClauses.push("s.is_active IN (true, false)");
     }
   }
 
   if (filters?.country && filters.country.length > 0) {
-    whereClauses.push(buildInClause("country", filters.country, params));
+    whereClauses.push(buildInClause("s.country", filters.country, params));
   }
 
   if (filters?.currency && filters.currency.length > 0) {
-    whereClauses.push(buildInClause("currency", filters.currency, params));
+    whereClauses.push(buildInClause("s.currency", filters.currency, params));
   }
 
   if (filters?.securityType && filters.securityType.length > 0) {
     whereClauses.push(
-      buildInClause("security_type", filters.securityType, params),
+      buildInClause("s.security_type", filters.securityType, params),
     );
   }
 
@@ -419,6 +515,37 @@ function buildWhereClause(
   );
   if (searchClause) {
     whereClauses.push(searchClause);
+  }
+
+  // Phase 12 — fundamentals filters
+  if (filters?.marketCapBucket && filters.marketCapBucket.length > 0) {
+    const clause = buildMarketCapBucketClause(filters.marketCapBucket, params);
+    if (clause) whereClauses.push(clause);
+  }
+
+  for (const clause of buildNumericClause("vm.pe_ratio", filters?.peRatioMin, filters?.peRatioMax, params)) {
+    whereClauses.push(clause);
+  }
+  for (const clause of buildNumericClause("vm.ev_to_ebitda", filters?.evToEbitdaMin, filters?.evToEbitdaMax, params)) {
+    whereClauses.push(clause);
+  }
+  for (const clause of buildNumericClause("vm.price_to_book", filters?.priceToBookMin, filters?.priceToBookMax, params)) {
+    whereClauses.push(clause);
+  }
+  for (const clause of buildNumericClause("vm.price_to_sales", filters?.priceToSalesMin, filters?.priceToSalesMax, params)) {
+    whereClauses.push(clause);
+  }
+  if (filters?.revenueGrowthMin !== undefined && Number.isFinite(filters.revenueGrowthMin)) {
+    params.push(filters.revenueGrowthMin);
+    whereClauses.push(`r.revenue_growth_yoy >= $${params.length}`);
+  }
+  if (filters?.earningsGrowthMin !== undefined && Number.isFinite(filters.earningsGrowthMin)) {
+    params.push(filters.earningsGrowthMin);
+    whereClauses.push(`r.earnings_growth_yoy >= $${params.length}`);
+  }
+  if (filters?.fcfGrowthMin !== undefined && Number.isFinite(filters.fcfGrowthMin)) {
+    params.push(filters.fcfGrowthMin);
+    whereClauses.push(`r.fcf_growth_yoy >= $${params.length}`);
   }
 
   return whereClauses.length > 0 ? `WHERE ${whereClauses.join(" AND ")}` : "";
@@ -434,7 +561,26 @@ export async function countSecurityMasterQuery(
   const whereSql = buildWhereClause(filters, params, availableColumns);
 
   const rows = await sql.unsafe<RawCountRow[]>(
-    `SELECT COUNT(*)::int AS count FROM securities ${whereSql}`,
+    `
+    WITH latest_vm AS (
+      SELECT DISTINCT ON (symbol)
+        symbol, market_cap, pe_ratio, ev_to_ebitda, price_to_book, price_to_sales
+      FROM valuation_metrics
+      ORDER BY symbol, as_of_date DESC NULLS LAST
+    ),
+    latest_ratios AS (
+      SELECT DISTINCT ON (symbol)
+        symbol, revenue_growth_yoy, earnings_growth_yoy, fcf_growth_yoy
+      FROM ratios
+      WHERE period_type = 'annual'
+      ORDER BY symbol, period_end_date DESC NULLS LAST
+    )
+    SELECT COUNT(*)::int AS count
+    FROM public.securities s
+    LEFT JOIN latest_vm vm ON vm.symbol = s.symbol
+    LEFT JOIN latest_ratios r ON r.symbol = s.symbol
+    ${whereSql}
+    `,
     params,
   );
 
@@ -460,27 +606,50 @@ export async function querySecurityMaster(
 
   const rows = await sql.unsafe<RawSecurityRow[]>(
     `
-      SELECT
-        id,
-        symbol,
-        company_name AS "companyName",
-        ${availableColumns.normalizedCompanyName ? "normalized_company_name" : "NULL::text"} AS "normalizedCompanyName",
-        sector,
-        industry,
-        exchange,
-        ${availableColumns.primaryExchange ? "primary_exchange" : "NULL::text"} AS "primaryExchange",
-        ${availableColumns.region ? "region" : "NULL::text"} AS region,
-        ${availableColumns.isActive ? "is_active" : "NULL::boolean"} AS "isActive",
-        ${availableColumns.isin ? "isin" : "NULL::text"} AS isin,
-        ${availableColumns.figi ? "figi" : "NULL::text"} AS figi,
-        country,
-        currency,
-        security_type AS "securityType"
-      FROM public.securities
-      ${whereSql}
-      ORDER BY symbol ASC
-      LIMIT ${limitPlaceholder}
-      OFFSET ${offsetPlaceholder}
+    WITH latest_vm AS (
+      SELECT DISTINCT ON (symbol)
+        symbol, market_cap, pe_ratio, ev_to_ebitda, price_to_book, price_to_sales
+      FROM valuation_metrics
+      ORDER BY symbol, as_of_date DESC NULLS LAST
+    ),
+    latest_ratios AS (
+      SELECT DISTINCT ON (symbol)
+        symbol, revenue_growth_yoy, earnings_growth_yoy, fcf_growth_yoy
+      FROM ratios
+      WHERE period_type = 'annual'
+      ORDER BY symbol, period_end_date DESC NULLS LAST
+    )
+    SELECT
+      s.id,
+      s.symbol,
+      s.company_name AS "companyName",
+      ${availableColumns.normalizedCompanyName ? "s.normalized_company_name" : "NULL::text"} AS "normalizedCompanyName",
+      s.sector,
+      s.industry,
+      s.exchange,
+      ${availableColumns.primaryExchange ? "s.primary_exchange" : "NULL::text"} AS "primaryExchange",
+      ${availableColumns.region ? "s.region" : "NULL::text"} AS region,
+      ${availableColumns.isActive ? "s.is_active" : "NULL::boolean"} AS "isActive",
+      ${availableColumns.isin ? "s.isin" : "NULL::text"} AS isin,
+      ${availableColumns.figi ? "s.figi" : "NULL::text"} AS figi,
+      s.country,
+      s.currency,
+      s.security_type AS "securityType",
+      vm.market_cap AS "marketCap",
+      vm.pe_ratio AS "peRatio",
+      vm.ev_to_ebitda AS "evToEbitda",
+      vm.price_to_book AS "priceToBook",
+      vm.price_to_sales AS "priceToSales",
+      r.revenue_growth_yoy AS "revenueGrowthYoy",
+      r.earnings_growth_yoy AS "earningsGrowthYoy",
+      r.fcf_growth_yoy AS "fcfGrowthYoy"
+    FROM public.securities s
+    LEFT JOIN latest_vm vm ON vm.symbol = s.symbol
+    LEFT JOIN latest_ratios r ON r.symbol = s.symbol
+    ${whereSql}
+    ORDER BY s.symbol ASC
+    LIMIT ${limitPlaceholder}
+    OFFSET ${offsetPlaceholder}
     `,
     params,
   );

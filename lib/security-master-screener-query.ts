@@ -8,6 +8,25 @@ import {
 const MAX_MULTI_VALUE_FILTERS = 50;
 const MAX_LIMIT = 200;
 
+const VALID_MARKET_CAP_BUCKETS = new Set(["nano", "micro", "small", "mid", "large", "mega"]);
+
+function normalizeOptionalNumber(value: unknown): number | undefined {
+  if (typeof value === "number" && Number.isFinite(value)) return value;
+  if (typeof value === "string") {
+    const n = parseFloat(value);
+    if (Number.isFinite(n)) return n;
+  }
+  return undefined;
+}
+
+function normalizeMarketCapBuckets(value: unknown): string[] | undefined {
+  const arr = Array.isArray(value) ? value : typeof value === "string" ? [value] : [];
+  const valid = arr
+    .map((v) => (typeof v === "string" ? v.trim().toLowerCase() : ""))
+    .filter((v) => VALID_MARKET_CAP_BUCKETS.has(v));
+  return valid.length > 0 ? valid : undefined;
+}
+
 export type SecurityMasterScreenerQueryInput = {
   workspaceId?: string;
   filters?: SecurityMasterQueryFilters;
@@ -83,6 +102,19 @@ export function normalizeSecurityMasterFilters(
         : undefined,
     search: normalizeSearch(source.search),
     limit: normalizeLimit(source.limit),
+    // Phase 12
+    marketCapBucket: normalizeMarketCapBuckets(source.marketCapBucket),
+    peRatioMin: normalizeOptionalNumber(source.peRatioMin),
+    peRatioMax: normalizeOptionalNumber(source.peRatioMax),
+    evToEbitdaMin: normalizeOptionalNumber(source.evToEbitdaMin),
+    evToEbitdaMax: normalizeOptionalNumber(source.evToEbitdaMax),
+    priceToBookMin: normalizeOptionalNumber(source.priceToBookMin),
+    priceToBookMax: normalizeOptionalNumber(source.priceToBookMax),
+    priceToSalesMin: normalizeOptionalNumber(source.priceToSalesMin),
+    priceToSalesMax: normalizeOptionalNumber(source.priceToSalesMax),
+    revenueGrowthMin: normalizeOptionalNumber(source.revenueGrowthMin),
+    earningsGrowthMin: normalizeOptionalNumber(source.earningsGrowthMin),
+    fcfGrowthMin: normalizeOptionalNumber(source.fcfGrowthMin),
   };
 }
 

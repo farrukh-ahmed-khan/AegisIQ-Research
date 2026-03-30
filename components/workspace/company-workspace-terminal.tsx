@@ -1,5 +1,6 @@
 import Link from "next/link";
 import type { CompanyWorkspaceTerminalViewModel } from "../../types/workspace";
+import type { FundamentalsViewModel } from "../../types/fundamentals";
 import styles from "./company-workspace-terminal.module.css";
 import {
   createWorkspaceDocumentAction,
@@ -8,9 +9,11 @@ import {
   updateWorkspaceNoteAction,
   uploadWorkspaceDocumentAction,
 } from "../../app/workspace/[symbol]/actions";
+import { FundamentalsTab } from "./fundamentals-tab";
 
 interface CompanyWorkspaceTerminalProps {
   data: CompanyWorkspaceTerminalViewModel;
+  fundamentals?: FundamentalsViewModel | null;
 }
 
 function formatCurrency(value: number | null, currency: string): string {
@@ -426,6 +429,7 @@ function DeleteNoteForm({
 
 export function CompanyWorkspaceTerminal({
   data,
+  fundamentals,
 }: CompanyWorkspaceTerminalProps) {
   const latestValuation = data.valuations[0];
   const latestReport = data.reports[0];
@@ -763,6 +767,15 @@ export function CompanyWorkspaceTerminal({
             )}
           </Card>
         </div>
+
+        {fundamentals ? (
+          <Card
+            title="Fundamentals"
+            description="Financial statements, key ratios, and valuation metrics."
+          >
+            <FundamentalsTab data={fundamentals} />
+          </Card>
+        ) : null}
 
         <Card
           title="Recent Report Runs"

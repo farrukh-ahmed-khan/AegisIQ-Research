@@ -1,7 +1,8 @@
-import { notFound } from "next/navigation";
+import { notFound, redirect } from "next/navigation";
 import { auth } from "@clerk/nextjs/server";
 import { CompanyWorkspaceTerminal } from "../../../components/workspace/company-workspace-terminal";
 import { getWorkspaceTerminalViewModel } from "../../../lib/workspace-repository";
+import { getFundamentalsViewModel } from "../../../lib/fundamentals-repository";
 import styles from "./workspace-symbol.module.css";
 
 interface WorkspacePageProps {
@@ -24,7 +25,7 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
   const { userId } = await auth();
 
   if (!userId) {
-    notFound();
+    redirect("/sign-in");
   }
 
   const resolvedParams = await params;
@@ -34,13 +35,16 @@ export default async function WorkspacePage({ params }: WorkspacePageProps) {
     notFound();
   }
 
-  const data = await getWorkspaceTerminalViewModel(userId, symbol);
+  const [data, fundamentals] = await Promise.all([
+    getWorkspaceTerminalViewModel(userId, symbol),
+    getFundamentalsViewModel(symbol).catch(() => null),
+  ]);
 
   return (
     <main className={styles.page}>
       <div className={styles.glowBlue} />
       <div className={styles.glowGold} />
-      <CompanyWorkspaceTerminal data={data} />
+      <CompanyWorkspaceTerminal data={data} fundamentals={fundamentals} />
     </main>
   );
 }

@@ -73,42 +73,190 @@
   color: hsl(215 20% 60%);
 }
 
-.quickStart {
+/* ─── Search ─────────────────────────────────────────────────────────────── */
+.searchForm {
   margin-top: 28px;
-}
-
-.quickStartTitle {
-  margin: 0;
-  font-size: 0.78rem;
-  font-weight: 600;
-  text-transform: uppercase;
-  letter-spacing: 0.18em;
-  color: hsl(215 20% 62%);
-}
-
-.symbolGrid {
-  margin-top: 14px;
   display: flex;
+  gap: 10px;
   flex-wrap: wrap;
+  align-items: center;
+}
+
+.searchInput {
+  flex: 1;
+  min-width: 220px;
+  border-radius: 10px;
+  border: 1px solid hsl(222 30% 22%);
+  background: hsl(222 42% 8%);
+  color: hsl(210 40% 96%);
+  padding: 10px 14px;
+  font-size: 0.9rem;
+  outline: none;
+  transition: border-color 0.2s ease;
+}
+
+.searchInput:focus {
+  border-color: hsl(217 80% 52% / 0.55);
+}
+
+.searchInput::placeholder {
+  color: hsl(215 18% 48%);
+}
+
+.searchButton {
+  border-radius: 10px;
+  border: 0;
+  background: linear-gradient(135deg, hsl(43 85% 70%), hsl(43 80% 55%));
+  color: hsl(222 47% 6%);
+  padding: 10px 20px;
+  font-size: 0.88rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: opacity 0.2s ease;
+}
+
+.searchButton:hover {
+  opacity: 0.88;
+}
+
+.clearLink {
+  font-size: 0.85rem;
+  color: hsl(215 18% 56%);
+  text-decoration: none;
+  padding: 4px 0;
+}
+
+.clearLink:hover {
+  color: hsl(215 20% 76%);
+}
+
+/* ─── Results bar ─────────────────────────────────────────────────────────── */
+.resultsBar {
+  margin-top: 16px;
+  margin-bottom: 4px;
+}
+
+.resultsCount {
+  font-size: 0.78rem;
+  text-transform: uppercase;
+  letter-spacing: 0.14em;
+  color: hsl(215 18% 52%);
+}
+
+/* ─── Symbol grid ─────────────────────────────────────────────────────────── */
+.symbolGrid {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
   gap: 10px;
 }
 
-.symbolLink {
-  border-radius: 10px;
+.symbolCard {
+  border-radius: 12px;
   border: 1px solid hsl(222 30% 20%);
   background: hsl(222 42% 8%);
-  color: hsl(210 40% 96%);
-  padding: 9px 14px;
+  padding: 12px 14px;
   text-decoration: none;
-  font-size: 0.88rem;
-  font-weight: 600;
-  transition: transform 0.2s ease, border-color 0.2s ease, background-color 0.2s ease;
+  display: flex;
+  flex-direction: column;
+  gap: 3px;
+  transition: transform 0.18s ease, border-color 0.18s ease, background 0.18s ease;
 }
 
-.symbolLink:hover {
-  transform: translateY(-1px);
-  border-color: hsl(217 80% 52% / 0.45);
+.symbolCard:hover {
+  transform: translateY(-2px);
+  border-color: hsl(217 80% 52% / 0.4);
+  background: hsl(222 44% 11%);
+}
+
+.symbolTicker {
+  font-size: 0.92rem;
+  font-weight: 700;
+  color: hsl(210 40% 96%);
+  letter-spacing: 0.04em;
+}
+
+.symbolName {
+  font-size: 0.76rem;
+  color: hsl(215 20% 70%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.symbolMeta {
+  font-size: 0.7rem;
+  color: hsl(215 18% 50%);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* ─── Empty state ─────────────────────────────────────────────────────────── */
+.emptyState {
+  margin-top: 16px;
+  border-radius: 12px;
+  border: 1px dashed hsl(222 30% 22%);
+  background: hsl(222 42% 8% / 0.6);
+  padding: 2rem;
+  text-align: center;
+}
+
+.emptyTitle {
+  margin: 0;
+  font-size: 0.9rem;
+  font-weight: 600;
+  color: hsl(215 24% 78%);
+}
+
+.emptyText {
+  margin: 6px 0 0;
+  font-size: 0.82rem;
+  color: hsl(215 18% 54%);
+}
+
+/* ─── Pagination ──────────────────────────────────────────────────────────── */
+.pagination {
+  margin-top: 24px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  justify-content: center;
+}
+
+.pageBtn {
+  border-radius: 10px;
+  border: 1px solid hsl(222 30% 22%);
+  background: hsl(222 42% 8%);
+  color: hsl(210 40% 96%);
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.18s ease, border-color 0.18s ease;
+}
+
+.pageBtn:hover {
   background: hsl(222 44% 12%);
+  border-color: hsl(217 80% 52% / 0.4);
+}
+
+.pageBtnDisabled {
+  border-radius: 10px;
+  border: 1px solid hsl(222 30% 16%);
+  background: transparent;
+  color: hsl(215 18% 36%);
+  padding: 8px 18px;
+  font-size: 0.85rem;
+  font-weight: 500;
+  cursor: default;
+}
+
+.pageInfo {
+  font-size: 0.82rem;
+  color: hsl(215 18% 54%);
+  min-width: 60px;
+  text-align: center;
 }
 
 .cards {

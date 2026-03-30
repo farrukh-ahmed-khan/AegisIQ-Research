@@ -11,6 +11,14 @@ export type ScreenerFilterKey =
   | "currency"
   | "securityType";
 
+export type MarketCapBucket =
+  | "nano"
+  | "micro"
+  | "small"
+  | "mid"
+  | "large"
+  | "mega";
+
 export type SupportedFiltersMap = Record<ScreenerFilterKey, string[]>;
 
 export interface ScreenerResultRow {
@@ -30,6 +38,15 @@ export interface ScreenerResultRow {
   country?: string | null;
   currency?: string | null;
   securityType?: string | null;
+  // Phase 12 — fundamentals columns
+  marketCap?: number | null;
+  peRatio?: number | null;
+  evToEbitda?: number | null;
+  priceToBook?: number | null;
+  priceToSales?: number | null;
+  revenueGrowthYoy?: number | null;
+  earningsGrowthYoy?: number | null;
+  fcfGrowthYoy?: number | null;
 }
 
 export interface ScreenerApiResponse {
@@ -55,4 +72,17 @@ export interface ScreenerQueryState {
   securityType: string;
   page: number;
   pageSize: number;
+  // Phase 12 — advanced filters
+  marketCapBuckets: MarketCapBucket[];
+  peRatioMin: string;
+  peRatioMax: string;
+  evToEbitdaMin: string;
+  evToEbitdaMax: string;
+  priceToBookMin: string;
+  priceToBookMax: string;
+  priceToSalesMin: string;
+  priceToSalesMax: string;
+  revenueGrowthMin: string;
+  earningsGrowthMin: string;
+  fcfGrowthMin: string;
 }
