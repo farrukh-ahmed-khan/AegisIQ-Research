@@ -1,0 +1,180 @@
+.page {
+  min-height: 100vh;
+  background: hsl(222 47% 6%);
+  color: hsl(210 40% 96%);
+  position: relative;
+  overflow: hidden;
+}
+
+.glowBlue {
+  position: absolute;
+  top: 10%;
+  left: 10%;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  filter: blur(100px);
+  background: hsl(217 80% 52% / 0.08);
+}
+
+.glowGold {
+  position: absolute;
+  bottom: 8%;
+  right: 8%;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  filter: blur(100px);
+  background: hsl(43 80% 55% / 0.08);
+}
+
+.container {
+  max-width: 1080px;
+  margin: 0 auto;
+  padding: 92px 24px 56px;
+  position: relative;
+  z-index: 1;
+}
+
+.title {
+  margin: 0;
+  font-size: clamp(1.95rem, 3.8vw, 2.7rem);
+  letter-spacing: -0.02em;
+}
+
+.subtitle {
+  margin: 10px 0 0;
+  color: hsl(215 20% 66%);
+  line-height: 1.7;
+  max-width: 760px;
+}
+
+.panel {
+  margin-top: 20px;
+  border-radius: 16px;
+  border: 1px solid hsl(222 30% 18%);
+  background: hsl(222 44% 10% / 0.92);
+  padding: 16px;
+}
+
+.row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.input,
+.textarea,
+.button,
+.secondaryButton {
+  border-radius: 10px;
+  font-size: 0.92rem;
+}
+
+.input,
+.textarea {
+  border: 1px solid hsl(222 30% 28%);
+  background: hsl(222 42% 8%);
+  color: hsl(210 40% 96%);
+  padding: 10px 12px;
+}
+
+.input {
+  min-width: 180px;
+}
+
+.textarea {
+  width: 100%;
+  margin-top: 10px;
+  min-height: 90px;
+  resize: vertical;
+}
+
+.button {
+  border: 0;
+  padding: 10px 14px;
+  font-weight: 600;
+  cursor: pointer;
+  color: hsl(222 47% 6%);
+  background: linear-gradient(135deg, hsl(43 85% 70%), hsl(43 80% 55%));
+}
+
+.secondaryButton {
+  border: 1px solid hsl(222 30% 28%);
+  padding: 10px 14px;
+  color: hsl(215 20% 72%);
+  text-decoration: none;
+  background: transparent;
+}
+
+.status {
+  margin-top: 10px;
+  color: hsl(215 20% 66%);
+}
+
+.error {
+  color: hsl(0 85% 84%);
+}
+
+.list {
+  margin: 0;
+  padding: 0;
+  list-style: none;
+  display: grid;
+  gap: 10px;
+}
+
+.item {
+  border: 1px solid hsl(222 30% 18%);
+  border-radius: 12px;
+  background: hsl(222 42% 8%);
+  padding: 12px;
+}
+
+.itemHeader {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+}
+
+.label {
+  font-size: 0.8rem;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: hsl(215 18% 58%);
+}
+
+.value {
+  font-weight: 600;
+}
+
+.inlineLinks {
+  display: flex;
+  gap: 10px;
+  margin-top: 8px;
+  flex-wrap: wrap;
+}
+
+.link {
+  color: hsl(43 85% 70%);
+  text-decoration: none;
+}
+
+@media (max-width: 760px) {
+  .container {
+    padding: 84px 16px 44px;
+  }
+
+  .row {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .input,
+  .button,
+  .secondaryButton {
+    width: 100%;
+  }
+}

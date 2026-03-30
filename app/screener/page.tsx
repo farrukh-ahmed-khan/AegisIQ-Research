@@ -13,8 +13,13 @@ import {
   Checkbox,
   InputNumber,
   Divider,
+  message,
 } from "antd";
-import type { ColumnsType, TablePaginationConfig } from "antd/es/table";
+import type {
+  ColumnsType,
+  TablePaginationConfig,
+  TableProps,
+} from "antd/es/table";
 import styles from "./screener.module.css";
 import type {
   MarketCapBucket,
@@ -60,6 +65,7 @@ const MARKET_CAP_BUCKET_OPTIONS: { label: string; value: MarketCapBucket }[] = [
 ];
 
 const DEFAULT_PAGE_SIZE = 50;
+const EMPTY_ROWS: ScreenerResultRow[] = [];
 
 const INITIAL_QUERY_STATE: ScreenerQueryState = {
   search: "",
@@ -89,6 +95,69 @@ const INITIAL_QUERY_STATE: ScreenerQueryState = {
 };
 
 const DEFAULT_SCREENER_WORKSPACE_ID = "global_screener";
+
+interface WatchlistOption {
+  id: string;
+  name: string;
+  isDefault: boolean;
+}
+
+type ActionStatus = "idle" | "running";
+
+function buildApiFilters(
+  activeQuery: ScreenerQueryState,
+  coverageMode: ScreenerCoverageMode | null,
+): Record<string, unknown> {
+  const filters: Record<string, unknown> = {};
+
+  if (activeQuery.search.trim()) {
+    filters.search = activeQuery.search.trim();
+  }
+
+  if (coverageMode === "security_master") {
+    for (const key of SECURITY_MASTER_FILTER_ORDER) {
+      const value = activeQuery[key]?.trim();
+      if (value) filters[key] = value;
+    }
+  }
+
+  if (activeQuery.marketCapBuckets.length > 0) {
+    filters.marketCapBucket = activeQuery.marketCapBuckets;
+  }
+
+  const parseOptionalNumber = (value: string): number | undefined => {
+    const parsed = parseFloat(value);
+    return Number.isFinite(parsed) ? parsed : undefined;
+  };
+
+  const peRatioMin = parseOptionalNumber(activeQuery.peRatioMin);
+  const peRatioMax = parseOptionalNumber(activeQuery.peRatioMax);
+  const evToEbitdaMin = parseOptionalNumber(activeQuery.evToEbitdaMin);
+  const evToEbitdaMax = parseOptionalNumber(activeQuery.evToEbitdaMax);
+  const priceToBookMin = parseOptionalNumber(activeQuery.priceToBookMin);
+  const priceToBookMax = parseOptionalNumber(activeQuery.priceToBookMax);
+  const priceToSalesMin = parseOptionalNumber(activeQuery.priceToSalesMin);
+  const priceToSalesMax = parseOptionalNumber(activeQuery.priceToSalesMax);
+  const revenueGrowthMin = parseOptionalNumber(activeQuery.revenueGrowthMin);
+  const earningsGrowthMin = parseOptionalNumber(activeQuery.earningsGrowthMin);
+  const fcfGrowthMin = parseOptionalNumber(activeQuery.fcfGrowthMin);
+
+  if (peRatioMin !== undefined) filters.peRatioMin = peRatioMin;
+  if (peRatioMax !== undefined) filters.peRatioMax = peRatioMax;
+  if (evToEbitdaMin !== undefined) filters.evToEbitdaMin = evToEbitdaMin;
+  if (evToEbitdaMax !== undefined) filters.evToEbitdaMax = evToEbitdaMax;
+  if (priceToBookMin !== undefined) filters.priceToBookMin = priceToBookMin;
+  if (priceToBookMax !== undefined) filters.priceToBookMax = priceToBookMax;
+  if (priceToSalesMin !== undefined) filters.priceToSalesMin = priceToSalesMin;
+  if (priceToSalesMax !== undefined) filters.priceToSalesMax = priceToSalesMax;
+  if (revenueGrowthMin !== undefined)
+    filters.revenueGrowthMin = revenueGrowthMin;
+  if (earningsGrowthMin !== undefined)
+    filters.earningsGrowthMin = earningsGrowthMin;
+  if (fcfGrowthMin !== undefined) filters.fcfGrowthMin = fcfGrowthMin;
+
+  return filters;
+}
 
 function normalizeSupportedFilters(
   filters: Partial<SupportedFiltersMap> | null | undefined,
@@ -176,7 +245,9 @@ const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
     width: 100,
     fixed: "left",
     render: (val: string) => (
-      <span style={{ fontWeight: 600, color: "#faad14", fontFamily: "monospace" }}>
+      <span
+        style={{ fontWeight: 600, color: "#faad14", fontFamily: "monospace" }}
+      >
         {val}
       </span>
     ),
@@ -265,7 +336,9 @@ const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
     dataIndex: "revenueGrowthYoy",
     key: "revenueGrowthYoy",
     width: 100,
-    sorter: (a, b) => Number(a.revenueGrowthYoy ?? -Infinity) - Number(b.revenueGrowthYoy ?? -Infinity),
+    sorter: (a, b) =>
+      Number(a.revenueGrowthYoy ?? -Infinity) -
+      Number(b.revenueGrowthYoy ?? -Infinity),
     render: (val: number | null) => {
       if (val == null) return <span style={{ color: "#94a3b8" }}>—</span>;
       const color = val >= 0 ? "#52c41a" : "#ff4d4f";
@@ -277,7 +350,9 @@ const TABLE_COLUMNS: ColumnsType<ScreenerResultRow> = [
     dataIndex: "earningsGrowthYoy",
     key: "earningsGrowthYoy",
     width: 110,
-    sorter: (a, b) => Number(a.earningsGrowthYoy ?? -Infinity) - Number(b.earningsGrowthYoy ?? -Infinity),
+    sorter: (a, b) =>
+      Number(a.earningsGrowthYoy ?? -Infinity) -
+      Number(b.earningsGrowthYoy ?? -Infinity),
     render: (val: number | null) => {
       if (val == null) return <span style={{ color: "#94a3b8" }}>—</span>;
       const color = val >= 0 ? "#52c41a" : "#ff4d4f";
@@ -317,6 +392,14 @@ export default function ScreenerPage() {
   const [data, setData] = useState<ScreenerApiResponse | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
   const [error, setError] = useState<string | null>(null);
+  const [watchlists, setWatchlists] = useState<WatchlistOption[]>([]);
+  const [watchlistsLoading, setWatchlistsLoading] = useState<boolean>(false);
+  const [selectedSymbols, setSelectedSymbols] = useState<string[]>([]);
+  const [activeWatchlistId, setActiveWatchlistId] = useState<string>("");
+  const [selectionActionStatus, setSelectionActionStatus] =
+    useState<ActionStatus>("idle");
+  const [selectionNote, setSelectionNote] = useState<string | null>(null);
+  const [messageApi, messageContext] = message.useMessage();
 
   const coverageMode = data?.coverageMode ?? null;
   const coverageCount = data?.coverageCount ?? 0;
@@ -346,35 +429,7 @@ export default function ScreenerPage() {
         : query;
 
       try {
-        const filters: Record<string, unknown> = {};
-
-        if (activeQuery.search.trim()) {
-          filters.search = activeQuery.search.trim();
-        }
-
-        if (coverageMode === "security_master") {
-          for (const key of SECURITY_MASTER_FILTER_ORDER) {
-            const value = activeQuery[key]?.trim();
-            if (value) filters[key] = value;
-          }
-        }
-
-        // Phase 12 — advanced filters (always sent)
-        if (activeQuery.marketCapBuckets.length > 0) {
-          filters.marketCapBucket = activeQuery.marketCapBuckets;
-        }
-        const p = (v: string) => { const n = parseFloat(v); return isFinite(n) ? n : undefined; };
-        if (p(activeQuery.peRatioMin) !== undefined) filters.peRatioMin = p(activeQuery.peRatioMin);
-        if (p(activeQuery.peRatioMax) !== undefined) filters.peRatioMax = p(activeQuery.peRatioMax);
-        if (p(activeQuery.evToEbitdaMin) !== undefined) filters.evToEbitdaMin = p(activeQuery.evToEbitdaMin);
-        if (p(activeQuery.evToEbitdaMax) !== undefined) filters.evToEbitdaMax = p(activeQuery.evToEbitdaMax);
-        if (p(activeQuery.priceToBookMin) !== undefined) filters.priceToBookMin = p(activeQuery.priceToBookMin);
-        if (p(activeQuery.priceToBookMax) !== undefined) filters.priceToBookMax = p(activeQuery.priceToBookMax);
-        if (p(activeQuery.priceToSalesMin) !== undefined) filters.priceToSalesMin = p(activeQuery.priceToSalesMin);
-        if (p(activeQuery.priceToSalesMax) !== undefined) filters.priceToSalesMax = p(activeQuery.priceToSalesMax);
-        if (p(activeQuery.revenueGrowthMin) !== undefined) filters.revenueGrowthMin = p(activeQuery.revenueGrowthMin);
-        if (p(activeQuery.earningsGrowthMin) !== undefined) filters.earningsGrowthMin = p(activeQuery.earningsGrowthMin);
-        if (p(activeQuery.fcfGrowthMin) !== undefined) filters.fcfGrowthMin = p(activeQuery.fcfGrowthMin);
+        const filters = buildApiFilters(activeQuery, coverageMode);
 
         const response = await fetch("/api/screener/query", {
           method: "POST",
@@ -412,10 +467,63 @@ export default function ScreenerPage() {
     [query, coverageMode],
   );
 
+  const loadWatchlists = useCallback(async () => {
+    setWatchlistsLoading(true);
+
+    try {
+      const response = await fetch("/api/workspaces/watchlists", {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (response.status === 401) {
+        setWatchlists([]);
+        return;
+      }
+
+      if (!response.ok) {
+        throw new Error(
+          `Watchlist request failed with status ${response.status}`,
+        );
+      }
+
+      const payload = (await response.json()) as {
+        watchlists?: WatchlistOption[];
+      };
+      const nextWatchlists = Array.isArray(payload.watchlists)
+        ? payload.watchlists
+        : [];
+
+      setWatchlists(nextWatchlists);
+      setActiveWatchlistId((current) => {
+        if (
+          current &&
+          nextWatchlists.some((watchlist) => watchlist.id === current)
+        ) {
+          return current;
+        }
+
+        return (
+          nextWatchlists.find((watchlist) => watchlist.isDefault)?.id ?? ""
+        );
+      });
+    } catch (err) {
+      const messageText =
+        err instanceof Error ? err.message : "Failed to load watchlists.";
+      setSelectionNote(messageText);
+    } finally {
+      setWatchlistsLoading(false);
+    }
+  }, []);
+
   useEffect(() => {
     void loadResults();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    void loadWatchlists();
+  }, [loadWatchlists]);
 
   const handleSearchChange = (value: string) => {
     setQuery((current) => ({ ...current, search: value, page: 1 }));
@@ -425,7 +533,10 @@ export default function ScreenerPage() {
     setQuery((current) => ({ ...current, [key]: value, page: 1 }));
   };
 
-  const handleNumericChange = (field: keyof ScreenerQueryState, value: number | null) => {
+  const handleNumericChange = (
+    field: keyof ScreenerQueryState,
+    value: number | null,
+  ) => {
     setQuery((current) => ({
       ...current,
       [field]: value !== null && isFinite(value) ? String(value) : "",
@@ -457,11 +568,16 @@ export default function ScreenerPage() {
 
   const hasActiveAdvancedFilters =
     query.marketCapBuckets.length > 0 ||
-    query.peRatioMin !== "" || query.peRatioMax !== "" ||
-    query.evToEbitdaMin !== "" || query.evToEbitdaMax !== "" ||
-    query.priceToBookMin !== "" || query.priceToBookMax !== "" ||
-    query.priceToSalesMin !== "" || query.priceToSalesMax !== "" ||
-    query.revenueGrowthMin !== "" || query.earningsGrowthMin !== "" ||
+    query.peRatioMin !== "" ||
+    query.peRatioMax !== "" ||
+    query.evToEbitdaMin !== "" ||
+    query.evToEbitdaMax !== "" ||
+    query.priceToBookMin !== "" ||
+    query.priceToBookMax !== "" ||
+    query.priceToSalesMin !== "" ||
+    query.priceToSalesMax !== "" ||
+    query.revenueGrowthMin !== "" ||
+    query.earningsGrowthMin !== "" ||
     query.fcfGrowthMin !== "";
 
   const hasAnyActiveFilters =
@@ -469,7 +585,7 @@ export default function ScreenerPage() {
     hasActiveSecurityMasterFilters ||
     hasActiveAdvancedFilters;
 
-  const rows = data?.results ?? [];
+  const rows = useMemo(() => data?.results ?? EMPTY_ROWS, [data?.results]);
   const total = data?.total ?? 0;
   const currentPage = data?.page ?? query.page;
   const currentPageSize = data?.pageSize ?? query.pageSize;
@@ -478,6 +594,183 @@ export default function ScreenerPage() {
     coverageMode === "security_master" &&
     coverageCount === 0 &&
     rows.length === 0;
+
+  const selectedRows = useMemo(
+    () => rows.filter((row) => selectedSymbols.includes(row.symbol)),
+    [rows, selectedSymbols],
+  );
+
+  useEffect(() => {
+    setSelectedSymbols((current) => {
+      const next = current.filter((symbol) =>
+        rows.some((row) => row.symbol === symbol),
+      );
+
+      if (
+        next.length === current.length &&
+        next.every((symbol, index) => symbol === current[index])
+      ) {
+        return current;
+      }
+
+      return next;
+    });
+  }, [rows]);
+
+  const rowSelection: TableProps<ScreenerResultRow>["rowSelection"] = {
+    selectedRowKeys: selectedSymbols,
+    onChange: (nextKeys) => {
+      setSelectedSymbols(
+        nextKeys
+          .map((key) => String(key))
+          .filter((symbol, index, arr) => arr.indexOf(symbol) === index),
+      );
+      setSelectionNote(null);
+    },
+    preserveSelectedRowKeys: true,
+  };
+
+  const saveSelectionSnapshot = useCallback(
+    async (linkedWatchlistId?: string) => {
+      if (!coverageMode) {
+        setSelectionNote(
+          "Run the screener before saving a selection snapshot.",
+        );
+        return false;
+      }
+
+      if (selectedRows.length === 0) {
+        setSelectionNote("Select at least one security to save a snapshot.");
+        return false;
+      }
+
+      setSelectionActionStatus("running");
+      setSelectionNote(null);
+
+      try {
+        const now = new Date();
+        const response = await fetch("/api/workspaces/screener/selections", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            workspaceId: DEFAULT_SCREENER_WORKSPACE_ID,
+            name: `Selection ${now.toISOString()}`,
+            coverageMode,
+            filters: buildApiFilters(query, coverageMode),
+            totalMatches: total,
+            resultCount: rows.length,
+            linkedWatchlistId: linkedWatchlistId ?? null,
+            metadata: {
+              selectedSymbols,
+              selectedAt: now.toISOString(),
+            },
+            items: selectedRows.map((row) => ({
+              symbol: row.symbol,
+              companyName: row.companyName ?? row.name ?? null,
+              exchange: row.exchange ?? null,
+              sector: row.sector ?? null,
+              industry: row.industry ?? null,
+              region: row.region ?? null,
+              country: row.country ?? null,
+              currency: row.currency ?? null,
+              securityType: row.securityType ?? null,
+              marketCap: row.marketCap ?? null,
+              peRatio: row.peRatio ?? null,
+              evToEbitda: row.evToEbitda ?? null,
+              priceToBook: row.priceToBook ?? null,
+              priceToSales: row.priceToSales ?? null,
+              revenueGrowthYoy: row.revenueGrowthYoy ?? null,
+              earningsGrowthYoy: row.earningsGrowthYoy ?? null,
+              fcfGrowthYoy: row.fcfGrowthYoy ?? null,
+              metadata: {
+                screenerRowId: row.id ?? null,
+              },
+            })),
+          }),
+        });
+
+        if (response.status === 401) {
+          setSelectionNote("Sign in to save and track screener selections.");
+          return false;
+        }
+
+        if (!response.ok) {
+          const payload = (await response.json().catch(() => null)) as {
+            error?: string;
+          } | null;
+          throw new Error(
+            payload?.error ?? "Failed to save selection snapshot.",
+          );
+        }
+
+        setSelectionNote(
+          `Saved selection snapshot for ${selectedRows.length} symbol${selectedRows.length === 1 ? "" : "s"}.`,
+        );
+        return true;
+      } catch (err) {
+        const messageText =
+          err instanceof Error
+            ? err.message
+            : "Failed to save selection snapshot.";
+        setSelectionNote(messageText);
+        return false;
+      } finally {
+        setSelectionActionStatus("idle");
+      }
+    },
+    [coverageMode, query, rows.length, selectedRows, selectedSymbols, total],
+  );
+
+  const addSelectedToWatchlist = useCallback(async () => {
+    if (!activeWatchlistId) {
+      setSelectionNote("Choose a watchlist before adding selected symbols.");
+      return;
+    }
+
+    if (selectedRows.length === 0) {
+      setSelectionNote(
+        "Select at least one security before adding to a watchlist.",
+      );
+      return;
+    }
+
+    setSelectionActionStatus("running");
+    setSelectionNote(null);
+
+    try {
+      const results = await Promise.all(
+        selectedRows.map(async (row) => {
+          const response = await fetch(
+            `/api/workspaces/watchlists/${activeWatchlistId}/items`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ symbol: row.symbol }),
+            },
+          );
+
+          return response.ok;
+        }),
+      );
+
+      const successCount = results.filter(Boolean).length;
+
+      if (successCount === 0) {
+        throw new Error("No symbols were added to the watchlist.");
+      }
+
+      await saveSelectionSnapshot(activeWatchlistId);
+      messageApi.success(
+        `Added ${successCount}/${selectedRows.length} symbol${selectedRows.length === 1 ? "" : "s"} to watchlist.`,
+      );
+    } catch (err) {
+      const messageText =
+        err instanceof Error ? err.message : "Failed to add selected symbols.";
+      setSelectionNote(messageText);
+    } finally {
+      setSelectionActionStatus("idle");
+    }
+  }, [activeWatchlistId, messageApi, saveSelectionSnapshot, selectedRows]);
 
   const numericInput = (
     field: keyof ScreenerQueryState,
@@ -509,6 +802,7 @@ export default function ScreenerPage() {
         },
       }}
     >
+      {messageContext}
       <main className={styles.page}>
         <div className={styles.glowBlue} />
         <div className={styles.glowGold} />
@@ -551,7 +845,11 @@ export default function ScreenerPage() {
             </div>
 
             {/* Search + security master filters */}
-            <Space wrap size="middle" style={{ width: "100%", marginBottom: 16 }}>
+            <Space
+              wrap
+              size="middle"
+              style={{ width: "100%", marginBottom: 16 }}
+            >
               <Input.Search
                 value={query.search}
                 onChange={(e) => handleSearchChange(e.target.value)}
@@ -679,9 +977,52 @@ export default function ScreenerPage() {
           <section className={styles.panel}>
             <div className={styles.resultsHeader}>
               <h2 className={styles.sectionTitle}>Results</h2>
+              <Space wrap size="small">
+                <span className={styles.chip}>
+                  Selected: {selectedRows.length.toLocaleString()}
+                </span>
+                <Select
+                  value={activeWatchlistId || undefined}
+                  onChange={(value) => setActiveWatchlistId(value)}
+                  placeholder="Select watchlist"
+                  loading={watchlistsLoading}
+                  disabled={watchlists.length === 0}
+                  style={{ minWidth: 220 }}
+                  options={watchlists.map((watchlist) => ({
+                    label: watchlist.name,
+                    value: watchlist.id,
+                  }))}
+                />
+                <Button
+                  disabled={
+                    selectedRows.length === 0 ||
+                    selectionActionStatus === "running"
+                  }
+                  onClick={addSelectedToWatchlist}
+                >
+                  Add Selected To Watchlist
+                </Button>
+                <Button
+                  type="primary"
+                  disabled={
+                    selectedRows.length === 0 ||
+                    selectionActionStatus === "running"
+                  }
+                  onClick={() => {
+                    void saveSelectionSnapshot(activeWatchlistId || undefined);
+                  }}
+                >
+                  Save Selection Snapshot
+                </Button>
+              </Space>
             </div>
 
             {error ? <div className={styles.errorPanel}>{error}</div> : null}
+            {selectionNote ? (
+              <div style={{ marginBottom: 12 }} className={styles.panelText}>
+                {selectionNote}
+              </div>
+            ) : null}
 
             {!error && !isLoading && isNoInternalCoverage ? (
               <div className={styles.emptyPanel}>
@@ -695,7 +1036,8 @@ export default function ScreenerPage() {
             <Table<ScreenerResultRow>
               columns={TABLE_COLUMNS}
               dataSource={rows}
-              rowKey={(row) => row.id ?? row.symbol}
+              rowSelection={rowSelection}
+              rowKey={(row) => row.symbol}
               loading={isLoading}
               size="middle"
               scroll={{ x: 1200 }}

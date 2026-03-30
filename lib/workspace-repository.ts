@@ -696,3 +696,167 @@ export async function createWorkspaceDocument(
 
   return document;
 }
+
+export async function createWorkspaceReportRun(
+  clerkUserId: string,
+  rawSymbol: string,
+  input: {
+    reportType?: string;
+    inputPayload?: Record<string, unknown>;
+  },
+): Promise<ReportRun> {
+  const workspace = await ensureWorkspace(clerkUserId, rawSymbol);
+
+  const reportRows = await sql<Record<string, unknown>[]>`
+    INSERT INTO report_runs (
+      workspace_id,
+      clerk_user_id,
+      symbol,
+      report_type,
+      status,
+      started_at,
+      input_payload,
+      output_payload
+    )
+    VALUES (
+      ${workspace.id},
+      ${clerkUserId},
+      ${workspace.symbol},
+      ${input.reportType ?? "equity_research"},
+      'running',
+      now(),
+      ${sql.json((input.inputPayload ?? {}) as never)},
+      '{}'::jsonb
+    )
+    RETURNING *
+  `;
+
+  return mapReport(reportRows[0]);
+}
+
+export async function getWorkspaceReportRunById(
+  clerkUserId: string,
+  rawSymbol: string,
+  reportRunId: string,
+): Promise<ReportRun | null> {
+  const workspace = await ensureWorkspace(clerkUserId, rawSymbol);
+
+  const rows = await sql<Record<string, unknown>[]>`
+    SELECT *
+    FROM report_runs
+    WHERE id = ${reportRunId}
+      AND clerk_user_id = ${clerkUserId}
+      AND (
+        workspace_id = ${workspace.id}
+        OR symbol = ${workspace.symbol}
+      )
+    LIMIT 1
+  `;
+
+  return rows[0] ? mapReport(rows[0]) : null;
+}
+
+export async function completeWorkspaceReportRun(
+  clerkUserId: string,
+  rawSymbol: string,
+  reportRunId: string,
+  input: {
+    pdfUrl?: string | null;
+    outputPayload?: Record<string, unknown>;
+    latestRating?: string | null;
+    latestTargetPrice?: number | null;
+  },
+): Promise<ReportRun> {
+  const workspace = await ensureWorkspace(clerkUserId, rawSymbol);
+
+  const reportRows = await sql<Record<string, unknown>[]>`
+    UPDATE report_runs
+    SET
+      status = 'completed',
+      completed_at = now(),
+      error_message = null,
+      pdf_url = ${input.pdfUrl ?? null},
+      output_payload = ${sql.json((input.outputPayload ?? {}) as never)},
+      updated_at = now()
+    WHERE id = ${reportRunId}
+      AND clerk_user_id = ${clerkUserId}
+      AND (
+        workspace_id = ${workspace.id}
+        OR symbol = ${workspace.symbol}
+      )
+    RETURNING *
+  `;
+
+  if (reportRows.length === 0) {
+    throw new Error("Report run not found.");
+  }
+
+  if (input.latestRating || input.latestTargetPrice !== undefined) {
+    await sql`
+      UPDATE company_workspaces
+      SET
+        latest_rating = ${input.latestRating ?? null},
+        latest_target_price = ${input.latestTargetPrice ?? null},
+        latest_report_id = ${reportRunId},
+        updated_at = now()
+      WHERE id = ${workspace.id}
+        AND clerk_user_id = ${clerkUserId}
+    `;
+  }
+
+  await sql`
+    INSERT INTO workspace_activity (
+      workspace_id,
+      clerk_user_id,
+      kind,
+      label,
+      detail,
+      related_entity_type,
+      related_entity_id,
+      metadata
+    )
+    VALUES (
+      ${workspace.id},
+      ${clerkUserId},
+      'report_generated',
+      ${`AI report generated: ${workspace.symbol}`},
+      ${input.latestRating ? `Rating: ${input.latestRating}` : null},
+      'report_run',
+      ${reportRunId},
+      ${sql.json({
+        reportRunId,
+        reportType: reportRows[0].report_type ?? "equity_research",
+        pdfUrl: input.pdfUrl ?? null,
+      } as never)}
+    )
+  `;
+
+  return mapReport(reportRows[0]);
+}
+
+export async function failWorkspaceReportRun(
+  clerkUserId: string,
+  rawSymbol: string,
+  reportRunId: string,
+  errorMessage: string,
+): Promise<ReportRun | null> {
+  const workspace = await ensureWorkspace(clerkUserId, rawSymbol);
+
+  const rows = await sql<Record<string, unknown>[]>`
+    UPDATE report_runs
+    SET
+      status = 'failed',
+      completed_at = now(),
+      error_message = ${errorMessage.slice(0, 1500)},
+      updated_at = now()
+    WHERE id = ${reportRunId}
+      AND clerk_user_id = ${clerkUserId}
+      AND (
+        workspace_id = ${workspace.id}
+        OR symbol = ${workspace.symbol}
+      )
+    RETURNING *
+  `;
+
+  return rows[0] ? mapReport(rows[0]) : null;
+}

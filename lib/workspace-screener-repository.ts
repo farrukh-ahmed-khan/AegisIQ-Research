@@ -69,6 +69,55 @@ export interface CreateWatchlistItemRecordInput {
   symbol: string;
 }
 
+export interface ScreenerSelectionItemRecord {
+  symbol: string;
+  companyName: string | null;
+  exchange: string | null;
+  sector: string | null;
+  industry: string | null;
+  region: string | null;
+  country: string | null;
+  currency: string | null;
+  securityType: string | null;
+  marketCap: number | null;
+  peRatio: number | null;
+  evToEbitda: number | null;
+  priceToBook: number | null;
+  priceToSales: number | null;
+  revenueGrowthYoy: number | null;
+  earningsGrowthYoy: number | null;
+  fcfGrowthYoy: number | null;
+  metadata: JsonValue | null;
+}
+
+export interface ScreenerSelectionRunRecord {
+  id: string;
+  clerkUserId: string;
+  workspaceId: string;
+  name: string | null;
+  coverageMode: "security_master" | "watchlist_fallback";
+  filters: JsonValue;
+  totalMatches: number;
+  resultCount: number;
+  selectedCount: number;
+  linkedWatchlistId: string | null;
+  metadata: JsonValue;
+  createdAt: string;
+  items: ScreenerSelectionItemRecord[];
+}
+
+export interface CreateScreenerSelectionRunInput {
+  workspaceId?: string;
+  name?: string | null;
+  coverageMode: "security_master" | "watchlist_fallback";
+  filters: JsonValue;
+  totalMatches: number;
+  resultCount: number;
+  linkedWatchlistId?: string | null;
+  metadata?: JsonValue;
+  items: ScreenerSelectionItemRecord[];
+}
+
 type ScreenerPresetRow = {
   id: string;
   clerk_user_id: string;
@@ -101,8 +150,47 @@ type WatchlistItemRow = {
   updated_at: Date | string;
 };
 
+type ScreenerSelectionRunRow = {
+  id: string;
+  clerk_user_id: string;
+  workspace_id: string;
+  name: string | null;
+  coverage_mode: "security_master" | "watchlist_fallback";
+  filters: JsonValue;
+  total_matches: number;
+  result_count: number;
+  selected_count: number;
+  linked_watchlist_id: string | null;
+  metadata: JsonValue;
+  created_at: Date | string;
+};
+
+type ScreenerSelectionItemRow = {
+  run_id: string;
+  symbol: string;
+  company_name: string | null;
+  exchange: string | null;
+  sector: string | null;
+  industry: string | null;
+  region: string | null;
+  country: string | null;
+  currency: string | null;
+  security_type: string | null;
+  market_cap: number | null;
+  pe_ratio: number | null;
+  ev_to_ebitda: number | null;
+  price_to_book: number | null;
+  price_to_sales: number | null;
+  revenue_growth_yoy: number | null;
+  earnings_growth_yoy: number | null;
+  fcf_growth_yoy: number | null;
+  metadata: JsonValue | null;
+};
+
 function toIsoString(value: Date | string): string {
-  return value instanceof Date ? value.toISOString() : new Date(value).toISOString();
+  return value instanceof Date
+    ? value.toISOString()
+    : new Date(value).toISOString();
 }
 
 function mapPreset(row: ScreenerPresetRow): ScreenerPresetRecord {
@@ -144,7 +232,10 @@ function mapWatchlistItem(row: WatchlistItemRow): WatchlistItemRecord {
 }
 
 function normalizeSymbol(symbol: string): string {
-  return symbol.trim().toUpperCase().replace(/[^A-Z0-9.\-]/g, "");
+  return symbol
+    .trim()
+    .toUpperCase()
+    .replace(/[^A-Z0-9.\-]/g, "");
 }
 
 function assertNonEmptyName(value: string, fieldName: string): string {
@@ -173,6 +264,74 @@ function normalizeDescription(value?: string | null): string | null {
   }
 
   return trimmed.slice(0, 1000);
+}
+
+function normalizeSnapshotName(value?: string | null): string | null {
+  if (typeof value !== "string") {
+    return null;
+  }
+
+  const trimmed = value.trim();
+
+  if (!trimmed) {
+    return null;
+  }
+
+  return trimmed.slice(0, 200);
+}
+
+function clampNonNegativeInt(value: number): number {
+  if (!Number.isFinite(value) || value < 0) {
+    return 0;
+  }
+
+  return Math.floor(value);
+}
+
+function mapScreenerSelectionItem(
+  row: ScreenerSelectionItemRow,
+): ScreenerSelectionItemRecord {
+  return {
+    symbol: row.symbol,
+    companyName: row.company_name,
+    exchange: row.exchange,
+    sector: row.sector,
+    industry: row.industry,
+    region: row.region,
+    country: row.country,
+    currency: row.currency,
+    securityType: row.security_type,
+    marketCap: row.market_cap,
+    peRatio: row.pe_ratio,
+    evToEbitda: row.ev_to_ebitda,
+    priceToBook: row.price_to_book,
+    priceToSales: row.price_to_sales,
+    revenueGrowthYoy: row.revenue_growth_yoy,
+    earningsGrowthYoy: row.earnings_growth_yoy,
+    fcfGrowthYoy: row.fcf_growth_yoy,
+    metadata: row.metadata,
+  };
+}
+
+function mapScreenerSelectionRun(
+  row: ScreenerSelectionRunRow,
+  items: ScreenerSelectionItemRecord[],
+): ScreenerSelectionRunRecord {
+  return {
+    id: row.id,
+    clerkUserId: row.clerk_user_id,
+    workspaceId: row.workspace_id,
+    name: row.name,
+    coverageMode: row.coverage_mode,
+    filters: row.filters,
+    totalMatches: row.total_matches,
+    resultCount: row.result_count,
+    selectedCount: row.selected_count,
+    linkedWatchlistId: row.linked_watchlist_id,
+    metadata: row.metadata,
+    createdAt: toIsoString(row.created_at),
+    items,
+  };
 }
 
 async function shouldBecomeDefaultPreset(
@@ -290,7 +449,10 @@ export async function createScreenerPreset(
 ): Promise<ScreenerPresetRecord> {
   const name = assertNonEmptyName(input.name, "name");
   const description = normalizeDescription(input.description);
-  const isDefault = await shouldBecomeDefaultPreset(clerkUserId, input.isDefault);
+  const isDefault = await shouldBecomeDefaultPreset(
+    clerkUserId,
+    input.isDefault,
+  );
 
   if (isDefault) {
     await clearOtherDefaultPresets(clerkUserId);
@@ -361,14 +523,20 @@ export async function updateScreenerPreset(
   }
 
   const nextName =
-    typeof input.name === "string" ? assertNonEmptyName(input.name, "name") : existing.name;
+    typeof input.name === "string"
+      ? assertNonEmptyName(input.name, "name")
+      : existing.name;
 
   const nextDescription =
-    input.description !== undefined ? normalizeDescription(input.description) : existing.description;
+    input.description !== undefined
+      ? normalizeDescription(input.description)
+      : existing.description;
 
-  const nextFilters = input.filters !== undefined ? input.filters : existing.filters;
+  const nextFilters =
+    input.filters !== undefined ? input.filters : existing.filters;
   const nextSort = input.sort !== undefined ? input.sort : existing.sort;
-  const nextColumns = input.columns !== undefined ? input.columns : existing.columns;
+  const nextColumns =
+    input.columns !== undefined ? input.columns : existing.columns;
   const nextIsDefault = input.isDefault ?? existing.is_default;
 
   if (nextIsDefault) {
@@ -480,7 +648,10 @@ export async function createWatchlist(
 ): Promise<WatchlistRecord> {
   const name = assertNonEmptyName(input.name, "name");
   const description = normalizeDescription(input.description);
-  const isDefault = await shouldBecomeDefaultWatchlist(clerkUserId, input.isDefault);
+  const isDefault = await shouldBecomeDefaultWatchlist(
+    clerkUserId,
+    input.isDefault,
+  );
 
   if (isDefault) {
     await clearOtherDefaultWatchlists(clerkUserId);
@@ -539,10 +710,14 @@ export async function updateWatchlist(
   }
 
   const nextName =
-    typeof input.name === "string" ? assertNonEmptyName(input.name, "name") : existing.name;
+    typeof input.name === "string"
+      ? assertNonEmptyName(input.name, "name")
+      : existing.name;
 
   const nextDescription =
-    input.description !== undefined ? normalizeDescription(input.description) : existing.description;
+    input.description !== undefined
+      ? normalizeDescription(input.description)
+      : existing.description;
 
   const nextIsDefault = input.isDefault ?? existing.is_default;
 
@@ -747,4 +922,223 @@ export async function removeWatchlistItem(
   }
 
   return false;
+}
+
+export async function createScreenerSelectionRun(
+  clerkUserId: string,
+  input: CreateScreenerSelectionRunInput,
+): Promise<ScreenerSelectionRunRecord> {
+  const workspaceId =
+    typeof input.workspaceId === "string" && input.workspaceId.trim()
+      ? input.workspaceId.trim()
+      : "global_screener";
+
+  const name = normalizeSnapshotName(input.name);
+
+  if (!Array.isArray(input.items) || input.items.length === 0) {
+    throw new Error("selection_items_required");
+  }
+
+  const uniqueBySymbol = new Map<string, ScreenerSelectionItemRecord>();
+
+  for (const item of input.items) {
+    const normalizedSymbol = normalizeSymbol(item.symbol);
+
+    if (!normalizedSymbol) {
+      continue;
+    }
+
+    uniqueBySymbol.set(normalizedSymbol, {
+      ...item,
+      symbol: normalizedSymbol,
+    });
+  }
+
+  const normalizedItems = Array.from(uniqueBySymbol.values());
+
+  if (normalizedItems.length === 0) {
+    throw new Error("selection_items_required");
+  }
+
+  const totalMatches = clampNonNegativeInt(input.totalMatches);
+  const resultCount = clampNonNegativeInt(input.resultCount);
+  const selectedCount = normalizedItems.length;
+
+  let linkedWatchlistId: string | null = null;
+
+  if (
+    typeof input.linkedWatchlistId === "string" &&
+    input.linkedWatchlistId.trim()
+  ) {
+    const watchlistRows = await sql<{ id: string }[]>`
+      SELECT id
+      FROM watchlists
+      WHERE id = ${input.linkedWatchlistId}
+        AND clerk_user_id = ${clerkUserId}
+      LIMIT 1
+    `;
+
+    linkedWatchlistId = watchlistRows[0]?.id ?? null;
+  }
+
+  const runRows = await sql<ScreenerSelectionRunRow[]>`
+    INSERT INTO screener_selection_runs (
+      clerk_user_id,
+      workspace_id,
+      name,
+      coverage_mode,
+      filters,
+      total_matches,
+      result_count,
+      selected_count,
+      linked_watchlist_id,
+      metadata
+    )
+    VALUES (
+      ${clerkUserId},
+      ${workspaceId},
+      ${name},
+      ${input.coverageMode},
+      ${JSON.stringify(input.filters)},
+      ${totalMatches},
+      ${resultCount},
+      ${selectedCount},
+      ${linkedWatchlistId},
+      ${JSON.stringify(input.metadata ?? {})}
+    )
+    RETURNING
+      id,
+      clerk_user_id,
+      workspace_id,
+      name,
+      coverage_mode,
+      filters,
+      total_matches,
+      result_count,
+      selected_count,
+      linked_watchlist_id,
+      metadata,
+      created_at
+  `;
+
+  const run = runRows[0];
+
+  for (const item of normalizedItems) {
+    await sql`
+      INSERT INTO screener_selection_items (
+        run_id,
+        symbol,
+        company_name,
+        exchange,
+        sector,
+        industry,
+        region,
+        country,
+        currency,
+        security_type,
+        market_cap,
+        pe_ratio,
+        ev_to_ebitda,
+        price_to_book,
+        price_to_sales,
+        revenue_growth_yoy,
+        earnings_growth_yoy,
+        fcf_growth_yoy,
+        metadata
+      )
+      VALUES (
+        ${run.id},
+        ${item.symbol},
+        ${item.companyName},
+        ${item.exchange},
+        ${item.sector},
+        ${item.industry},
+        ${item.region},
+        ${item.country},
+        ${item.currency},
+        ${item.securityType},
+        ${item.marketCap},
+        ${item.peRatio},
+        ${item.evToEbitda},
+        ${item.priceToBook},
+        ${item.priceToSales},
+        ${item.revenueGrowthYoy},
+        ${item.earningsGrowthYoy},
+        ${item.fcfGrowthYoy},
+        ${JSON.stringify(item.metadata ?? {})}
+      )
+    `;
+  }
+
+  return mapScreenerSelectionRun(run, normalizedItems);
+}
+
+export async function listScreenerSelectionRuns(
+  clerkUserId: string,
+  limit = 25,
+): Promise<ScreenerSelectionRunRecord[]> {
+  const normalizedLimit = Math.max(1, Math.min(Math.floor(limit), 100));
+
+  const runRows = await sql<ScreenerSelectionRunRow[]>`
+    SELECT
+      id,
+      clerk_user_id,
+      workspace_id,
+      name,
+      coverage_mode,
+      filters,
+      total_matches,
+      result_count,
+      selected_count,
+      linked_watchlist_id,
+      metadata,
+      created_at
+    FROM screener_selection_runs
+    WHERE clerk_user_id = ${clerkUserId}
+    ORDER BY created_at DESC
+    LIMIT ${normalizedLimit}
+  `;
+
+  if (runRows.length === 0) {
+    return [];
+  }
+
+  const runIds = runRows.map((row) => row.id);
+  const itemRows = await sql<ScreenerSelectionItemRow[]>`
+    SELECT
+      run_id,
+      symbol,
+      company_name,
+      exchange,
+      sector,
+      industry,
+      region,
+      country,
+      currency,
+      security_type,
+      market_cap,
+      pe_ratio,
+      ev_to_ebitda,
+      price_to_book,
+      price_to_sales,
+      revenue_growth_yoy,
+      earnings_growth_yoy,
+      fcf_growth_yoy,
+      metadata
+    FROM screener_selection_items
+    WHERE run_id = ANY(${runIds}::uuid[])
+    ORDER BY run_id ASC, created_at ASC
+  `;
+
+  const itemMap = new Map<string, ScreenerSelectionItemRecord[]>();
+
+  for (const row of itemRows) {
+    const list = itemMap.get(row.run_id) ?? [];
+    list.push(mapScreenerSelectionItem(row));
+    itemMap.set(row.run_id, list);
+  }
+
+  return runRows.map((runRow) =>
+    mapScreenerSelectionRun(runRow, itemMap.get(runRow.id) ?? []),
+  );
 }
