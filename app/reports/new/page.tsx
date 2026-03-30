@@ -40,6 +40,7 @@ function NewReportPageContent() {
   const [notes, setNotes] = useState<string>("");
   const [isGenerating, setIsGenerating] = useState<boolean>(false);
   const [isLoadingHistory, setIsLoadingHistory] = useState<boolean>(false);
+  const [isClearingHistory, setIsClearingHistory] = useState<boolean>(false);
   const [statusMessage, setStatusMessage] = useState<string>("");
   const [errorMessage, setErrorMessage] = useState<string>("");
   const [reports, setReports] = useState<ReportRun[]>([]);
@@ -137,6 +138,64 @@ function NewReportPageContent() {
     }
   }
 
+  async function clearHistory() {
+    setErrorMessage("");
+    setStatusMessage("");
+
+    const normalized = normalizeSymbol(symbol);
+
+    if (!isValidSymbol(normalized)) {
+      setErrorMessage("Enter a valid ticker symbol to clear report history.");
+      return;
+    }
+
+    const confirmed = window.confirm(
+      `Delete all saved report runs for ${normalized}? This cannot be undone.`,
+    );
+
+    if (!confirmed) {
+      return;
+    }
+
+    setIsClearingHistory(true);
+
+    try {
+      const response = await fetch(
+        `/api/workspaces/${encodeURIComponent(normalized)}/reports`,
+        {
+          method: "DELETE",
+        },
+      );
+
+      const payload = (await response.json().catch(() => null)) as
+        | {
+            error?: string;
+            deletedCount?: number;
+          }
+        | null;
+
+      if (!response.ok) {
+        throw new Error(payload?.error ?? "Failed to clear report history.");
+      }
+
+      setStatusMessage(
+        payload?.deletedCount
+          ? `Cleared ${payload.deletedCount} report run(s).`
+          : "No report history found to clear.",
+      );
+      setReports([]);
+      await loadHistory(normalized);
+    } catch (error) {
+      const message =
+        error instanceof Error
+          ? error.message
+          : "Failed to clear report history.";
+      setErrorMessage(message);
+    } finally {
+      setIsClearingHistory(false);
+    }
+  }
+
   return (
     <main className={styles.page}>
       <div className={styles.glowBlue} />
@@ -173,6 +232,13 @@ function NewReportPageContent() {
               disabled={isLoadingHistory}
             >
               {isLoadingHistory ? "Refreshing..." : "Refresh History"}
+            </button>
+            <button
+              className={styles.secondaryButton}
+              onClick={() => void clearHistory()}
+              disabled={isClearingHistory || reports.length === 0}
+            >
+              {isClearingHistory ? "Clearing..." : "Clear History"}
             </button>
             {isValidSymbol(symbol) ? (
               <Link

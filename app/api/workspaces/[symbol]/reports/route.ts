@@ -3,6 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import {
   completeWorkspaceReportRun,
   createWorkspaceReportRun,
+  deleteWorkspaceReports,
   failWorkspaceReportRun,
   getWorkspaceReports,
 } from "../../../../../lib/workspace-repository";
@@ -30,6 +31,24 @@ function isValidSymbol(symbol: string): boolean {
   return /^[A-Z0-9.\-]{1,12}$/.test(symbol);
 }
 
+function isDatabaseConnectivityError(error: unknown): boolean {
+  if (!error || typeof error !== "object") {
+    return false;
+  }
+
+  const candidate = error as { code?: unknown; errno?: unknown; message?: unknown };
+  const code = typeof candidate.code === "string" ? candidate.code : "";
+  const errno = typeof candidate.errno === "string" ? candidate.errno : "";
+  const message =
+    typeof candidate.message === "string" ? candidate.message : "";
+
+  return (
+    code === "CONNECT_TIMEOUT" ||
+    errno === "CONNECT_TIMEOUT" ||
+    message.includes("CONNECT_TIMEOUT")
+  );
+}
+
 export const dynamic = "force-dynamic";
 
 export async function GET(_: Request, context: RouteContext) {
@@ -51,9 +70,32 @@ export async function GET(_: Request, context: RouteContext) {
   return NextResponse.json({ reports });
 }
 
+export async function DELETE(_: Request, context: RouteContext) {
+  const { userId } = await auth();
+
+  if (!userId) {
+    return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+  }
+
+  const { symbol: rawSymbol } = await context.params;
+  const symbol = normalizeSymbol(rawSymbol);
+
+  if (!isValidSymbol(symbol)) {
+    return NextResponse.json({ error: "Invalid symbol." }, { status: 400 });
+  }
+
+  const deletedCount = await deleteWorkspaceReports(userId, symbol);
+
+  return NextResponse.json({ deletedCount });
+}
+
 function asNumberOrNull(value: unknown): number | null {
   const parsed = Number(value);
   return Number.isFinite(parsed) ? parsed : null;
+}
+
+function isPresentNumber(value: number | null | undefined): value is number {
+  return typeof value === "number" && Number.isFinite(value);
 }
 
 function buildFallbackAnalystOutput(params: {
@@ -154,16 +196,36 @@ export async function POST(request: Request, context: RouteContext) {
       : "equity_research";
   const notes = typeof body.notes === "string" ? body.notes.trim() : "";
 
-  const reportRun = await createWorkspaceReportRun(userId, symbol, {
-    reportType,
-    inputPayload: {
-      symbol,
-      notes,
-      initiatedAt: new Date().toISOString(),
-    },
-  });
+  let reportRun:
+    | {
+        id: string;
+      }
+    | null = null;
+  let persistenceWarning: string | null = null;
 
   try {
+    try {
+      reportRun = await createWorkspaceReportRun(userId, symbol, {
+        reportType,
+        inputPayload: {
+          symbol,
+          notes,
+          initiatedAt: new Date().toISOString(),
+        },
+      });
+    } catch (error) {
+      if (!isDatabaseConnectivityError(error)) {
+        throw error;
+      }
+
+      persistenceWarning =
+        "Report generated without saving to workspace history because the database connection timed out.";
+      console.error(
+        `Workspace report persistence unavailable for ${symbol}; continuing without DB-backed history.`,
+        error,
+      );
+    }
+
     const [fundamentals, securityRows] = await Promise.all([
       getFundamentalsViewModel(symbol),
       sql<
@@ -189,11 +251,17 @@ export async function POST(request: Request, context: RouteContext) {
     const latestValuationMetrics = fundamentals.latestValuationMetrics;
 
     const currentPriceFromMarketCap =
-      latestValuationMetrics?.marketCap !== null &&
-      latestFinancials?.sharesOutstanding !== null &&
-      latestFinancials?.sharesOutstanding
+      isPresentNumber(latestValuationMetrics?.marketCap) &&
+      isPresentNumber(latestFinancials?.sharesOutstanding) &&
+      latestFinancials.sharesOutstanding > 0
         ? latestValuationMetrics.marketCap / latestFinancials.sharesOutstanding
         : null;
+
+    const netDebt =
+      isPresentNumber(latestFinancials?.totalDebt) &&
+      isPresentNumber(latestFinancials?.cashAndEquivalents)
+        ? latestFinancials.totalDebt - latestFinancials.cashAndEquivalents
+        : (latestFinancials?.totalDebt ?? null);
 
     const currentPrice =
       currentPriceFromMarketCap ??
@@ -228,11 +296,7 @@ export async function POST(request: Request, context: RouteContext) {
       financials: {
         revenue: latestFinancials?.revenue ?? null,
         shares_outstanding: latestFinancials?.sharesOutstanding ?? null,
-        net_debt:
-          latestFinancials?.totalDebt !== null &&
-          latestFinancials?.cashAndEquivalents !== null
-            ? latestFinancials.totalDebt - latestFinancials.cashAndEquivalents
-            : (latestFinancials?.totalDebt ?? null),
+        net_debt: netDebt,
         revenue_growth_rate: latestRatios?.revenueGrowthYoy ?? 0.08,
         ebit_margin: latestRatios?.operatingMargin ?? 0.2,
         tax_rate: 0.21,
@@ -407,30 +471,29 @@ export async function POST(request: Request, context: RouteContext) {
       ],
     };
 
-    const pdfUrl = `/api/workspaces/${encodeURIComponent(symbol)}/reports/${reportRun.id}/pdf`;
+    const pdfUrl = reportRun
+      ? `/api/workspaces/${encodeURIComponent(symbol)}/reports/${reportRun.id}/pdf`
+      : null;
 
-    const completedRun = await completeWorkspaceReportRun(
-      userId,
-      symbol,
-      reportRun.id,
-      {
-        pdfUrl,
-        latestRating: valuation.rating,
-        latestTargetPrice:
-          typeof valuation.targetRange?.base === "number"
-            ? valuation.targetRange.base
-            : null,
-        outputPayload: {
-          symbol,
-          reportDate,
-          fundamentals,
-          valuation,
-          analyst,
-          generatedNarrative,
-          pdfPayload,
-        },
-      },
-    );
+    const completedRun = reportRun
+      ? await completeWorkspaceReportRun(userId, symbol, reportRun.id, {
+          pdfUrl,
+          latestRating: valuation.rating,
+          latestTargetPrice:
+            typeof valuation.targetRange?.base === "number"
+              ? valuation.targetRange.base
+              : null,
+          outputPayload: {
+            symbol,
+            reportDate,
+            fundamentals,
+            valuation,
+            analyst,
+            generatedNarrative,
+            pdfPayload,
+          },
+        })
+      : null;
 
     return NextResponse.json({
       report: completedRun,
@@ -438,15 +501,25 @@ export async function POST(request: Request, context: RouteContext) {
       valuation,
       narrative: generatedNarrative,
       pdfUrl,
+      warning: persistenceWarning,
     });
   } catch (error) {
     const message =
       error instanceof Error ? error.message : "Failed to generate AI report.";
 
-    await failWorkspaceReportRun(userId, symbol, reportRun.id, message);
+    if (reportRun) {
+      try {
+        await failWorkspaceReportRun(userId, symbol, reportRun.id, message);
+      } catch (failError) {
+        console.error(
+          `Failed to mark report run as failed for ${symbol}.`,
+          failError,
+        );
+      }
+    }
 
     return NextResponse.json(
-      { error: message, reportRunId: reportRun.id },
+      { error: message, reportRunId: reportRun?.id ?? null },
       { status: 500 },
     );
   }

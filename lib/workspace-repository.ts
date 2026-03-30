@@ -449,6 +449,59 @@ export async function getWorkspaceReports(
   return rows.map(mapReport);
 }
 
+export async function deleteWorkspaceReports(
+  clerkUserId: string,
+  rawSymbol: string,
+): Promise<number> {
+  const workspace = await ensureWorkspace(clerkUserId, rawSymbol);
+
+  const rows = await sql<Record<string, unknown>[]>`
+    DELETE FROM report_runs
+    WHERE clerk_user_id = ${clerkUserId}
+      AND (
+        workspace_id = ${workspace.id}
+        OR symbol = ${workspace.symbol}
+      )
+    RETURNING id
+  `;
+
+  await sql`
+    UPDATE company_workspaces
+    SET
+      latest_report_id = null,
+      latest_rating = null,
+      latest_target_price = null,
+      updated_at = now()
+    WHERE id = ${workspace.id}
+      AND clerk_user_id = ${clerkUserId}
+  `;
+
+  await sql`
+    INSERT INTO workspace_activity (
+      workspace_id,
+      clerk_user_id,
+      kind,
+      label,
+      detail,
+      metadata
+    )
+    VALUES (
+      ${workspace.id},
+      ${clerkUserId},
+      'report_generated',
+      ${`Report history cleared: ${workspace.symbol}`},
+      ${rows.length > 0 ? `${rows.length} report run(s) deleted.` : "No report runs to delete."},
+      ${sql.json({
+        symbol: workspace.symbol,
+        deletedCount: rows.length,
+        action: "report_history_cleared",
+      } as never)}
+    )
+  `;
+
+  return rows.length;
+}
+
 export async function createWorkspaceNote(
   clerkUserId: string,
   rawSymbol: string,

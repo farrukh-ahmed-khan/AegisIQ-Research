@@ -820,7 +820,7 @@ export default function EquityResearchPdfDocument({ data }: Props) {
                 </View>
               ))
             ) : (
-              <>
+              <View>
                 <View style={styles.card}>
                   <Text style={styles.h3}>Bear Case</Text>
                   <Text style={styles.body}>Execution delays and muted monetization outcomes.</Text>
@@ -833,7 +833,7 @@ export default function EquityResearchPdfDocument({ data }: Props) {
                   <Text style={styles.h3}>Bull Case</Text>
                   <Text style={styles.body}>Full catalyst realization and stronger multiple expansion.</Text>
                 </View>
-              </>
+              </View>
             )}
           </View>
         </View>
