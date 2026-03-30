@@ -252,8 +252,26 @@ export async function fetchAndStoreFundamentals(
   if (!process.env.FMP_API_KEY) return false;
 
   try {
+    type AnnualResults = [
+      FmpIncomeRow[] | null,
+      FmpBalanceRow[] | null,
+      FmpCashRow[] | null,
+      FmpRatioRow[] | null,
+      FmpKeyMetricRow[] | null,
+      FmpKeyMetricsTtmRow[] | null,
+      FmpAnalystEstimate[] | null,
+      FmpQuoteRow[] | null,
+    ];
+
+    type QuarterlyResults = [
+      FmpIncomeRow[] | null,
+      FmpBalanceRow[] | null,
+      FmpCashRow[] | null,
+      FmpRatioRow[] | null,
+    ];
+
     // Core annual calls — always fetched
-    const annualCalls = Promise.all([
+    const annualCalls: Promise<AnnualResults> = Promise.all([
       fmpGet<FmpIncomeRow[]>(`/income-statement?symbol=${symbol}&period=annual&limit=8`),
       fmpGet<FmpBalanceRow[]>(`/balance-sheet-statement?symbol=${symbol}&period=annual&limit=8`),
       fmpGet<FmpCashRow[]>(`/cash-flow-statement?symbol=${symbol}&period=annual&limit=8`),
@@ -265,8 +283,8 @@ export async function fetchAndStoreFundamentals(
     ]);
 
     // Quarterly calls — skipped in annualOnly / fast mode
-    const quarterlyCalls = options.annualOnly
-      ? Promise.resolve([null, null, null, null] as const)
+    const quarterlyCalls: Promise<QuarterlyResults> = options.annualOnly
+      ? Promise.resolve([null, null, null, null])
       : Promise.all([
           fmpGet<FmpIncomeRow[]>(`/income-statement?symbol=${symbol}&period=quarter&limit=12`),
           fmpGet<FmpBalanceRow[]>(`/balance-sheet-statement?symbol=${symbol}&period=quarter&limit=12`),

@@ -2,7 +2,7 @@
 
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
 import styles from "./new-report.module.css";
 
 type ReportRun = {
@@ -29,7 +29,7 @@ function formatDateTime(value: string): string {
   return date.toLocaleString("en-US");
 }
 
-export default function NewReportPage() {
+function NewReportPageContent() {
   const searchParams = useSearchParams();
   const initialSymbol = useMemo(
     () => normalizeSymbol(searchParams.get("symbol") ?? ""),
@@ -257,5 +257,13 @@ export default function NewReportPage() {
         </section>
       </div>
     </main>
+  );
+}
+
+export default function NewReportPage() {
+  return (
+    <Suspense fallback={<main className={styles.page} />}>
+      <NewReportPageContent />
+    </Suspense>
   );
 }
