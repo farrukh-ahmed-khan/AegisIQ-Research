@@ -315,7 +315,9 @@ function SignalPill({
         ...styles.tonePill,
         color: colors.text,
         backgroundColor: colors.bg,
-        border: `1 solid ${colors.border}`,
+        borderWidth: 1,
+        borderStyle: 'solid',
+        borderColor: colors.border,
       }}
     >
       {label}

@@ -292,7 +292,9 @@ export function buildPdfStyles(theme: PdfThemePack) {
       fontSize: typography.caption,
       color: palette.textMuted,
       backgroundColor: palette.goldSoft,
-      border: `1 solid ${palette.gold}`,
+      borderWidth: 1,
+      borderStyle: 'solid',
+      borderColor: palette.gold,
       borderRadius: spacing.radiusSm,
       paddingHorizontal: 8,
       paddingVertical: 4,
@@ -385,7 +387,9 @@ export function buildPdfStyles(theme: PdfThemePack) {
       fontSize: typography.caption,
       color: palette.textMuted,
       backgroundColor: palette.goldSoft,
-      border: `1 solid ${palette.gold}`,
+      borderWidth: 1,
+      borderStyle: 'solid',
+      borderColor: palette.gold,
       borderRadius: spacing.radiusSm,
       paddingHorizontal: 8,
       paddingVertical: 4,
@@ -460,7 +464,9 @@ export function buildPdfStyles(theme: PdfThemePack) {
 
     card: {
       backgroundColor: palette.cardBg,
-      border: `1 solid ${palette.border}`,
+      borderWidth: 1,
+      borderStyle: 'solid',
+      borderColor: palette.border,
       borderRadius: spacing.radiusMd,
       padding: spacing.cardPadding,
       marginBottom: spacing.blockGap,
@@ -468,7 +474,9 @@ export function buildPdfStyles(theme: PdfThemePack) {
 
     mutedCard: {
       backgroundColor: palette.cardAltBg,
-      border: `1 solid ${palette.border}`,
+      borderWidth: 1,
+      borderStyle: 'solid',
+      borderColor: palette.border,
       borderRadius: spacing.radiusMd,
       padding: spacing.cardPadding,
       marginBottom: spacing.blockGap,
@@ -491,7 +499,9 @@ export function buildPdfStyles(theme: PdfThemePack) {
     metricCard: {
       width: '31%',
       backgroundColor: palette.cardBg,
-      border: `1 solid ${palette.border}`,
+      borderWidth: 1,
+      borderStyle: 'solid',
+      borderColor: palette.border,
       borderRadius: spacing.radiusMd,
       padding: 10,
     },
@@ -551,7 +561,9 @@ export function buildPdfStyles(theme: PdfThemePack) {
 
     table: {
       width: '100%',
-      border: `1 solid ${palette.borderStrong}`,
+      borderWidth: 1,
+      borderStyle: 'solid',
+      borderColor: palette.borderStrong,
       borderRadius: spacing.radiusMd,
       overflow: 'hidden' as const,
       marginBottom: spacing.blockGap,
@@ -561,7 +573,9 @@ export function buildPdfStyles(theme: PdfThemePack) {
       display: 'flex',
       flexDirection: 'row',
       backgroundColor: palette.heroBg,
-      borderBottom: `1 solid ${palette.borderStrong}`,
+      borderBottomWidth: 1,
+      borderBottomStyle: 'solid',
+      borderBottomColor: palette.borderStrong,
     },
 
     tableHeaderCell: {
@@ -579,14 +593,18 @@ export function buildPdfStyles(theme: PdfThemePack) {
     tableRow: {
       display: 'flex',
       flexDirection: 'row',
-      borderBottom: `1 solid ${palette.border}`,
+      borderBottomWidth: 1,
+      borderBottomStyle: 'solid',
+      borderBottomColor: palette.border,
       backgroundColor: palette.cardBg,
     },
 
     tableRowAlt: {
       display: 'flex',
       flexDirection: 'row',
-      borderBottom: `1 solid ${palette.border}`,
+      borderBottomWidth: 1,
+      borderBottomStyle: 'solid',
+      borderBottomColor: palette.border,
       backgroundColor: theme.table.striped ? palette.cardAltBg : palette.cardBg,
     },
 

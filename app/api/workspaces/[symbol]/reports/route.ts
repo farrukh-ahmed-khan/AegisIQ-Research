@@ -11,6 +11,7 @@ import { getFundamentalsViewModel } from "../../../../../lib/fundamentals-reposi
 import { runValuationEngine } from "../../../../../lib/valuationEngine";
 import { buildComparableSet } from "../../../../../lib/compsModel";
 import { sql } from "../../../../../lib/db";
+import { hasOpenAiKey } from "../../../../../lib/openai";
 
 interface RouteContext {
   params: Promise<{
@@ -94,8 +95,55 @@ function asNumberOrNull(value: unknown): number | null {
   return Number.isFinite(parsed) ? parsed : null;
 }
 
+function formatCurrency(value: number | null | undefined): string {
+  if (!isPresentNumber(value)) {
+    return "n/a";
+  }
+
+  return `$${value.toFixed(2)}`;
+}
+
+function formatPercent(value: number | null | undefined): string {
+  if (!isPresentNumber(value)) {
+    return "n/a";
+  }
+
+  return `${value.toFixed(2)}%`;
+}
+
 function isPresentNumber(value: number | null | undefined): value is number {
   return typeof value === "number" && Number.isFinite(value);
+}
+
+function parseNarrativeSections(narrative: string): Record<string, string> {
+  const sections: Record<string, string> = {};
+  const normalized = narrative.replace(/\r\n/g, "\n").trim();
+
+  if (!normalized) {
+    return sections;
+  }
+
+  const matches = Array.from(
+    normalized.matchAll(/(?:^|\n)(\d+)\.\s+([^\n:]+):\s*/g),
+  );
+
+  if (!matches.length) {
+    sections.full = normalized;
+    return sections;
+  }
+
+  for (let index = 0; index < matches.length; index += 1) {
+    const current = matches[index];
+    const next = matches[index + 1];
+    const title = current[2].trim().toLowerCase();
+    const start = current.index! + current[0].length;
+    const end = next ? next.index : normalized.length;
+    sections[title] = normalized.slice(start, end).trim();
+  }
+
+  sections.full = normalized;
+
+  return sections;
 }
 
 function buildFallbackAnalystOutput(params: {
@@ -312,8 +360,6 @@ export async function POST(request: Request, context: RouteContext) {
       },
     });
 
-    const hasOpenAiKey = Boolean(process.env.OPENAI_API_KEY?.trim());
-
     let analyst:
       | {
           investment_thesis: string;
@@ -328,7 +374,7 @@ export async function POST(request: Request, context: RouteContext) {
 
     let generatedNarrative = "";
 
-    if (hasOpenAiKey) {
+    if (hasOpenAiKey()) {
       const [{ runAiAnalystEngine }, { generateResearchReport }] =
         await Promise.all([
           import("../../../../../lib/aiAnalystEngine"),
@@ -405,6 +451,7 @@ export async function POST(request: Request, context: RouteContext) {
     }
 
     const reportDate = new Date().toISOString().slice(0, 10);
+    const parsedNarrative = parseNarrativeSections(generatedNarrative);
 
     const pdfPayload = {
       companyName: security?.company_name ?? symbol,
@@ -421,35 +468,105 @@ export async function POST(request: Request, context: RouteContext) {
       priceTarget: asNumberOrNull(valuation.targetRange?.base),
       upside: asNumberOrNull(valuation.upsidePercent),
       executiveSummaryText: analyst.investment_thesis,
+      executiveSummaryBlocks: [
+        {
+          heading: "Investment Thesis",
+          body:
+            parsedNarrative["investment thesis"] ?? analyst.investment_thesis,
+        },
+        {
+          heading: "Analyst View",
+          body:
+            parsedNarrative["analyst view"] ??
+            `Current price ${formatCurrency(valuation.currentPrice)} versus base target ${formatCurrency(valuation.targetRange?.base)} with implied upside of ${formatPercent(valuation.upsidePercent)}.`,
+        },
+        {
+          heading: "Recommendation",
+          body: analyst.recommendation_summary,
+        },
+      ],
+      overviewDescription:
+        security?.company_name && security?.sector && security?.industry
+          ? `${security.company_name} operates in the ${security.sector} sector and ${security.industry} industry, and this report combines stored fundamentals, valuation outputs, and AI-generated analyst interpretation.`
+          : `${symbol} is evaluated using stored fundamentals, valuation outputs, and AI-generated analyst interpretation.`,
+      investmentThesisText:
+        parsedNarrative["investment thesis"] ?? analyst.investment_thesis,
       valuationSummaryText: valuation.summary,
+      financialModelNarrative:
+        parsedNarrative["dcf takeaway"] ??
+        "The DCF framework is anchored on stored revenue, margin, and discount-rate assumptions.",
+      valuationNarrative:
+        parsedNarrative["price target rationale"] ??
+        parsedNarrative["comparable company takeaway"] ??
+        valuation.summary,
+      technicalNarrative:
+        parsedNarrative["analyst view"] ??
+        `The current framework is based primarily on stored fundamentals rather than live technical indicators.`,
       conclusionText: analyst.recommendation_summary,
-      thesisBullets: analyst.catalysts,
+      thesisBullets: [
+        {
+          title: "Bull Case",
+          text: analyst.bull_case,
+        },
+        {
+          title: "Base Case",
+          text: analyst.base_case,
+        },
+        {
+          title: "Bear Case",
+          text: analyst.bear_case,
+        },
+      ],
+      growthCatalysts: analyst.catalysts,
+      thesis: generatedNarrative,
       riskFactors: analyst.key_risks,
+      valuationScenarios: [
+        {
+          name: "Bear Case",
+          value: formatCurrency(valuation.targetRange?.low ?? null),
+          description: analyst.bear_case,
+        },
+        {
+          name: "Base Case",
+          value: formatCurrency(valuation.targetRange?.base ?? null),
+          description: analyst.base_case,
+        },
+        {
+          name: "Bull Case",
+          value: formatCurrency(valuation.targetRange?.high ?? null),
+          description: analyst.bull_case,
+        },
+      ],
       analystLabel: "AegisIQ AI Analyst",
       firmName: "AegisIQ Research",
+      distributionLabel:
+        "This report is generated for institutional-style research workflows and should be validated before external distribution.",
+      disclaimerText:
+        "This AI-generated report is for informational purposes only and does not constitute investment advice or a solicitation to buy or sell securities.",
+      disclosureText:
+        "Outputs are generated from stored fundamentals, model assumptions, and OpenAI-authored narrative summaries. Users should independently verify all assumptions and conclusions.",
+      analystCertificationText:
+        "This report was produced through the AegisIQ AI analyst workflow and should be reviewed by a qualified analyst before use in any regulated context.",
       dashboardMetrics: [
         { label: "Rating", value: valuation.rating },
         {
           label: "Current Price",
-          value:
-            valuation.currentPrice !== null
-              ? `$${Number(valuation.currentPrice).toFixed(2)}`
-              : "n/a",
+          value: formatCurrency(valuation.currentPrice),
         },
         {
           label: "Base Target",
-          value:
-            valuation.targetRange?.base !== null
-              ? `$${Number(valuation.targetRange.base).toFixed(2)}`
-              : "n/a",
+          value: formatCurrency(valuation.targetRange?.base ?? null),
         },
         {
           label: "Upside",
-          value:
-            valuation.upsidePercent !== null
-              ? `${Number(valuation.upsidePercent).toFixed(2)}%`
-              : "n/a",
+          value: formatPercent(valuation.upsidePercent),
         },
+      ],
+      companyMetrics: [
+        { label: "Company", value: security?.company_name ?? symbol },
+        { label: "Exchange", value: security?.exchange ?? "n/a" },
+        { label: "Sector", value: security?.sector ?? "n/a" },
+        { label: "Industry", value: security?.industry ?? "n/a" },
       ],
       valuationMetrics: [
         {
@@ -467,6 +584,57 @@ export async function POST(request: Request, context: RouteContext) {
         {
           label: "P/B",
           value: latestValuationMetrics?.priceToBook ?? "n/a",
+        },
+      ],
+      modelMetrics: [
+        {
+          label: "Revenue Growth",
+          value: formatPercent(latestRatios?.revenueGrowthYoy ?? null),
+        },
+        {
+          label: "Operating Margin",
+          value: formatPercent(latestRatios?.operatingMargin ?? null),
+        },
+        {
+          label: "DCF Value/Share",
+          value: formatCurrency(valuation.dcf?.impliedValuePerShare ?? null),
+        },
+        {
+          label: "Net Debt",
+          value: formatCurrency(netDebt),
+        },
+      ],
+      peerTable: comps.comps.slice(0, 6).map((peer) => ({
+        Ticker: peer.ticker ?? "n/a",
+        Company: peer.company_name ?? "n/a",
+        "EV/Revenue": peer.ev_revenue ?? "n/a",
+        "EV/EBITDA": peer.ev_ebitda ?? "n/a",
+        "P/E": peer.pe_ratio ?? "n/a",
+      })),
+      valuationTable: [
+        {
+          Metric: "Current Price",
+          Value: formatCurrency(valuation.currentPrice),
+        },
+        {
+          Metric: "Low Target",
+          Value: formatCurrency(valuation.targetRange?.low ?? null),
+        },
+        {
+          Metric: "Base Target",
+          Value: formatCurrency(valuation.targetRange?.base ?? null),
+        },
+        {
+          Metric: "High Target",
+          Value: formatCurrency(valuation.targetRange?.high ?? null),
+        },
+        {
+          Metric: "Upside",
+          Value: formatPercent(valuation.upsidePercent),
+        },
+        {
+          Metric: "Rating",
+          Value: valuation.rating,
         },
       ],
     };

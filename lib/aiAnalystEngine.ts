@@ -1,8 +1,4 @@
-import OpenAI from "openai";
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { getOpenAiClient, getOpenAiModel } from "./openai";
 
 async function runAiAnalystEngine({
   request,
@@ -11,6 +7,8 @@ async function runAiAnalystEngine({
   marketData,
   peers,
 }) {
+  const client = getOpenAiClient();
+
   const prompt = `
 You are a senior institutional equity research analyst.
 
@@ -75,7 +73,7 @@ Style rules:
 `;
 
   const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: getOpenAiModel(),
     temperature: 0.4,
     response_format: { type: "json_object" },
     messages: [

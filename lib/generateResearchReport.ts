@@ -1,10 +1,8 @@
-import OpenAI from "openai";
-
-const client = new OpenAI({
-  apiKey: process.env.OPENAI_API_KEY,
-});
+import { getOpenAiClient, getOpenAiModel } from "./openai";
 
 async function generateResearchReport({ ticker, analytics, dcf, comps, valuation }) {
+  const client = getOpenAiClient();
+
   const prompt = `
 You are an institutional equity research analyst.
 
@@ -56,7 +54,7 @@ Write like a professional equity research note, not marketing copy.
 `;
 
   const completion = await client.chat.completions.create({
-    model: "gpt-4o-mini",
+    model: getOpenAiModel(),
     temperature: 0.4,
     messages: [
       {
