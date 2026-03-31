@@ -1,22 +1,18 @@
-import { NextRequest, NextResponse } from "next/server";
 import { neon } from "@neondatabase/serverless";
 import { buildHistoryAnalytics } from "../../lib/reportAnalytics";
 import { buildPdfReport } from "../../lib/buildPdfReport";
 import { generateResearchReport } from "../../lib/generateResearchReport";
 
-export const runtime = "nodejs"; // ensure Node runtime
-export const dynamic = "force-dynamic"; // disable caching
-
-export async function GET(request: NextRequest) {
+export const handler = async function handler(event) {
   try {
-    const url = new URL(request.url);
-    const id = url.searchParams.get("id");
+    if (event.httpMethod !== "GET") {
+      return response(405, { error: "Method not allowed." });
+    }
+
+    const id = event.queryStringParameters?.id;
 
     if (!id) {
-      return NextResponse.json(
-        { error: "Missing report request id." },
-        { status: 400 },
-      );
+      return response(400, { error: "Missing report request id." });
     }
 
     const sql = neon(process.env.DATABASE_URL);
@@ -29,10 +25,7 @@ export async function GET(request: NextRequest) {
     `;
 
     if (!requests.length) {
-      return NextResponse.json(
-        { error: "Report request not found." },
-        { status: 404 },
-      );
+      return response(404, { error: "Report request not found." });
     }
 
     const requestData = requests[0];
@@ -83,13 +76,9 @@ export async function GET(request: NextRequest) {
 
     const pdfBuffer = pdfBufferUnknown as Buffer;
 
-    // Ensure it's a proper Buffer for NextResponse
     const pdfBody = Buffer.isBuffer(pdfBuffer)
       ? pdfBuffer
       : Buffer.from(pdfBuffer);
-
-    const pdfBytes = new Uint8Array(pdfBody.byteLength);
-    pdfBytes.set(pdfBody);
 
     const fileName = `${requestData.ticker || "report"}-research-report.pdf`;
 
@@ -104,19 +93,27 @@ export async function GET(request: NextRequest) {
       WHERE id = ${id}
     `;
 
-    // ✅ Return PDF
-    return new NextResponse(pdfBytes.buffer, {
-      status: 200,
+    return {
+      statusCode: 200,
       headers: {
         "Content-Type": "application/pdf",
         "Content-Disposition": `attachment; filename="${fileName}"`,
         "Cache-Control": "no-store",
       },
-    });
-  } catch (error: any) {
-    return NextResponse.json(
-      { error: error.message || "Server error." },
-      { status: 500 },
-    );
+      body: pdfBody.toString("base64"),
+      isBase64Encoded: true,
+    };
+  } catch (error) {
+    const message =
+      error instanceof Error ? error.message : "Server error.";
+    return response(500, { error: message });
   }
+};
+
+function response(statusCode: number, body: unknown) {
+  return {
+    statusCode,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  };
 }
