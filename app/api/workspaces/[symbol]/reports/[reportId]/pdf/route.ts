@@ -1,6 +1,5 @@
 import { auth } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
-import { renderEquityResearchPdf } from "@/lib/pdf/export-report";
 import { getWorkspaceReportRunById } from "@/lib/workspace-repository";
 
 interface RouteContext {
@@ -664,115 +663,54 @@ export async function GET(_: Request, context: RouteContext) {
     }
 
     try {
-      const pdfBytes = await renderEquityResearchPdf(pdfPayloadRaw);
-
-      const primaryBody = Buffer.from(pdfBytes) as unknown as BodyInit;
-
-      return new NextResponse(primaryBody, {
-        status: 200,
-        headers: {
-          "Content-Type": "application/pdf",
-          "Content-Disposition": `inline; filename="${buildPdfFilename(symbol, reportId)}"`,
-          "Cache-Control": "no-store, max-age=0",
-        },
+      const robustPdf = buildActualReportPdf({
+        symbol,
+        reportId,
+        pdfPayloadRaw,
+        outputPayload,
       });
-    } catch (renderError) {
-      console.error(
-        "React-PDF render failed, retrying with safe payload",
-        renderError,
-      );
 
-      const safePdfPayload = {
-        companyName:
-          (pdfPayloadRaw.companyName as string | undefined) ?? symbol,
-        ticker: (pdfPayloadRaw.ticker as string | undefined) ?? symbol,
-        reportDate:
-          (pdfPayloadRaw.reportDate as string | undefined) ??
-          new Date().toISOString().slice(0, 10),
-        reportTitle:
-          (pdfPayloadRaw.reportTitle as string | undefined) ??
-          `${symbol} Research Report`,
-        reportSubtitle:
-          "Fallback PDF payload rendered due data-shape mismatch in primary payload",
-        rating: (pdfPayloadRaw.rating as string | undefined) ?? "n/a",
-        executiveSummaryText:
-          (pdfPayloadRaw.executiveSummaryText as string | undefined) ??
-          "Summary unavailable.",
-        valuationSummaryText:
-          (pdfPayloadRaw.valuationSummaryText as string | undefined) ??
-          "Valuation summary unavailable.",
-        conclusionText:
-          (pdfPayloadRaw.conclusionText as string | undefined) ??
-          "Conclusion unavailable.",
-      };
-
-      try {
-        const retryBytes = await renderEquityResearchPdf(safePdfPayload);
-        const retryBody = Buffer.from(retryBytes) as unknown as BodyInit;
-
-        return new NextResponse(retryBody, {
+      return new NextResponse(
+        Buffer.from(robustPdf) as unknown as BodyInit,
+        {
           status: 200,
           headers: {
             "Content-Type": "application/pdf",
             "Content-Disposition": `inline; filename="${buildPdfFilename(symbol, reportId)}"`,
             "Cache-Control": "no-store, max-age=0",
-            "X-PDF-Renderer": "react-pdf-safe-fallback",
+            "X-PDF-Renderer": "internal-openai-fallback",
           },
-        });
-      } catch (retryError) {
-        console.error("Safe payload PDF render also failed", retryError);
+        },
+      );
+    } catch (internalRenderError) {
+      console.error("Internal PDF render failed", internalRenderError);
 
-        try {
-          const robustPdf = buildActualReportPdf({
-            symbol,
-            reportId,
-            pdfPayloadRaw,
-            outputPayload,
-          });
+      const emergencyPdf = createPlainTextPdf([
+        `${symbol} Research Report`,
+        `Report ID: ${reportId}`,
+        `Generated: ${new Date().toISOString()}`,
+        "",
+        "The internal PDF renderer failed for this report.",
+        "A minimal fallback PDF has been generated so the report remains accessible.",
+        "",
+        `Company: ${String(pdfPayloadRaw.companyName ?? symbol)}`,
+        `Ticker: ${String(pdfPayloadRaw.ticker ?? symbol)}`,
+        `Rating: ${String(pdfPayloadRaw.rating ?? "n/a")}`,
+        `Title: ${String(pdfPayloadRaw.reportTitle ?? `${symbol} Research Report`)}`,
+      ]);
 
-          return new NextResponse(
-            Buffer.from(robustPdf) as unknown as BodyInit,
-            {
-              status: 200,
-              headers: {
-                "Content-Type": "application/pdf",
-                "Content-Disposition": `inline; filename="${buildPdfFilename(symbol, reportId)}"`,
-                "Cache-Control": "no-store, max-age=0",
-                "X-PDF-Renderer": "internal-openai-fallback",
-              },
-            },
-          );
-        } catch (pdfKitError) {
-          console.error("Internal fallback render failed", pdfKitError);
-        }
-
-        const emergencyPdf = createPlainTextPdf([
-          `${symbol} Research Report`,
-          `Report ID: ${reportId}`,
-          `Generated: ${new Date().toISOString()}`,
-          "",
-          "The styled PDF renderer and robust fallback renderer both failed.",
-          "A minimal fallback PDF has been generated so the report remains accessible.",
-          "",
-          `Company: ${String(pdfPayloadRaw.companyName ?? symbol)}`,
-          `Ticker: ${String(pdfPayloadRaw.ticker ?? symbol)}`,
-          `Rating: ${String(pdfPayloadRaw.rating ?? "n/a")}`,
-          `Title: ${String(pdfPayloadRaw.reportTitle ?? `${symbol} Research Report`)}`,
-        ]);
-
-        return new NextResponse(
-          Buffer.from(emergencyPdf) as unknown as BodyInit,
-          {
-            status: 200,
-            headers: {
-              "Content-Type": "application/pdf",
-              "Content-Disposition": `inline; filename="${buildPdfFilename(symbol, reportId)}"`,
-              "Cache-Control": "no-store, max-age=0",
-              "X-PDF-Renderer": "plain-text-fallback",
-            },
+      return new NextResponse(
+        Buffer.from(emergencyPdf) as unknown as BodyInit,
+        {
+          status: 200,
+          headers: {
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `inline; filename="${buildPdfFilename(symbol, reportId)}"`,
+            "Cache-Control": "no-store, max-age=0",
+            "X-PDF-Renderer": "plain-text-fallback",
           },
-        );
-      }
+        },
+      );
     }
   } catch (error) {
     const message =
