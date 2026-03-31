@@ -40,6 +40,9 @@ const Footer = () => {
               <li>
                 <Link href="/reports">Reports</Link>
               </li>
+              <li>
+                <Link href="/reports/new">AI Report Builder</Link>
+              </li>
             </ul>
           </div>
 
@@ -54,6 +57,9 @@ const Footer = () => {
               </li>
               <li>
                 <Link href="/screener">Screener</Link>
+              </li>
+              <li>
+                <Link href="/watchlists">Watchlists</Link>
               </li>
               <li>
                 <Link href="/workspace">Workspace</Link>

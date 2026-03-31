@@ -43,7 +43,11 @@ async function fmpGet<T>(path: string): Promise<T | null> {
     }
     const raw = await res.json();
     // New stable API may wrap results in { data: [...] }
-    const data = Array.isArray(raw) ? raw : Array.isArray(raw?.data) ? raw.data : null;
+    const data = Array.isArray(raw)
+      ? raw
+      : Array.isArray(raw?.data)
+        ? raw.data
+        : null;
     if (!data || data.length === 0) return null;
     return data as T;
   } catch (err) {
@@ -216,7 +220,10 @@ function buildRatioInput(
   incCalendarYear: string,
 ): UpsertRatioInput {
   const periodType = periodFromFmp(rat.period ?? incPeriod);
-  const fiscalYear = parseInt(rat.calendarYear ?? incCalendarYear ?? rat.date.slice(0, 4), 10);
+  const fiscalYear = parseInt(
+    rat.calendarYear ?? incCalendarYear ?? rat.date.slice(0, 4),
+    10,
+  );
 
   return {
     symbol,
@@ -252,36 +259,82 @@ export async function fetchAndStoreFundamentals(
   if (!process.env.FMP_API_KEY) return false;
 
   try {
+    type AnnualResults = [
+      FmpIncomeRow[] | null,
+      FmpBalanceRow[] | null,
+      FmpCashRow[] | null,
+      FmpRatioRow[] | null,
+      FmpKeyMetricRow[] | null,
+      FmpKeyMetricsTtmRow[] | null,
+      FmpAnalystEstimate[] | null,
+      FmpQuoteRow[] | null,
+    ];
+
+    type QuarterlyResults = [
+      FmpIncomeRow[] | null,
+      FmpBalanceRow[] | null,
+      FmpCashRow[] | null,
+      FmpRatioRow[] | null,
+    ];
+
     // Core annual calls — always fetched
-    const annualCalls = Promise.all([
-      fmpGet<FmpIncomeRow[]>(`/income-statement?symbol=${symbol}&period=annual&limit=8`),
-      fmpGet<FmpBalanceRow[]>(`/balance-sheet-statement?symbol=${symbol}&period=annual&limit=8`),
-      fmpGet<FmpCashRow[]>(`/cash-flow-statement?symbol=${symbol}&period=annual&limit=8`),
+    const annualCalls: Promise<AnnualResults> = Promise.all([
+      fmpGet<FmpIncomeRow[]>(
+        `/income-statement?symbol=${symbol}&period=annual&limit=8`,
+      ),
+      fmpGet<FmpBalanceRow[]>(
+        `/balance-sheet-statement?symbol=${symbol}&period=annual&limit=8`,
+      ),
+      fmpGet<FmpCashRow[]>(
+        `/cash-flow-statement?symbol=${symbol}&period=annual&limit=8`,
+      ),
       fmpGet<FmpRatioRow[]>(`/ratios?symbol=${symbol}&period=annual&limit=8`),
-      fmpGet<FmpKeyMetricRow[]>(`/key-metrics?symbol=${symbol}&period=annual&limit=1`),
+      fmpGet<FmpKeyMetricRow[]>(
+        `/key-metrics?symbol=${symbol}&period=annual&limit=1`,
+      ),
       fmpGet<FmpKeyMetricsTtmRow[]>(`/key-metrics-ttm?symbol=${symbol}`),
-      fmpGet<FmpAnalystEstimate[]>(`/analyst-estimates?symbol=${symbol}&limit=4`),
+      fmpGet<FmpAnalystEstimate[]>(
+        `/analyst-estimates?symbol=${symbol}&limit=4`,
+      ),
       fmpGet<FmpQuoteRow[]>(`/quote?symbol=${symbol}`),
     ]);
 
     // Quarterly calls — skipped in annualOnly / fast mode
-    const quarterlyCalls = options.annualOnly
-      ? Promise.resolve([null, null, null, null] as const)
+    const quarterlyCalls: Promise<QuarterlyResults> = options.annualOnly
+      ? Promise.resolve([null, null, null, null])
       : Promise.all([
-          fmpGet<FmpIncomeRow[]>(`/income-statement?symbol=${symbol}&period=quarter&limit=12`),
-          fmpGet<FmpBalanceRow[]>(`/balance-sheet-statement?symbol=${symbol}&period=quarter&limit=12`),
-          fmpGet<FmpCashRow[]>(`/cash-flow-statement?symbol=${symbol}&period=quarter&limit=12`),
-          fmpGet<FmpRatioRow[]>(`/ratios?symbol=${symbol}&period=quarter&limit=12`),
+          fmpGet<FmpIncomeRow[]>(
+            `/income-statement?symbol=${symbol}&period=quarter&limit=12`,
+          ),
+          fmpGet<FmpBalanceRow[]>(
+            `/balance-sheet-statement?symbol=${symbol}&period=quarter&limit=12`,
+          ),
+          fmpGet<FmpCashRow[]>(
+            `/cash-flow-statement?symbol=${symbol}&period=quarter&limit=12`,
+          ),
+          fmpGet<FmpRatioRow[]>(
+            `/ratios?symbol=${symbol}&period=quarter&limit=12`,
+          ),
         ]);
 
-    const [annualResults, quarterlyResults] = await Promise.all([annualCalls, quarterlyCalls]);
+    const [annualResults, quarterlyResults] = await Promise.all([
+      annualCalls,
+      quarterlyCalls,
+    ]);
 
     const [
-      incomeAnnual, balanceAnnual, cashAnnual, ratiosAnnual,
-      keyMetrics, keyMetricsTtm, analystEstimates, quote,
+      incomeAnnual,
+      balanceAnnual,
+      cashAnnual,
+      ratiosAnnual,
+      keyMetrics,
+      keyMetricsTtm,
+      analystEstimates,
+      quote,
     ] = annualResults;
 
-    const [incomeQuarterly, balanceQuarterly, cashQuarterly, ratiosQuarterly] = quarterlyResults;
+    const [incomeQuarterly, balanceQuarterly, cashQuarterly, ratiosQuarterly] =
+      quarterlyResults;
 
     // Need at least annual income to proceed
     if (!incomeAnnual || incomeAnnual.length === 0) return false;
@@ -303,13 +356,20 @@ export async function fetchAndStoreFundamentals(
     for (const inc of incomeAnnual) {
       ops.push(
         upsertFinancial(
-          buildFinancialInput(symbol, inc, balAnnualMap.get(inc.date), cashAnnualMap.get(inc.date)),
+          buildFinancialInput(
+            symbol,
+            inc,
+            balAnnualMap.get(inc.date),
+            cashAnnualMap.get(inc.date),
+          ),
         ).catch(() => null),
       );
       const rat = ratAnnualMap.get(inc.date);
       if (rat) {
         ops.push(
-          upsertRatio(buildRatioInput(symbol, rat, inc.period, inc.calendarYear)).catch(() => null),
+          upsertRatio(
+            buildRatioInput(symbol, rat, inc.period, inc.calendarYear),
+          ).catch(() => null),
         );
       }
     }
@@ -318,13 +378,20 @@ export async function fetchAndStoreFundamentals(
     for (const inc of incomeQuarterly ?? []) {
       ops.push(
         upsertFinancial(
-          buildFinancialInput(symbol, inc, balQMap.get(inc.date), cashQMap.get(inc.date)),
+          buildFinancialInput(
+            symbol,
+            inc,
+            balQMap.get(inc.date),
+            cashQMap.get(inc.date),
+          ),
         ).catch(() => null),
       );
       const rat = ratQMap.get(inc.date);
       if (rat) {
         ops.push(
-          upsertRatio(buildRatioInput(symbol, rat, inc.period, inc.calendarYear)).catch(() => null),
+          upsertRatio(
+            buildRatioInput(symbol, rat, inc.period, inc.calendarYear),
+          ).catch(() => null),
         );
       }
     }
@@ -374,19 +441,21 @@ export async function fetchAndStoreFundamentals(
     // shares×price as local market cap divided by the financial statement value
     // (both denominator and implied numerator are in the same reported currency).
     if (latestInc) {
-      const price      = q ? n(q.price) : null;
-      const eps        = q ? n(q.eps)   : null;
-      const latestBal  = balAnnualMap.get(latestInc.date);
+      const price = q ? n(q.price) : null;
+      const eps = q ? n(q.eps) : null;
+      const latestBal = balAnnualMap.get(latestInc.date);
       const latestCash = cashAnnualMap.get(latestInc.date);
 
-      const netIncome  = n(latestInc.netIncome);
-      const revenue    = n(latestInc.revenue);
-      const ebitda     = n(latestInc.ebitda);
-      const equity     = latestBal ? n(latestBal.totalStockholdersEquity) : null;
-      const totalDebt  = latestBal ? n(latestBal.totalDebt) : null;
-      const cashVal    = latestBal ? n(latestBal.cashAndCashEquivalents) : null;
-      const shares     = latestBal ? n(latestBal.sharesOutstanding ?? latestBal.commonStock) : null;
-      const fcf        = latestCash ? n(latestCash.freeCashFlow) : null;
+      const netIncome = n(latestInc.netIncome);
+      const revenue = n(latestInc.revenue);
+      const ebitda = n(latestInc.ebitda);
+      const equity = latestBal ? n(latestBal.totalStockholdersEquity) : null;
+      const totalDebt = latestBal ? n(latestBal.totalDebt) : null;
+      const cashVal = latestBal ? n(latestBal.cashAndCashEquivalents) : null;
+      const shares = latestBal
+        ? n(latestBal.sharesOutstanding ?? latestBal.commonStock)
+        : null;
+      const fcf = latestCash ? n(latestCash.freeCashFlow) : null;
 
       // Local market cap = price × shares (avoids USD/local-currency mismatch)
       const localMktCap =
@@ -395,52 +464,107 @@ export async function fetchAndStoreFundamentals(
           : valuationInput.marketCap;
 
       // P/E — price ÷ eps (most accurate, same currency)
-      if (valuationInput.peRatio == null && price != null && eps != null && eps > 0) {
+      if (
+        valuationInput.peRatio == null &&
+        price != null &&
+        eps != null &&
+        eps > 0
+      ) {
         valuationInput.peRatio = price / eps;
       }
       // P/E fallback — local market cap ÷ net income
-      if (valuationInput.peRatio == null && localMktCap != null && localMktCap > 0 && netIncome != null && netIncome > 0) {
+      if (
+        valuationInput.peRatio == null &&
+        localMktCap != null &&
+        localMktCap > 0 &&
+        netIncome != null &&
+        netIncome > 0
+      ) {
         valuationInput.peRatio = localMktCap / netIncome;
       }
 
       // P/B — local market cap ÷ total equity
-      if (valuationInput.priceToBook == null && localMktCap != null && localMktCap > 0 && equity != null && equity > 0) {
+      if (
+        valuationInput.priceToBook == null &&
+        localMktCap != null &&
+        localMktCap > 0 &&
+        equity != null &&
+        equity > 0
+      ) {
         valuationInput.priceToBook = localMktCap / equity;
       }
 
       // P/S — local market cap ÷ revenue
-      if (valuationInput.priceToSales == null && localMktCap != null && localMktCap > 0 && revenue != null && revenue > 0) {
+      if (
+        valuationInput.priceToSales == null &&
+        localMktCap != null &&
+        localMktCap > 0 &&
+        revenue != null &&
+        revenue > 0
+      ) {
         valuationInput.priceToSales = localMktCap / revenue;
       }
 
       // Enterprise value — local market cap + debt − cash
-      if (valuationInput.enterpriseValue == null && localMktCap != null && totalDebt != null && cashVal != null) {
+      if (
+        valuationInput.enterpriseValue == null &&
+        localMktCap != null &&
+        totalDebt != null &&
+        cashVal != null
+      ) {
         valuationInput.enterpriseValue = localMktCap + totalDebt - cashVal;
       }
       const ev = valuationInput.enterpriseValue;
 
       // EV/EBITDA
-      if (valuationInput.evToEbitda == null && ev != null && ev > 0 && ebitda != null && ebitda > 0) {
+      if (
+        valuationInput.evToEbitda == null &&
+        ev != null &&
+        ev > 0 &&
+        ebitda != null &&
+        ebitda > 0
+      ) {
         valuationInput.evToEbitda = ev / ebitda;
       }
 
       // EV/Revenue
-      if (valuationInput.evToRevenue == null && ev != null && ev > 0 && revenue != null && revenue > 0) {
+      if (
+        valuationInput.evToRevenue == null &&
+        ev != null &&
+        ev > 0 &&
+        revenue != null &&
+        revenue > 0
+      ) {
         valuationInput.evToRevenue = ev / revenue;
       }
 
       // P/FCF
-      if (valuationInput.priceToFcf == null && localMktCap != null && localMktCap > 0 && fcf != null && fcf > 0) {
+      if (
+        valuationInput.priceToFcf == null &&
+        localMktCap != null &&
+        localMktCap > 0 &&
+        fcf != null &&
+        fcf > 0
+      ) {
         valuationInput.priceToFcf = localMktCap / fcf;
       }
 
       // Earnings yield (inverse of P/E)
-      if (valuationInput.earningsYield == null && valuationInput.peRatio != null && valuationInput.peRatio > 0) {
+      if (
+        valuationInput.earningsYield == null &&
+        valuationInput.peRatio != null &&
+        valuationInput.peRatio > 0
+      ) {
         valuationInput.earningsYield = 1 / valuationInput.peRatio;
       }
 
       // Book value per share
-      if (valuationInput.bookValuePerShare == null && equity != null && shares != null && shares > 0) {
+      if (
+        valuationInput.bookValuePerShare == null &&
+        equity != null &&
+        shares != null &&
+        shares > 0
+      ) {
         valuationInput.bookValuePerShare = equity / shares;
       }
     }
@@ -451,7 +575,10 @@ export async function fetchAndStoreFundamentals(
     await Promise.all(ops);
     return true;
   } catch (err) {
-    console.error(`[fmp-fundamentals] fetchAndStoreFundamentals(${symbol}) failed:`, err);
+    console.error(
+      `[fmp-fundamentals] fetchAndStoreFundamentals(${symbol}) failed:`,
+      err,
+    );
     return false;
   }
 }
