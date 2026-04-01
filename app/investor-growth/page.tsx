@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useState } from "react";
 import { message } from "antd";
 import InvestorGrowthForm from "../../components/investor-growth/InvestorGrowthForm";
@@ -20,17 +21,24 @@ type GeneratedContent = {
   email_draft: string;
   sms_draft: string;
   social_post: string;
-} | null;
+};
+
+type GenerateResponse = GeneratedContent & {
+  id: string;
+  ticker: string;
+};
 
 export default function InvestorGrowthPage() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string>("");
+  const [campaignId, setCampaignId] = useState<string | null>(null);
   const [generatedContent, setGeneratedContent] =
-    useState<GeneratedContent>(null);
+    useState<GeneratedContent | null>(null);
 
-  async function handleGenerateStrategy(formData: FormData) {
+  async function handleGenerateStrategy(formData: FormData): Promise<boolean> {
     setError("");
     setGeneratedContent(null);
+    setCampaignId(null);
 
     const requiredFields: Array<keyof FormData> = [
       "ticker",
@@ -49,7 +57,7 @@ export default function InvestorGrowthPage() {
       const validationError = "Please fill all required fields.";
       setError(validationError);
       message.error(validationError);
-      return;
+      return false;
     }
 
     setIsLoading(true);
@@ -68,13 +76,22 @@ export default function InvestorGrowthPage() {
         throw new Error(data.error || "Failed to generate strategy");
       }
 
-      const result = (await response.json()) as GeneratedContent;
-      setGeneratedContent(result);
+      const result = (await response.json()) as GenerateResponse;
+      setGeneratedContent({
+        strategy: result.strategy,
+        email_draft: result.email_draft,
+        sms_draft: result.sms_draft,
+        social_post: result.social_post,
+      });
+      setCampaignId(result.id);
+      console.log("Saved campaign id:", result.id);
+      return true;
     } catch (err) {
       const errorText =
         err instanceof Error ? err.message : "An error occurred";
       setError(errorText);
       message.error(errorText);
+      return false;
     } finally {
       setIsLoading(false);
     }
@@ -89,6 +106,17 @@ export default function InvestorGrowthPage() {
             Build campaign strategy and outreach drafts for investor relations
             workflows.
           </p>
+          <div className={styles.actions}>
+            <Link
+              href="/investor-growth/history"
+              className={styles.historyLink}
+            >
+              View Campaign History
+            </Link>
+          </div>
+          {campaignId ? (
+            <p className={styles.subtitle}>Saved Campaign ID: {campaignId}</p>
+          ) : null}
         </header>
 
         <section className={styles.grid}>

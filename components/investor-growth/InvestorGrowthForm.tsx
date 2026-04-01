@@ -13,7 +13,7 @@ type FormState = {
 };
 
 type Props = {
-  onSubmit: (formData: FormState) => Promise<void>;
+  onSubmit: (formData: FormState) => Promise<boolean>;
   isLoading: boolean;
 };
 
@@ -35,7 +35,11 @@ export default function InvestorGrowthForm({ onSubmit, isLoading }: Props) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    await onSubmit(formData);
+    const isSuccess = await onSubmit(formData);
+
+    if (isSuccess) {
+      setFormData(initialState);
+    }
   }
 
   return (

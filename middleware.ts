@@ -3,5 +3,11 @@ import { clerkMiddleware } from "@clerk/nextjs/server";
 export default clerkMiddleware();
 
 export const config = {
-  matcher: ["/dashboard(.*)", "/report(.*)", "/workspace(.*)", "/api(.*)"],
+  matcher: [
+    "/dashboard(.*)",
+    "/report(.*)",
+    "/workspace(.*)",
+    "/investor-growth(.*)",
+    "/api(.*)",
+  ],
 };

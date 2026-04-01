@@ -38,6 +38,20 @@ type InvestorGrowthCampaignUpdateInput = {
   social_post?: string;
 };
 
+type CreateGeneratedCampaignInput = {
+  user_id: string;
+  ticker: string;
+  company_name: string;
+  campaign_objective: string;
+  audience_focus: string;
+  tone: string;
+  notes: string;
+  strategy: string;
+  email_draft: string;
+  sms_draft: string;
+  social_post: string;
+};
+
 function asNullableString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
@@ -130,6 +144,33 @@ export async function createCampaign(
   return mapCampaign(rows[0]);
 }
 
+export async function createGeneratedCampaign(
+  input: CreateGeneratedCampaignInput,
+): Promise<InvestorGrowthCampaign> {
+  return createCampaign({
+    user_id: input.user_id,
+    ticker: input.ticker,
+    company_name: input.company_name,
+    campaign_objective: input.campaign_objective,
+    audience_focus: input.audience_focus,
+    tone: input.tone,
+    notes: input.notes,
+    strategy_payload_json: {
+      strategy: input.strategy,
+    },
+    content_payload_json: {
+      strategy: input.strategy,
+      email_draft: input.email_draft,
+      sms_draft: input.sms_draft,
+      social_post: input.social_post,
+    },
+    email_body: input.email_draft,
+    sms_body: input.sms_draft,
+    social_post: input.social_post,
+    status: "draft",
+  });
+}
+
 export async function getCampaignById(
   campaignId: string,
 ): Promise<InvestorGrowthCampaign | null> {
@@ -155,6 +196,35 @@ export async function getCampaignsByUser(
   `;
 
   return rows.map(mapCampaign);
+}
+
+export async function getCampaignsByUserPaginated(
+  userId: string,
+  limit: number,
+  offset: number,
+): Promise<InvestorGrowthCampaign[]> {
+  const rows = await sql<Record<string, unknown>[]>`
+    SELECT *
+    FROM investor_growth_campaigns
+    WHERE user_id = ${userId}::uuid
+    ORDER BY created_at DESC
+    LIMIT ${limit}
+    OFFSET ${offset}
+  `;
+
+  return rows.map(mapCampaign);
+}
+
+export async function countCampaignsByUser(userId: string): Promise<number> {
+  const rows = await sql<Array<{ total_count: number | string }>>`
+    SELECT COUNT(*)::int AS total_count
+    FROM investor_growth_campaigns
+    WHERE user_id = ${userId}::uuid
+  `;
+
+  const value = rows[0]?.total_count;
+  const parsed = Number(value);
+  return Number.isFinite(parsed) ? parsed : 0;
 }
 
 export async function updateCampaign(

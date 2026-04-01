@@ -1,5 +1,8 @@
 import { NextRequest, NextResponse } from "next/server";
+import { auth } from "@clerk/nextjs/server";
 import { getOpenAiClient, getOpenAiModel, hasOpenAiKey } from "@/lib/openai";
+import { createGeneratedCampaign } from "@/lib/repositories/investorCampaignRepository";
+import { toStableUuid } from "@/lib/stable-user-id";
 
 export const runtime = "nodejs";
 
@@ -19,8 +22,23 @@ type ResponseData = {
   social_post: string;
 };
 
+type GenerateResponse = {
+  id: string;
+  ticker: string;
+  strategy: string;
+  email_draft: string;
+  sms_draft: string;
+  social_post: string;
+};
+
 export async function POST(request: NextRequest) {
   try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized." }, { status: 401 });
+    }
+
     if (!hasOpenAiKey()) {
       return NextResponse.json(
         { error: "OpenAI API key is not configured" },
@@ -40,11 +58,17 @@ export async function POST(request: NextRequest) {
     } = body;
 
     // Validate required fields
-    if (!ticker || !company_name || !campaign_objective) {
+    if (
+      !ticker?.trim() ||
+      !company_name?.trim() ||
+      !campaign_objective?.trim() ||
+      !audience_focus?.trim() ||
+      !tone?.trim() ||
+      !notes?.trim()
+    ) {
       return NextResponse.json(
         {
-          error:
-            "Missing required fields: ticker, company_name, campaign_objective",
+          error: "All fields are required.",
         },
         { status: 400 },
       );
@@ -123,7 +147,30 @@ Return ONLY valid JSON with exactly these keys (no markdown, no code blocks):
       );
     }
 
-    return NextResponse.json(parsed);
+    const savedCampaign = await createGeneratedCampaign({
+      user_id: toStableUuid(userId),
+      ticker: ticker.trim().toUpperCase(),
+      company_name: company_name.trim(),
+      campaign_objective: campaign_objective.trim(),
+      audience_focus: audience_focus.trim(),
+      tone: tone.trim(),
+      notes: notes.trim(),
+      strategy: parsed.strategy,
+      email_draft: parsed.email_draft,
+      sms_draft: parsed.sms_draft,
+      social_post: parsed.social_post,
+    });
+
+    const response: GenerateResponse = {
+      id: savedCampaign.id,
+      ticker: savedCampaign.ticker ?? ticker.trim().toUpperCase(),
+      strategy: parsed.strategy,
+      email_draft: parsed.email_draft,
+      sms_draft: parsed.sms_draft,
+      social_post: parsed.social_post,
+    };
+
+    return NextResponse.json(response);
   } catch (error) {
     console.error("Investor growth API error:", error);
 
