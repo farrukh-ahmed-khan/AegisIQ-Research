@@ -3,7 +3,7 @@ import { auth } from "@clerk/nextjs/server";
 import {
   countCampaignsByUser,
   getCampaignsByUserPaginated,
-} from "@/lib/repositories/investorCampaignRepository";
+} from "@/lib/repositories/investorGrowthCampaignRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 const PER_PAGE = 10;
@@ -13,6 +13,7 @@ type CampaignHistoryItem = {
   ticker: string;
   company_name: string;
   campaign_objective: string;
+  status: string;
   created_at: string;
 };
 
@@ -41,6 +42,7 @@ export async function GET(request: Request) {
       ticker: campaign.ticker ?? "",
       company_name: campaign.company_name ?? "",
       campaign_objective: campaign.campaign_objective ?? "",
+      status: campaign.status,
       created_at: campaign.created_at,
     }));
 

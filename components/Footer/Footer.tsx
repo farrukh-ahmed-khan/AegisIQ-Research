@@ -46,6 +46,11 @@ const Footer = () => {
               <li>
                 <Link href="/investor-growth">Investor Growth</Link>
               </li>
+              <li>
+                <Link href="/investor-growth/campaigns">
+                  Campaign Dashboard
+                </Link>
+              </li>
             </ul>
           </div>
 

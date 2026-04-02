@@ -12,6 +12,31 @@
   font-weight: 600;
 }
 
+.actions {
+  margin-bottom: 14px;
+}
+
+.saveButton {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.savedText {
+  margin: 8px 0 0;
+  color: #86efac;
+  font-size: 0.86rem;
+}
+
 .stack {
   display: grid;
   gap: 12px;

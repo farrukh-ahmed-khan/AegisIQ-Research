@@ -61,7 +61,7 @@ export default function InvestorGrowthCampaignDetailPage() {
 
       try {
         const response = await fetch(
-          `/api/investor-growth/campaign/${campaignId}`,
+          `/api/investor-growth/campaigns/${campaignId}`,
           {
             method: "GET",
             cache: "no-store",

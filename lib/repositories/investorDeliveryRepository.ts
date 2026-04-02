@@ -9,6 +9,7 @@ type CreateDeliveryEventInput = {
   content_payload_json?: unknown;
   delivery_status?: string;
   provider_message_id?: string;
+  provider_response_json?: unknown;
   error_message?: string;
 };
 
@@ -53,6 +54,7 @@ export async function createDeliveryEvent(
       content_payload_json,
       delivery_status,
       provider_message_id,
+      provider_response_json,
       error_message,
       triggered_at,
       created_at
@@ -66,6 +68,7 @@ export async function createDeliveryEvent(
       ${JSON.stringify(input.content_payload_json ?? {})}::jsonb,
       ${input.delivery_status ?? "not_sent"},
       ${input.provider_message_id ?? null},
+      ${JSON.stringify(input.provider_response_json ?? {})}::jsonb,
       ${input.error_message ?? null},
       now(),
       now()

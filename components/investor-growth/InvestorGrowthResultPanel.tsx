@@ -10,6 +10,10 @@ type GeneratedContent = {
 type Props = {
   content: GeneratedContent;
   isLoading: boolean;
+  isSaving: boolean;
+  onSave: () => Promise<void>;
+  canSave: boolean;
+  campaignId: string | null;
   error: string;
 };
 
@@ -39,11 +43,35 @@ const sections = [
 export default function InvestorGrowthResultPanel({
   content,
   isLoading,
+  isSaving,
+  onSave,
+  canSave,
+  campaignId,
   error,
 }: Props) {
   return (
     <section className={styles.card}>
       <h2 className={styles.title}>Generated Output</h2>
+
+      {content && !isLoading ? (
+        <div className={styles.actions}>
+          <button
+            type="button"
+            className={styles.saveButton}
+            onClick={() => void onSave()}
+            disabled={!canSave || isSaving}
+          >
+            {isSaving
+              ? "Saving..."
+              : canSave
+                ? "Save Campaign"
+                : "Campaign Saved"}
+          </button>
+          {campaignId ? (
+            <p className={styles.savedText}>Saved Campaign ID: {campaignId}</p>
+          ) : null}
+        </div>
+      ) : null}
 
       {isLoading && (
         <div className={styles.loadingState}>

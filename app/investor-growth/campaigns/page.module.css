@@ -1,0 +1,159 @@
+.page {
+  min-height: 100vh;
+  background: #080c16;
+  color: #e5e7eb;
+  padding: 32px 16px;
+  margin-top: 80px;
+}
+
+.container {
+  max-width: 1200px;
+  margin: 0 auto;
+}
+
+.header {
+  margin-bottom: 18px;
+}
+
+.title {
+  margin: 0;
+  font-size: 1.9rem;
+  font-weight: 700;
+}
+
+.subtitle {
+  margin: 8px 0 0;
+  color: #94a3b8;
+}
+
+.backLink {
+  display: inline-flex;
+  margin-top: 12px;
+  color: #93c5fd;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.backLink:hover {
+  color: #bfdbfe;
+}
+
+.message {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  background: #111827;
+  color: #cbd5e1;
+}
+
+.error {
+  margin: 0;
+  padding: 16px;
+  border: 1px solid #dc2626;
+  border-radius: 10px;
+  background: rgba(220, 38, 38, 0.1);
+  color: #fecaca;
+}
+
+.tableWrap {
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  overflow-x: auto;
+  background: #111827;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 900px;
+}
+
+.table th,
+.table td {
+  padding: 12px 14px;
+  text-align: left;
+  border-bottom: 1px solid #1f2937;
+  font-size: 0.92rem;
+}
+
+.table th {
+  color: #bfdbfe;
+  background: #0f172a;
+  font-weight: 600;
+}
+
+.statusBadge {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: capitalize;
+}
+
+.statusDraft {
+  background: rgba(59, 130, 246, 0.2);
+  color: #93c5fd;
+}
+
+.statusPending {
+  background: rgba(245, 158, 11, 0.2);
+  color: #fcd34d;
+}
+
+.statusApproved {
+  background: rgba(34, 197, 94, 0.2);
+  color: #86efac;
+}
+
+.statusRejected {
+  background: rgba(239, 68, 68, 0.2);
+  color: #fca5a5;
+}
+
+.viewButton {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 7px 10px;
+  border-radius: 8px;
+  background: #2563eb;
+  color: #ffffff;
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.viewButton:hover {
+  background: #1d4ed8;
+}
+
+.pagination {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 10px;
+  margin-top: 16px;
+}
+
+.paginationButton {
+  border: 1px solid #334155;
+  background: #0f172a;
+  color: #e2e8f0;
+  padding: 8px 12px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+}
+
+.paginationButton:disabled {
+  opacity: 0.55;
+  cursor: not-allowed;
+}
+
+.pageInfo {
+  color: #94a3b8;
+  font-size: 0.9rem;
+}

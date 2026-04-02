@@ -95,6 +95,9 @@ export default function InvestorGrowthHistoryPage() {
           <Link href="/investor-growth" className={styles.backLink}>
             Back to Generator
           </Link>
+          <Link href="/investor-growth/campaigns" className={styles.backLink}>
+            Open Campaign Dashboard
+          </Link>
         </header>
 
         {isLoading ? (
@@ -160,7 +163,7 @@ export default function InvestorGrowthHistoryPage() {
                   </div>
 
                   <Link
-                    href={`/investor-growth/campaign/${campaign.id}`}
+                    href={`/investor-growth/campaigns/${campaign.id}`}
                     className={styles.button}
                   >
                     View Campaign

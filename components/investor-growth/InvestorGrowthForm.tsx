@@ -35,11 +35,7 @@ export default function InvestorGrowthForm({ onSubmit, isLoading }: Props) {
 
   async function handleSubmit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    const isSuccess = await onSubmit(formData);
-
-    if (isSuccess) {
-      setFormData(initialState);
-    }
+    await onSubmit(formData);
   }
 
   return (

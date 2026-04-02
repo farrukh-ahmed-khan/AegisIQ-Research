@@ -23,15 +23,16 @@ type GeneratedContent = {
   social_post: string;
 };
 
-type GenerateResponse = GeneratedContent & {
+type SaveResponse = {
   id: string;
-  ticker: string;
 };
 
 export default function InvestorGrowthPage() {
   const [isLoading, setIsLoading] = useState(false);
+  const [isSaving, setIsSaving] = useState(false);
   const [error, setError] = useState<string>("");
   const [campaignId, setCampaignId] = useState<string | null>(null);
+  const [lastFormData, setLastFormData] = useState<FormData | null>(null);
   const [generatedContent, setGeneratedContent] =
     useState<GeneratedContent | null>(null);
 
@@ -76,15 +77,15 @@ export default function InvestorGrowthPage() {
         throw new Error(data.error || "Failed to generate strategy");
       }
 
-      const result = (await response.json()) as GenerateResponse;
+      const result = (await response.json()) as GeneratedContent;
       setGeneratedContent({
         strategy: result.strategy,
         email_draft: result.email_draft,
         sms_draft: result.sms_draft,
         social_post: result.social_post,
       });
-      setCampaignId(result.id);
-      console.log("Saved campaign id:", result.id);
+      setLastFormData({ ...formData });
+      message.success("Strategy generated. You can now save campaign.");
       return true;
     } catch (err) {
       const errorText =
@@ -94,6 +95,47 @@ export default function InvestorGrowthPage() {
       return false;
     } finally {
       setIsLoading(false);
+    }
+  }
+
+  async function handleSaveCampaign() {
+    if (!generatedContent || !lastFormData) {
+      message.error("Generate strategy first.");
+      return;
+    }
+
+    setIsSaving(true);
+
+    try {
+      const response = await fetch("/api/investor-growth/save", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...lastFormData,
+          strategy: generatedContent.strategy,
+          email_draft: generatedContent.email_draft,
+          sms_draft: generatedContent.sms_draft,
+          social_post: generatedContent.social_post,
+        }),
+      });
+
+      if (!response.ok) {
+        const data = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(data.error || "Failed to save campaign.");
+      }
+
+      const data = (await response.json()) as SaveResponse;
+      setCampaignId(data.id);
+      console.log("Saved campaign id:", data.id);
+      message.success("Campaign saved successfully.");
+    } catch (err) {
+      const errorText =
+        err instanceof Error ? err.message : "Failed to save campaign.";
+      message.error(errorText);
+    } finally {
+      setIsSaving(false);
     }
   }
 
@@ -108,10 +150,10 @@ export default function InvestorGrowthPage() {
           </p>
           <div className={styles.actions}>
             <Link
-              href="/investor-growth/history"
+              href="/investor-growth/campaigns"
               className={styles.historyLink}
             >
-              View Campaign History
+              View Campaign Dashboard
             </Link>
           </div>
           {campaignId ? (
@@ -127,6 +169,10 @@ export default function InvestorGrowthPage() {
           <InvestorGrowthResultPanel
             content={generatedContent}
             isLoading={isLoading}
+            isSaving={isSaving}
+            onSave={handleSaveCampaign}
+            canSave={Boolean(generatedContent && !campaignId)}
+            campaignId={campaignId}
             error={error}
           />
         </section>

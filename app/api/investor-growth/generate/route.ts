@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getOpenAiClient, getOpenAiModel, hasOpenAiKey } from "@/lib/openai";
-import { createGeneratedCampaign } from "@/lib/repositories/investorCampaignRepository";
-import { toStableUuid } from "@/lib/stable-user-id";
 
 export const runtime = "nodejs";
 
@@ -23,8 +21,6 @@ type ResponseData = {
 };
 
 type GenerateResponse = {
-  id: string;
-  ticker: string;
   strategy: string;
   email_draft: string;
   sms_draft: string;
@@ -147,23 +143,7 @@ Return ONLY valid JSON with exactly these keys (no markdown, no code blocks):
       );
     }
 
-    const savedCampaign = await createGeneratedCampaign({
-      user_id: toStableUuid(userId),
-      ticker: ticker.trim().toUpperCase(),
-      company_name: company_name.trim(),
-      campaign_objective: campaign_objective.trim(),
-      audience_focus: audience_focus.trim(),
-      tone: tone.trim(),
-      notes: notes.trim(),
-      strategy: parsed.strategy,
-      email_draft: parsed.email_draft,
-      sms_draft: parsed.sms_draft,
-      social_post: parsed.social_post,
-    });
-
     const response: GenerateResponse = {
-      id: savedCampaign.id,
-      ticker: savedCampaign.ticker ?? ticker.trim().toUpperCase(),
       strategy: parsed.strategy,
       email_draft: parsed.email_draft,
       sms_draft: parsed.sms_draft,
