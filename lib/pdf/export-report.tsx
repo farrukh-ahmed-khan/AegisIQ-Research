@@ -1,6 +1,6 @@
 import React from 'react';
 import type { Readable } from 'node:stream';
-import { pdf } from '@react-pdf/renderer';
+import { renderToBuffer } from '@react-pdf/renderer';
 import EquityResearchPdfDocument, {
   type EquityResearchPdfData,
 } from './report-document';
@@ -560,17 +560,15 @@ export async function renderEquityResearchPdf(
   payload: ExistingReportPayload,
 ): Promise<Uint8Array> {
   const data = mapReportToPdfData(payload);
-  const instance = pdf(<EquityResearchPdfDocument data={data} />);
-  const result = await instance.toBuffer();
+  const result = await renderToBuffer(<EquityResearchPdfDocument data={data} />);
   return toUint8Array(result);
 }
 
 export async function renderEquityResearchPdfBlob(
   payload: ExistingReportPayload,
 ): Promise<Blob> {
-  const data = mapReportToPdfData(payload);
-  const instance = pdf(<EquityResearchPdfDocument data={data} />);
-  return instance.toBlob();
+  const bytes = await renderEquityResearchPdf(payload);
+  return new Blob([Buffer.from(bytes)], { type: 'application/pdf' });
 }
 
 export async function renderEquityResearchPdfString(

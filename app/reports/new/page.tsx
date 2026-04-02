@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useSearchParams } from "next/navigation";
 import { Suspense, useCallback, useEffect, useMemo, useState } from "react";
+import { Modal, message } from "antd";
 import styles from "./new-report.module.css";
 
 type ReportRun = {
@@ -99,6 +100,7 @@ function NewReportPageContent() {
 
     if (!isValidSymbol(normalized)) {
       setErrorMessage("Enter a valid ticker symbol (example: AAPL).");
+      message.error("Enter a valid ticker symbol (example: AAPL).");
       return;
     }
 
@@ -126,13 +128,16 @@ function NewReportPageContent() {
         throw new Error(payload?.error ?? "Failed to generate report.");
       }
 
-      setStatusMessage("AI report generated successfully.");
+      const successMsg = "AI report generated successfully.";
+      setStatusMessage(successMsg);
+      message.success(successMsg);
       setNotes("");
       await loadHistory(normalized);
     } catch (error) {
-      const message =
+      const errorMsg =
         error instanceof Error ? error.message : "Failed to generate report.";
-      setErrorMessage(message);
+      setErrorMessage(errorMsg);
+      message.error(errorMsg);
     } finally {
       setIsGenerating(false);
     }
@@ -146,17 +151,23 @@ function NewReportPageContent() {
 
     if (!isValidSymbol(normalized)) {
       setErrorMessage("Enter a valid ticker symbol to clear report history.");
+      message.error("Enter a valid ticker symbol to clear report history.");
       return;
     }
 
-    const confirmed = window.confirm(
-      `Delete all saved report runs for ${normalized}? This cannot be undone.`,
-    );
+    Modal.confirm({
+      title: "Clear Report History",
+      content: `Delete all saved report runs for ${normalized}? This cannot be undone.`,
+      okText: "Delete",
+      cancelText: "Cancel",
+      okType: "danger",
+      onOk() {
+        return clearHistoryConfirmed(normalized);
+      },
+    });
+  }
 
-    if (!confirmed) {
-      return;
-    }
-
+  async function clearHistoryConfirmed(normalized: string) {
     setIsClearingHistory(true);
 
     try {
@@ -167,30 +178,30 @@ function NewReportPageContent() {
         },
       );
 
-      const payload = (await response.json().catch(() => null)) as
-        | {
-            error?: string;
-            deletedCount?: number;
-          }
-        | null;
+      const payload = (await response.json().catch(() => null)) as {
+        error?: string;
+        deletedCount?: number;
+      } | null;
 
       if (!response.ok) {
         throw new Error(payload?.error ?? "Failed to clear report history.");
       }
 
-      setStatusMessage(
-        payload?.deletedCount
-          ? `Cleared ${payload.deletedCount} report run(s).`
-          : "No report history found to clear.",
-      );
+      const successMessage = payload?.deletedCount
+        ? `Cleared ${payload.deletedCount} report run(s).`
+        : "No report history found to clear.";
+
+      setStatusMessage(successMessage);
+      message.success(successMessage);
       setReports([]);
       await loadHistory(normalized);
     } catch (error) {
-      const message =
+      const errorMsg =
         error instanceof Error
           ? error.message
           : "Failed to clear report history.";
-      setErrorMessage(message);
+      setErrorMessage(errorMsg);
+      message.error(errorMsg);
     } finally {
       setIsClearingHistory(false);
     }
@@ -223,6 +234,7 @@ function NewReportPageContent() {
               className={styles.button}
               onClick={() => void generateReport()}
               disabled={isGenerating}
+              style={{ cursor: "pointer" }}
             >
               {isGenerating ? "Generating..." : "Generate AI Report"}
             </button>
@@ -230,6 +242,7 @@ function NewReportPageContent() {
               className={styles.secondaryButton}
               onClick={() => void loadHistory(normalizeSymbol(symbol))}
               disabled={isLoadingHistory}
+              style={{ cursor: "pointer" }}
             >
               {isLoadingHistory ? "Refreshing..." : "Refresh History"}
             </button>
@@ -237,6 +250,7 @@ function NewReportPageContent() {
               className={styles.secondaryButton}
               onClick={() => void clearHistory()}
               disabled={isClearingHistory || reports.length === 0}
+              style={{ cursor: "pointer" }}
             >
               {isClearingHistory ? "Clearing..." : "Clear History"}
             </button>

@@ -1,0 +1,137 @@
+.card {
+  background: #121821;
+  border: 1px solid #1f2937;
+  border-radius: 12px;
+  padding: 20px;
+}
+
+.title {
+  margin: 0 0 14px;
+  color: #e5e7eb;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.actions {
+  margin-bottom: 14px;
+}
+
+.saveButton {
+  border: 1px solid #2563eb;
+  background: #2563eb;
+  color: #ffffff;
+  padding: 9px 12px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.saveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.savedText {
+  margin: 8px 0 0;
+  color: #86efac;
+  font-size: 0.86rem;
+}
+
+.stack {
+  display: grid;
+  gap: 12px;
+  max-height: 505px;
+  padding-right: 10px;
+  overflow-y: auto;
+
+    /* Custom scrollbar styles */
+    &::-webkit-scrollbar {
+      width: 5px;
+    }
+
+    &::-webkit-scrollbar-track {
+      background: #1f2937;
+      border-radius: 10px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+      background: #374151;
+      border-radius: 10px;
+    }
+}
+
+.section {
+  background: #0f1621;
+  border: 1px solid #1f2937;
+  border-radius: 10px;
+  padding: 14px;
+}
+
+.sectionTitle {
+  margin: 0 0 8px;
+  color: #dbeafe;
+  font-size: 0.98rem;
+  font-weight: 600;
+}
+
+.placeholder {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
+
+.content {
+  margin: 0;
+  color: #e5e7eb;
+  font-size: 0.92rem;
+  line-height: 1.6;
+  white-space: pre-wrap;
+  word-wrap: break-word;
+}
+
+.loadingState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.loadingText {
+  margin: 0;
+  color: #60a5fa;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.errorState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 20px;
+  background: rgba(239, 68, 68, 0.1);
+  border: 1px solid #ef4444;
+  border-radius: 10px;
+}
+
+.errorText {
+  margin: 0;
+  color: #fca5a5;
+  font-size: 0.92rem;
+}
+
+.emptyState {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 40px 20px;
+  text-align: center;
+}
+
+.emptyText {
+  margin: 0;
+  color: #94a3b8;
+  font-size: 0.92rem;
+  line-height: 1.5;
+}
