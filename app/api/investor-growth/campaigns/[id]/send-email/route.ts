@@ -6,6 +6,8 @@ import {
   updateCampaignEmailDelivery,
 } from "@/lib/repositories/investorGrowthCampaignRepository";
 import { createDeliveryEvent } from "@/lib/repositories/investorDeliveryRepository";
+import { getSegmentMemberContacts } from "@/lib/repositories/investorSegmentRepository";
+import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -111,6 +113,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
       "sent",
     );
 
+    // Audit log
+    await createAuditLog({
+      user_id: stableUserId,
+      campaign_id: campaign.id,
+      action: "campaign_email_sent",
+      metadata_json: {
+        campaign_id: campaign.id,
+        recipient_email: recipientEmail,
+        segment_id: campaign.segment_id,
+        provider_message_id: result.data?.id,
+      },
+    });
+
     return NextResponse.json({
       success: true,
       provider_message_id: result.data?.id ?? null,
@@ -135,6 +150,19 @@ export async function POST(request: NextRequest, context: RouteContext) {
     });
 
     await updateCampaignEmailDelivery(campaign.id, "failed");
+
+    // Audit log (failure)
+    await createAuditLog({
+      user_id: stableUserId,
+      campaign_id: campaign.id,
+      action: "campaign_email_failed",
+      metadata_json: {
+        campaign_id: campaign.id,
+        recipient_email: recipientEmail,
+        segment_id: campaign.segment_id,
+        error: message,
+      },
+    });
 
     return NextResponse.json({ error: message }, { status: 500 });
   }

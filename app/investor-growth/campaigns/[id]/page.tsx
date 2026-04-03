@@ -21,6 +21,7 @@ type CampaignDetail = {
   email_draft: string;
   sms_draft: string;
   social_post: string;
+  segment_id?: string | null;
   created_at: string;
 };
 
@@ -57,6 +58,9 @@ export default function InvestorGrowthCampaignDetailPage() {
   const campaignId = params?.id;
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
+  const [segments, setSegments] = useState<Array<{ id: string; name: string }>>(
+    [],
+  );
   const [editState, setEditState] = useState<EditState>({
     email_subject: "",
     email_body: "",
@@ -68,7 +72,12 @@ export default function InvestorGrowthCampaignDetailPage() {
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [isSendModalOpen, setIsSendModalOpen] = useState(false);
   const [recipientEmail, setRecipientEmail] = useState("");
+  const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
+    null,
+  );
   const [error, setError] = useState("");
+  const [isSubmittingForApproval, setIsSubmittingForApproval] = useState(false);
+  const [isApprovingRejecting, setIsApprovingRejecting] = useState(false);
 
   useEffect(() => {
     async function loadCampaign() {
@@ -105,6 +114,7 @@ export default function InvestorGrowthCampaignDetailPage() {
 
         const data = (await response.json()) as CampaignDetail;
         setCampaign(data);
+        setSelectedSegmentId(data.segment_id ?? null);
         setEditState({
           email_subject: data.email_subject || "",
           email_body: data.email_draft || "",
@@ -120,7 +130,18 @@ export default function InvestorGrowthCampaignDetailPage() {
       }
     }
 
+    async function loadSegments() {
+      try {
+        const response = await fetch(`/api/investor-growth/segments?page=1`);
+        const data = await response.json();
+        setSegments(data.segments || []);
+      } catch (err) {
+        console.error("Failed to load segments:", err);
+      }
+    }
+
     void loadCampaign();
+    void loadSegments();
   }, [campaignId]);
 
   const canSave = useMemo(
@@ -146,6 +167,7 @@ export default function InvestorGrowthCampaignDetailPage() {
             email_body: editState.email_body,
             sms_body: editState.sms_body,
             social_post: editState.social_post,
+            segment_id: selectedSegmentId,
           }),
         },
       );
@@ -173,6 +195,124 @@ export default function InvestorGrowthCampaignDetailPage() {
     } finally {
       setIsSaving(false);
     }
+  }
+
+  async function handleSubmitForApproval() {
+    if (!campaignId || !campaign) {
+      return;
+    }
+
+    setIsSubmittingForApproval(true);
+
+    try {
+      const response = await fetch(
+        `/api/investor-growth/campaigns/${campaignId}/submit`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({}),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || "Failed to submit campaign.");
+      }
+
+      const data = (await response.json()) as { status: string };
+      setCampaign((prev) => (prev ? { ...prev, status: data.status } : prev));
+      message.success("Campaign submitted for approval.");
+    } catch (err) {
+      const messageText =
+        err instanceof Error ? err.message : "Failed to submit campaign.";
+      message.error(messageText);
+    } finally {
+      setIsSubmittingForApproval(false);
+    }
+  }
+
+  async function handleApprove() {
+    if (!campaignId || !campaign) {
+      return;
+    }
+
+    setIsApprovingRejecting(true);
+
+    try {
+      const response = await fetch(
+        `/api/investor-growth/campaigns/${campaignId}/approve`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision_notes: "" }),
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || "Failed to approve campaign.");
+      }
+
+      const data = (await response.json()) as { status: string };
+      setCampaign((prev) => (prev ? { ...prev, status: data.status } : prev));
+      message.success("Campaign approved.");
+    } catch (err) {
+      const messageText =
+        err instanceof Error ? err.message : "Failed to approve campaign.";
+      message.error(messageText);
+    } finally {
+      setIsApprovingRejecting(false);
+    }
+  }
+
+  async function handleReject() {
+    if (!campaignId || !campaign) {
+      return;
+    }
+
+    Modal.confirm({
+      title: "Reject Campaign",
+      content: "Are you sure you want to reject this campaign?",
+      okText: "Reject",
+      okType: "danger",
+      onOk: async () => {
+        setIsApprovingRejecting(true);
+
+        try {
+          const response = await fetch(
+            `/api/investor-growth/campaigns/${campaignId}/reject`,
+            {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ decision_notes: "" }),
+            },
+          );
+
+          if (!response.ok) {
+            const payload = (await response.json().catch(() => ({}))) as {
+              error?: string;
+            };
+            throw new Error(payload.error || "Failed to reject campaign.");
+          }
+
+          const data = (await response.json()) as { status: string };
+          setCampaign((prev) =>
+            prev ? { ...prev, status: data.status } : prev,
+          );
+          message.success("Campaign rejected.");
+        } catch (err) {
+          const messageText =
+            err instanceof Error ? err.message : "Failed to reject campaign.";
+          message.error(messageText);
+        } finally {
+          setIsApprovingRejecting(false);
+        }
+      },
+    });
   }
 
   async function handleSendEmail() {
@@ -309,6 +449,60 @@ export default function InvestorGrowthCampaignDetailPage() {
                     {formatDate(campaign.created_at)}
                   </span>
                 </div>
+
+                {/* Segment Selection */}
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Segment: </span>
+                  <select
+                    className={styles.segmentSelect}
+                    value={selectedSegmentId ?? ""}
+                    onChange={(e) =>
+                      setSelectedSegmentId(e.target.value || null)
+                    }
+                  >
+                    <option value="">None</option>
+                    {segments.map((seg) => (
+                      <option key={seg.id} value={seg.id}>
+                        {seg.name}
+                      </option>
+                    ))}
+                  </select>
+                </div>
+
+                {/* Approval Workflow Buttons */}
+                {campaign.status === "draft" && (
+                  <button
+                    className={styles.submitButton}
+                    onClick={() => void handleSubmitForApproval()}
+                    disabled={isSubmittingForApproval}
+                    style={{ marginTop: "10px" }}
+                  >
+                    {isSubmittingForApproval
+                      ? "Submitting..."
+                      : "Submit for Approval"}
+                  </button>
+                )}
+
+                {campaign.status === "pending_approval" && (
+                  <div
+                    style={{ marginTop: "10px", display: "flex", gap: "10px" }}
+                  >
+                    <button
+                      className={styles.approveButton}
+                      onClick={() => void handleApprove()}
+                      disabled={isApprovingRejecting}
+                    >
+                      {isApprovingRejecting ? "Processing..." : "Approve"}
+                    </button>
+                    <button
+                      className={styles.rejectButton}
+                      onClick={() => void handleReject()}
+                      disabled={isApprovingRejecting}
+                    >
+                      {isApprovingRejecting ? "Processing..." : "Reject"}
+                    </button>
+                  </div>
+                )}
               </article>
             </aside>
 

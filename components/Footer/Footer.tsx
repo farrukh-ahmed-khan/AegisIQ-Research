@@ -51,6 +51,12 @@ const Footer = () => {
                   Campaign Dashboard
                 </Link>
               </li>
+              <li>
+                <Link href="/investor-growth/contacts">Investor Contacts</Link>
+              </li>
+              <li>
+                <Link href="/investor-growth/segments">Investor Segments</Link>
+              </li>
             </ul>
           </div>
 
