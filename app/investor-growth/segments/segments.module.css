@@ -33,6 +33,18 @@
   font-size: 0.95rem;
 }
 
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+}
+
+@media (max-width: 900px) {
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
 .tableWrap {
   background: #111827;
   border: 1px solid #1f2937;
@@ -293,23 +305,7 @@
   box-shadow: 0 20px 60px rgba(0, 0, 0, 0.6);
   width: 90%;
   max-width: 550px;
-  max-height: 90vh;
-  overflow-y: auto;
-  animation: slideUp 0.3s ease;
-
-  &::-webkit-scrollbar {
-    width: 5px;
-  }
-
-    &::-webkit-scrollbar-track {
-        background: #1f2937;
-        border-radius: 10px;
-    }
-
-    &::-webkit-scrollbar-thumb {
-        background: #374151;
-        border-radius: 10px;
-    }
+ 
 }
 
 .membersModal {
@@ -371,7 +367,23 @@
 .modalBody {
   padding: 2rem;
   background: #0f172a;
-  min-height: 300px;
+  max-height: 55vh;
+  overflow-y: auto;
+  animation: slideUp 0.3s ease;
+
+  &::-webkit-scrollbar {
+    width: 5px;
+  }
+
+    &::-webkit-scrollbar-track {
+        background: #1f2937;
+        border-radius: 10px;
+    }
+
+    &::-webkit-scrollbar-thumb {
+        background: #374151;
+        border-radius: 10px;
+    }
 }
 
 .modalBody :global(.ant-transfer) {

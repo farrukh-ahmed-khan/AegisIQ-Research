@@ -1,0 +1,42 @@
+.panel {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.header {
+  display: flex;
+  justify-content: space-between;
+  align-items: flex-start;
+  gap: 1.5rem;
+  padding: 1rem;
+  border-bottom: 1px solid #1f2937;
+}
+
+.headerContent {
+  flex: 1;
+}
+
+.title {
+  margin: 0 0 0.25rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #f1f5f9;
+}
+
+.subtitle {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #94a3b8;
+}
+
+.headerAction {
+  display: flex;
+  align-items: center;
+  flex-shrink: 0;
+}
+
+.body {
+  padding: 1rem;
+}

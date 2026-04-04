@@ -38,6 +38,19 @@
   color: #bfdbfe;
 }
 
+.metricsRow {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 1rem;
+  margin-bottom: 1.5rem;
+}
+
+@media (max-width: 900px) {
+  .metricsRow {
+    grid-template-columns: 1fr;
+  }
+}
+
 .message {
   margin: 0;
   padding: 16px;
@@ -54,6 +67,10 @@
   border-radius: 10px;
   background: rgba(220, 38, 38, 0.1);
   color: #fecaca;
+}
+
+.tableSection {
+  margin-bottom: 2rem;
 }
 
 .tableWrap {

@@ -4,6 +4,7 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useParams } from "next/navigation";
 import { Input, Modal, message } from "antd";
+import StatusBadge from "../../../../components/investor-growth/status-badge";
 import styles from "./page.module.css";
 
 type CampaignDetail = {
@@ -40,16 +41,26 @@ function formatDate(value: string): string {
   return date.toLocaleString("en-US");
 }
 
-function getStatusClass(status: string): string {
+function mapEmailDeliveryStatusToBadgeStatus(
+  status: string,
+):
+  | "draft"
+  | "pending_approval"
+  | "approved"
+  | "rejected"
+  | "sent"
+  | "in_progress" {
   switch (status) {
-    case "approved":
-      return styles.statusApproved;
-    case "rejected":
-      return styles.statusRejected;
-    case "pending_approval":
-      return styles.statusPending;
+    case "sent":
+      return "sent";
+    case "sending":
+      return "in_progress";
+    case "failed":
+      return "rejected";
+    case "not_sent":
+      return "draft";
     default:
-      return styles.statusDraft;
+      return "draft";
   }
 }
 
@@ -431,17 +442,25 @@ export default function InvestorGrowthCampaignDetailPage() {
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Status: </span>
-                  <span
-                    className={`${styles.statusBadge} ${getStatusClass(campaign.status)}`}
-                  >
-                    {campaign.status}
-                  </span>
+                  <StatusBadge
+                    status={
+                      (campaign.status as
+                        | "draft"
+                        | "pending_approval"
+                        | "approved"
+                        | "rejected"
+                        | "sent"
+                        | "in_progress")
+                    }
+                  />
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Email Delivery: </span>
-                  <span className={styles.infoValue}>
-                    {campaign.email_delivery_status}
-                  </span>
+                  <StatusBadge
+                    status={mapEmailDeliveryStatusToBadgeStatus(
+                      campaign.email_delivery_status,
+                    )}
+                  />
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Created Date: </span>

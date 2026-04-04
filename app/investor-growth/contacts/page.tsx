@@ -9,6 +9,9 @@ import {
   PlusOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
+import MetricCard from "../../../components/investor-growth/metric-card";
+import Panel from "../../../components/investor-growth/panel";
+import SectionHeader from "../../../components/investor-growth/section-header";
 import styles from "./contacts.module.css";
 
 interface Contact {
@@ -218,41 +221,54 @@ export default function ContactsPage() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div>
-          <h1>Investor Contacts</h1>
-          <p>Manage your investor contact database</p>
-        </div>
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            resetForm();
-            setIsModalOpen(true);
-          }}
-          size="large"
-          style={{
-            background: "#2563eb",
-            borderColor: "#2563eb",
-            height: "40px",
-          }}
-        >
-          Add Contact
-        </Button>
-      </header>
+      <SectionHeader
+        title="Investor Contacts"
+        subtitle="Manage your investor contact database"
+        action={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+            size="large"
+            style={{
+              background: "#2563eb",
+              borderColor: "#2563eb",
+              height: "40px",
+            }}
+          >
+            Add Contact
+          </Button>
+        }
+      />
+
+      <div className={styles.metricsRow}>
+        <MetricCard
+          label="Current Page Contacts"
+          value={loading ? "--" : contacts.length}
+        />
+        <MetricCard label="Current Page" value={pagination.page} />
+        <MetricCard label="Total Contacts" value={pagination.total} />
+      </div>
 
       {loading ? (
-        <div className={styles.loadingContainer}>
-          <div className={styles.spinner}></div>
-          <p className={styles.loadingText}>Loading contacts...</p>
-        </div>
+        <Panel title="Contacts">
+          <div className={styles.loadingContainer}>
+            <div className={styles.spinner}></div>
+            <p className={styles.loadingText}>Loading contacts...</p>
+          </div>
+        </Panel>
       ) : contacts.length === 0 ? (
-        <div className={styles.emptyMessage}>
-          <div className={styles.emptyIcon}>📋</div>
-          <p>No contacts yet. Create your first contact to get started.</p>
-        </div>
+        <Panel title="Contacts">
+          <div className={styles.emptyMessage}>
+            <div className={styles.emptyIcon}>📋</div>
+            <p>No contacts yet. Create your first contact to get started.</p>
+          </div>
+        </Panel>
       ) : (
-        <>
+        <Panel title="Contacts">
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -320,7 +336,7 @@ export default function ContactsPage() {
               </button>
             </div>
           )}
-        </>
+        </Panel>
       )}
 
       {/* Custom Modal */}

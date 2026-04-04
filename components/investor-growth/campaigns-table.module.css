@@ -1,0 +1,93 @@
+.tableWrapper {
+  background: #111827;
+  border: 1px solid #1f2937;
+  border-radius: 8px;
+  overflow: hidden;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table thead {
+  background: #0f172a;
+  border-bottom: 1px solid #1f2937;
+}
+
+.table th {
+  padding: 1.25rem;
+  text-align: left;
+  font-weight: 700;
+  color: #bfdbfe;
+  font-size: 0.9rem;
+  letter-spacing: 0.3px;
+  text-transform: uppercase;
+  border-right: 1px solid #1f2937;
+}
+
+.table th:last-child {
+  border-right: none;
+}
+
+.table tbody tr {
+  border-bottom: 1px solid #1f2937;
+  transition: background-color 0.2s ease;
+}
+
+.table tbody tr:hover {
+  background: rgba(37, 99, 235, 0.05);
+}
+
+.table tbody tr:last-child {
+  border-bottom: none;
+}
+
+.table td {
+  padding: 1.25rem;
+  color: #e5e7eb;
+  font-size: 0.95rem;
+  border-right: 1px solid #1f2937;
+}
+
+.table td:last-child {
+  border-right: none;
+}
+
+.companyCell {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
+}
+
+.ticker {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  font-weight: 600;
+}
+
+.objectiveCell {
+  max-width: 250px;
+  white-space: normal;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.link {
+  color: #2563eb;
+  text-decoration: none;
+  font-weight: 600;
+  transition: color 0.2s ease;
+}
+
+.link:hover {
+  color: #1d4ed8;
+}
+
+.loading,
+.empty {
+  padding: 3rem 1.5rem;
+  text-align: center;
+  color: #94a3b8;
+  font-size: 0.95rem;
+}

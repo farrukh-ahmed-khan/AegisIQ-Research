@@ -40,7 +40,7 @@ export default function InvestorGrowthForm({ onSubmit, isLoading }: Props) {
 
   return (
     <form className={styles.card} onSubmit={handleSubmit}>
-      <h2 className={styles.title}>Campaign Input</h2>
+      {/* <h2 className={styles.title}>Campaign Input</h2> */}
 
       <div className={styles.grid}>
         <label className={styles.field}>

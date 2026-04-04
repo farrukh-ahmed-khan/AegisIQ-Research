@@ -10,6 +10,9 @@ import {
   UserOutlined,
   CloseOutlined,
 } from "@ant-design/icons";
+import MetricCard from "../../../components/investor-growth/metric-card";
+import Panel from "../../../components/investor-growth/panel";
+import SectionHeader from "../../../components/investor-growth/section-header";
 import styles from "./segments.module.css";
 
 interface Contact {
@@ -407,42 +410,54 @@ export default function SegmentsPage() {
 
   return (
     <div className={styles.container}>
-      <header className={styles.header}>
-        <div>
-          <h1>Investor Segments</h1>
-          <p>Create and manage investor segment groups</p>
-        </div>
+      <SectionHeader
+        title="Investor Segments"
+        subtitle="Create and manage investor segment groups"
+        action={
+          <Button
+            type="primary"
+            icon={<PlusOutlined />}
+            onClick={() => {
+              resetForm();
+              setIsModalOpen(true);
+            }}
+            size="large"
+            style={{
+              background: "#2563eb",
+              borderColor: "#2563eb",
+              height: "40px",
+            }}
+          >
+            Add Segment
+          </Button>
+        }
+      />
 
-        <Button
-          type="primary"
-          icon={<PlusOutlined />}
-          onClick={() => {
-            resetForm();
-            setIsModalOpen(true);
-          }}
-          size="large"
-          style={{
-            background: "#2563eb",
-            borderColor: "#2563eb",
-            height: "40px",
-          }}
-        >
-          Add Segment
-        </Button>
-      </header>
+      <div className={styles.metricsRow}>
+        <MetricCard
+          label="Current Page Segments"
+          value={loading ? "--" : segments.length}
+        />
+        <MetricCard label="Current Page" value={pagination.page} />
+        <MetricCard label="Total Segments" value={pagination.total} />
+      </div>
 
       {loading ? (
-        <div className={styles.loadingContainer}>
-          <div className={styles.spinner}></div>
-          <p className={styles.loadingText}>Loading segments...</p>
-        </div>
+        <Panel title="Segments">
+          <div className={styles.loadingContainer}>
+            <div className={styles.spinner}></div>
+            <p className={styles.loadingText}>Loading segments...</p>
+          </div>
+        </Panel>
       ) : segments.length === 0 ? (
-        <div className={styles.emptyMessage}>
-          <div className={styles.emptyIcon}>📊</div>
-          <p>No segments yet. Create your first segment to get started.</p>
-        </div>
+        <Panel title="Segments">
+          <div className={styles.emptyMessage}>
+            <div className={styles.emptyIcon}>📊</div>
+            <p>No segments yet. Create your first segment to get started.</p>
+          </div>
+        </Panel>
       ) : (
-        <>
+        <Panel title="Segments">
           <div className={styles.tableWrap}>
             <table className={styles.table}>
               <thead>
@@ -511,7 +526,7 @@ export default function SegmentsPage() {
               </button>
             </div>
           )}
-        </>
+        </Panel>
       )}
 
       <div
