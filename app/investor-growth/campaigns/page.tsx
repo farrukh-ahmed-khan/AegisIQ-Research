@@ -78,7 +78,10 @@ export default function InvestorGrowthCampaignsPage() {
             Track and manage saved investor campaigns.
           </p>
           <Link href="/investor-growth" className={styles.backLink}>
-            Back to Generator
+            Back to Dashboard
+          </Link>
+          <Link href="/investor-growth/generate" className={styles.backLink}>
+            Create Campaign
           </Link>
         </header>
 

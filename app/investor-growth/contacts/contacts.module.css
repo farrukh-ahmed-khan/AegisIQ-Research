@@ -85,6 +85,20 @@
   background-color: rgba(37, 99, 235, 0.1);
 }
 
+.rowButton {
+  background: none;
+  border: none;
+  color: #e5e7eb;
+  cursor: pointer;
+  font: inherit;
+  padding: 0;
+  text-align: left;
+}
+
+.rowButton:hover {
+  color: #93c5fd;
+}
+
 .actionButtons {
   display: flex;
   gap: 8px;
@@ -176,6 +190,41 @@
 .loadingText {
   color: #94a3b8;
   font-size: 0.95rem;
+}
+
+.detailEmpty {
+  margin: 0;
+  color: #94a3b8;
+}
+
+.detailPanel {
+  display: grid;
+  gap: 12px;
+}
+
+.detailRow,
+.detailNotes {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+  padding: 12px;
+  border-radius: 10px;
+  background: #0f172a;
+  border: 1px solid #1f2937;
+}
+
+.detailRow span,
+.detailNotes span {
+  color: #93c5fd;
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+.detailRow strong,
+.detailNotes p {
+  color: #e5e7eb;
+  margin: 0;
+  line-height: 1.5;
 }
 
 .formGroup {

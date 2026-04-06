@@ -38,6 +38,10 @@ export async function POST(
       );
     }
 
+    if (campaign.user_id !== stableUserId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
     // Check if campaign is pending approval
     if (campaign.status !== "pending_approval") {
       return NextResponse.json(

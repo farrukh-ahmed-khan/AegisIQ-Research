@@ -47,9 +47,12 @@ export async function POST(
     }
 
     // Check current status
-    if (campaign.status !== "draft") {
+    if (campaign.status !== "draft" && campaign.status !== "rejected") {
       return NextResponse.json(
-        { error: "Only draft campaigns can be submitted for approval" },
+        {
+          error:
+            "Only draft or rejected campaigns can be submitted for approval",
+        },
         { status: 400 },
       );
     }
@@ -84,7 +87,10 @@ export async function POST(
       user_id: stableUserId,
       campaign_id: id,
       action: "campaign_submitted",
-      metadata_json: { campaign_id: id },
+      metadata_json: {
+        campaign_id: id,
+        previous_status: campaign.status,
+      },
     });
 
     return NextResponse.json({ success: true, status: "pending_approval" });

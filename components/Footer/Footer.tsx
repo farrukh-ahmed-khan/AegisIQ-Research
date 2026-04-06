@@ -57,6 +57,9 @@ const Footer = () => {
               <li>
                 <Link href="/investor-growth/segments">Investor Segments</Link>
               </li>
+              <li>
+                <Link href="/investor-growth/approvals">Approval Queue</Link>
+              </li>
             </ul>
           </div>
 

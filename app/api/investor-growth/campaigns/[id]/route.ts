@@ -37,6 +37,9 @@ function mapCampaignResponse(campaign: {
   campaign_objective?: string;
   status: string;
   email_delivery_status: string;
+  email_sent_at?: string | null;
+  email_provider_message_id?: string | null;
+  email_last_error?: string | null;
   audience_focus?: string;
   tone?: string;
   notes?: string;
@@ -56,7 +59,14 @@ function mapCampaignResponse(campaign: {
     company_name: campaign.company_name ?? "",
     campaign_objective: campaign.campaign_objective ?? "",
     status: campaign.status,
+    approval_status:
+      campaign.status === "approved" || campaign.status === "sent"
+        ? "approved"
+        : campaign.status,
     email_delivery_status: campaign.email_delivery_status,
+    email_sent_at: campaign.email_sent_at ?? null,
+    provider_message_id: campaign.email_provider_message_id ?? null,
+    last_error: campaign.email_last_error ?? null,
     audience_focus: campaign.audience_focus ?? "",
     tone: campaign.tone ?? "",
     notes: campaign.notes ?? "",
@@ -146,6 +156,19 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         segment_id: body.segment_id,
       },
     });
+
+    if ((body.segment_id ?? null) !== (existing.segment_id ?? null)) {
+      await createAuditLog({
+        user_id: stableUserId,
+        campaign_id: id,
+        action: body.segment_id ? "campaign_segment_assigned" : "campaign_segment_cleared",
+        metadata_json: {
+          campaign_id: id,
+          previous_segment_id: existing.segment_id ?? null,
+          segment_id: body.segment_id ?? null,
+        },
+      });
+    }
 
     return NextResponse.json(mapCampaignResponse(updated));
   } catch (error) {

@@ -58,6 +58,9 @@ async function getErrorMessage(response: Response, fallback: string) {
 export default function ContactsPage() {
   const { userId } = useAuth();
   const [contacts, setContacts] = useState<Contact[]>([]);
+  const [selectedContactId, setSelectedContactId] = useState<string | null>(
+    null,
+  );
   const [loading, setLoading] = useState(true);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
@@ -103,6 +106,9 @@ export default function ContactsPage() {
     fetchContacts(1);
   }, [userId]);
 
+  const selectedContact =
+    contacts.find((contact) => contact.id === selectedContactId) ?? null;
+
   // Handle form submit
   const handleSubmit = async () => {
     const newErrors: Record<string, string> = {};
@@ -144,6 +150,7 @@ export default function ContactsPage() {
       message.success(editingContact ? "Contact updated" : "Contact created");
       setIsModalOpen(false);
       resetForm();
+      setSelectedContactId(editingContact?.id ?? null);
       fetchContacts(1);
     } catch (error) {
       message.error(
@@ -177,6 +184,9 @@ export default function ContactsPage() {
           }
 
           message.success("Contact deleted");
+          if (selectedContactId === id) {
+            setSelectedContactId(null);
+          }
           fetchContacts(pagination.page);
         } catch (error) {
           message.error(
@@ -192,6 +202,7 @@ export default function ContactsPage() {
   // Handle edit
   const handleEdit = (contact: Contact) => {
     setEditingContact(contact);
+    setSelectedContactId(contact.id);
     setFormData({
       name: contact.name,
       email: contact.email ?? "",
@@ -285,7 +296,15 @@ export default function ContactsPage() {
               <tbody>
                 {contacts.map((contact) => (
                   <tr key={contact.id}>
-                    <td>{contact.name}</td>
+                    <td>
+                      <button
+                        type="button"
+                        className={styles.rowButton}
+                        onClick={() => setSelectedContactId(contact.id)}
+                      >
+                        {contact.name}
+                      </button>
+                    </td>
                     <td>{contact.email || "-"}</td>
                     <td>{contact.organization || "-"}</td>
                     <td>{contact.role || "-"}</td>
@@ -338,6 +357,49 @@ export default function ContactsPage() {
           )}
         </Panel>
       )}
+
+      <Panel title="Contact Detail">
+        {!selectedContact ? (
+          <p className={styles.detailEmpty}>
+            Select a contact from the table to review their details.
+          </p>
+        ) : (
+          <div className={styles.detailPanel}>
+            <div className={styles.detailRow}>
+              <span>Name</span>
+              <strong>{selectedContact.name}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Email</span>
+              <strong>{selectedContact.email || "-"}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Phone</span>
+              <strong>{selectedContact.phone || "-"}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Organization</span>
+              <strong>{selectedContact.organization || "-"}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Role</span>
+              <strong>{selectedContact.role || "-"}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Investor Type</span>
+              <strong>{selectedContact.investor_type || "-"}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Created</span>
+              <strong>{formatDate(selectedContact.created_at)}</strong>
+            </div>
+            <div className={styles.detailNotes}>
+              <span>Notes</span>
+              <p>{selectedContact.notes || "No notes added yet."}</p>
+            </div>
+          </div>
+        )}
+      </Panel>
 
       {/* Custom Modal */}
       <div
