@@ -157,6 +157,19 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       },
     });
 
+    if ((body.segment_id ?? null) !== (existing.segment_id ?? null)) {
+      await createAuditLog({
+        user_id: stableUserId,
+        campaign_id: id,
+        action: body.segment_id ? "campaign_segment_assigned" : "campaign_segment_cleared",
+        metadata_json: {
+          campaign_id: id,
+          previous_segment_id: existing.segment_id ?? null,
+          segment_id: body.segment_id ?? null,
+        },
+      });
+    }
+
     return NextResponse.json(mapCampaignResponse(updated));
   } catch (error) {
     const message =

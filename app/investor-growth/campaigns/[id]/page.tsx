@@ -44,6 +44,15 @@ type DeliveryEvent = {
   timestamp: string;
 };
 
+type ApprovalHistoryItem = {
+  id: string;
+  action: string;
+  label: string;
+  note: string | null;
+  acted_by: string;
+  created_at: string;
+};
+
 type EditState = {
   email_subject: string;
   email_body: string;
@@ -97,6 +106,9 @@ export default function InvestorGrowthCampaignDetailPage() {
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
   const [deliveryEvents, setDeliveryEvents] = useState<DeliveryEvent[]>([]);
+  const [approvalHistory, setApprovalHistory] = useState<ApprovalHistoryItem[]>(
+    [],
+  );
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>(
     [],
   );
@@ -112,6 +124,8 @@ export default function InvestorGrowthCampaignDetailPage() {
   });
   const [isLoading, setIsLoading] = useState(true);
   const [isHistoryLoading, setIsHistoryLoading] = useState(true);
+  const [isApprovalHistoryLoading, setIsApprovalHistoryLoading] =
+    useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
@@ -207,6 +221,44 @@ export default function InvestorGrowthCampaignDetailPage() {
     }
   }, [campaignId]);
 
+  const loadApprovalHistory = useCallback(async () => {
+    if (!campaignId) {
+      setIsApprovalHistoryLoading(false);
+      return;
+    }
+
+    setIsApprovalHistoryLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/investor-growth/campaigns/${campaignId}/approval-history`,
+        {
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || "Failed to load approval history.");
+      }
+
+      const data = (await response.json()) as {
+        history?: ApprovalHistoryItem[];
+      };
+
+      setApprovalHistory(Array.isArray(data.history) ? data.history : []);
+    } catch (err) {
+      message.error(
+        err instanceof Error ? err.message : "Failed to load approval history.",
+      );
+      setApprovalHistory([]);
+    } finally {
+      setIsApprovalHistoryLoading(false);
+    }
+  }, [campaignId]);
+
   useEffect(() => {
     async function loadSegments() {
       try {
@@ -220,8 +272,9 @@ export default function InvestorGrowthCampaignDetailPage() {
 
     void loadCampaign();
     void loadDeliveryHistory();
+    void loadApprovalHistory();
     void loadSegments();
-  }, [loadCampaign, loadDeliveryHistory]);
+  }, [loadCampaign, loadDeliveryHistory, loadApprovalHistory]);
 
   const approvalGranted = campaign?.approval_status === "approved";
   const canSendEmail =
@@ -302,6 +355,7 @@ export default function InvestorGrowthCampaignDetailPage() {
       }
 
       await loadCampaign();
+      await loadApprovalHistory();
       message.success("Campaign submitted for approval.");
     } catch (err) {
       const messageText =
@@ -337,6 +391,7 @@ export default function InvestorGrowthCampaignDetailPage() {
       }
 
       await loadCampaign();
+      await loadApprovalHistory();
       message.success("Campaign approved.");
     } catch (err) {
       const messageText =
@@ -372,6 +427,7 @@ export default function InvestorGrowthCampaignDetailPage() {
       }
 
       await loadCampaign();
+      await loadApprovalHistory();
       message.success("Campaign rejected.");
     } catch (err) {
       const messageText =
@@ -786,6 +842,39 @@ export default function InvestorGrowthCampaignDetailPage() {
                         ))}
                       </tbody>
                     </table>
+                  </div>
+                ) : null}
+              </article>
+
+              <article className={styles.card}>
+                <h2 className={styles.sectionTitle}>Approval History</h2>
+
+                {isApprovalHistoryLoading ? (
+                  <p className={styles.message}>Loading approval history...</p>
+                ) : null}
+
+                {!isApprovalHistoryLoading && approvalHistory.length === 0 ? (
+                  <p className={styles.message}>
+                    No approval events have been logged yet.
+                  </p>
+                ) : null}
+
+                {!isApprovalHistoryLoading && approvalHistory.length > 0 ? (
+                  <div className={styles.historyList}>
+                    {approvalHistory.map((item) => (
+                      <div key={item.id} className={styles.historyItem}>
+                        <div className={styles.historyTopRow}>
+                          <strong>{item.label}</strong>
+                          <span>{formatDate(item.created_at)}</span>
+                        </div>
+                        <p className={styles.historyMeta}>
+                          Actor: {item.acted_by}
+                        </p>
+                        <p className={styles.historyMeta}>
+                          Note: {item.note || "-"}
+                        </p>
+                      </div>
+                    ))}
                   </div>
                 ) : null}
               </article>

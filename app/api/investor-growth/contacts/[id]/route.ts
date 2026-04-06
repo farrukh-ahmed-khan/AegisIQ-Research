@@ -14,6 +14,39 @@ type RouteContext = {
   }>;
 };
 
+export async function GET(
+  request: Request,
+  context: RouteContext,
+) {
+  try {
+    const { userId } = await auth();
+
+    if (!userId) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    const stableUserId = toStableUuid(userId);
+    const { id } = await context.params;
+    const contact = await getContactById(id);
+
+    if (!contact) {
+      return NextResponse.json({ error: "Contact not found" }, { status: 404 });
+    }
+
+    if (contact.user_id !== stableUserId) {
+      return NextResponse.json({ error: "Forbidden" }, { status: 403 });
+    }
+
+    return NextResponse.json(contact);
+  } catch (error) {
+    console.error("GET /contacts/[id] error:", error);
+    return NextResponse.json(
+      { error: "Failed to fetch contact" },
+      { status: 500 },
+    );
+  }
+}
+
 export async function PATCH(
   request: Request,
   context: RouteContext,

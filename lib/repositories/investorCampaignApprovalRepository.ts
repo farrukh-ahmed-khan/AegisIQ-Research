@@ -65,11 +65,25 @@ export async function updateApproval(
   id: string,
   input: UpdateApprovalInput,
 ): Promise<void> {
+  if (input.status === "pending") {
+    await sql`
+      UPDATE investor_campaign_approvals
+      SET
+        status = 'pending',
+        decision_notes = NULL,
+        submitted_at = now(),
+        decided_at = NULL
+      WHERE id = ${id}
+    `;
+    return;
+  }
+
   await sql`
     UPDATE investor_campaign_approvals
-    SET status = ${input.status},
-        decision_notes = ${input.decision_notes ?? null},
-        decided_at = now()
+    SET
+      status = ${input.status},
+      decision_notes = ${input.decision_notes ?? null},
+      decided_at = now()
     WHERE id = ${id}
   `;
 }
@@ -84,6 +98,19 @@ export async function getApprovalsByUser(
     WHERE user_id = ${userId}
     ORDER BY created_at DESC
     LIMIT ${limit} OFFSET ${offset}
+  `;
+
+  return results.map(mapApproval);
+}
+
+export async function getApprovalsByCampaignId(
+  campaignId: string,
+): Promise<InvestorCampaignApproval[]> {
+  const results = await sql<Record<string, unknown>[]>`
+    SELECT *
+    FROM investor_campaign_approvals
+    WHERE campaign_id = ${campaignId}
+    ORDER BY created_at DESC
   `;
 
   return results.map(mapApproval);
