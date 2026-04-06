@@ -1,9 +1,9 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
-import { Input, Modal, message } from "antd";
+import { message } from "antd";
 import StatusBadge from "../../../../components/investor-growth/status-badge";
 import styles from "./page.module.css";
 
@@ -15,8 +15,12 @@ type CampaignDetail = {
   audience_focus: string;
   tone: string;
   notes: string;
-  status: "draft" | "pending_approval" | "approved" | "rejected" | string;
-  email_delivery_status: "not_sent" | "sending" | "sent" | "failed" | string;
+  status: "draft" | "pending_approval" | "approved" | "rejected" | "sent";
+  approval_status: string;
+  email_delivery_status: "not_sent" | "sending" | "sent" | "failed";
+  email_sent_at: string | null;
+  provider_message_id: string | null;
+  last_error: string | null;
   strategy: string;
   email_subject: string;
   email_draft: string;
@@ -26,6 +30,20 @@ type CampaignDetail = {
   created_at: string;
 };
 
+type DeliveryEvent = {
+  id: string;
+  channel: string;
+  recipient: string;
+  recipient_name: string;
+  subject: string;
+  body: string;
+  status: string;
+  provider: string;
+  provider_message_id: string | null;
+  error: string | null;
+  timestamp: string;
+};
+
 type EditState = {
   email_subject: string;
   email_body: string;
@@ -33,7 +51,16 @@ type EditState = {
   social_post: string;
 };
 
-function formatDate(value: string): string {
+type SendState = {
+  recipient_name: string;
+  recipient_email: string;
+};
+
+function formatDate(value: string | null): string {
+  if (!value) {
+    return "-";
+  }
+
   const date = new Date(value);
   if (Number.isNaN(date.getTime())) {
     return value;
@@ -69,6 +96,7 @@ export default function InvestorGrowthCampaignDetailPage() {
   const campaignId = params?.id;
 
   const [campaign, setCampaign] = useState<CampaignDetail | null>(null);
+  const [deliveryEvents, setDeliveryEvents] = useState<DeliveryEvent[]>([]);
   const [segments, setSegments] = useState<Array<{ id: string; name: string }>>(
     [],
   );
@@ -78,11 +106,14 @@ export default function InvestorGrowthCampaignDetailPage() {
     sms_body: "",
     social_post: "",
   });
+  const [sendState, setSendState] = useState<SendState>({
+    recipient_name: "",
+    recipient_email: "",
+  });
   const [isLoading, setIsLoading] = useState(true);
+  const [isHistoryLoading, setIsHistoryLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [isSendingEmail, setIsSendingEmail] = useState(false);
-  const [isSendModalOpen, setIsSendModalOpen] = useState(false);
-  const [recipientEmail, setRecipientEmail] = useState("");
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(
     null,
   );
@@ -90,57 +121,93 @@ export default function InvestorGrowthCampaignDetailPage() {
   const [isSubmittingForApproval, setIsSubmittingForApproval] = useState(false);
   const [isApprovingRejecting, setIsApprovingRejecting] = useState(false);
 
-  useEffect(() => {
-    async function loadCampaign() {
-      if (!campaignId) {
-        setError("Campaign not found.");
-        setIsLoading(false);
-        return;
-      }
-
-      setIsLoading(true);
-      setError("");
-
-      try {
-        const response = await fetch(
-          `/api/investor-growth/campaigns/${campaignId}`,
-          {
-            method: "GET",
-            cache: "no-store",
-          },
-        );
-
-        if (!response.ok) {
-          if (response.status === 404) {
-            setError("Campaign not found.");
-            setCampaign(null);
-            return;
-          }
-
-          const payload = (await response.json().catch(() => ({}))) as {
-            error?: string;
-          };
-          throw new Error(payload.error || "Failed to load campaign.");
-        }
-
-        const data = (await response.json()) as CampaignDetail;
-        setCampaign(data);
-        setSelectedSegmentId(data.segment_id ?? null);
-        setEditState({
-          email_subject: data.email_subject || "",
-          email_body: data.email_draft || "",
-          sms_body: data.sms_draft || "",
-          social_post: data.social_post || "",
-        });
-      } catch (err) {
-        const messageText =
-          err instanceof Error ? err.message : "Failed to load campaign.";
-        setError(messageText);
-      } finally {
-        setIsLoading(false);
-      }
+  const loadCampaign = useCallback(async () => {
+    if (!campaignId) {
+      setError("Campaign not found.");
+      setIsLoading(false);
+      return;
     }
 
+    setIsLoading(true);
+    setError("");
+
+    try {
+      const response = await fetch(`/api/investor-growth/campaigns/${campaignId}`, {
+        method: "GET",
+        cache: "no-store",
+      });
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          setError("Campaign not found.");
+          setCampaign(null);
+          return;
+        }
+
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || "Failed to load campaign.");
+      }
+
+      const data = (await response.json()) as CampaignDetail;
+      setCampaign(data);
+      setSelectedSegmentId(data.segment_id ?? null);
+      setEditState({
+        email_subject: data.email_subject || "",
+        email_body: data.email_draft || "",
+        sms_body: data.sms_draft || "",
+        social_post: data.social_post || "",
+      });
+    } catch (err) {
+      const messageText =
+        err instanceof Error ? err.message : "Failed to load campaign.";
+      setError(messageText);
+    } finally {
+      setIsLoading(false);
+    }
+  }, [campaignId]);
+
+  const loadDeliveryHistory = useCallback(async () => {
+    if (!campaignId) {
+      setIsHistoryLoading(false);
+      return;
+    }
+
+    setIsHistoryLoading(true);
+
+    try {
+      const response = await fetch(
+        `/api/investor-growth/campaigns/${campaignId}/delivery-events`,
+        {
+          cache: "no-store",
+        },
+      );
+
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || "Failed to load delivery history.");
+      }
+
+      const data = (await response.json()) as {
+        delivery_events?: DeliveryEvent[];
+      };
+      setDeliveryEvents(
+        Array.isArray(data.delivery_events) ? data.delivery_events : [],
+      );
+    } catch (err) {
+      message.error(
+        err instanceof Error ? err.message : "Failed to load delivery history.",
+      );
+      setDeliveryEvents([]);
+    } finally {
+      setIsHistoryLoading(false);
+    }
+  }, [campaignId]);
+
+  useEffect(() => {
     async function loadSegments() {
       try {
         const response = await fetch(`/api/investor-growth/segments?page=1`);
@@ -152,36 +219,38 @@ export default function InvestorGrowthCampaignDetailPage() {
     }
 
     void loadCampaign();
+    void loadDeliveryHistory();
     void loadSegments();
-  }, [campaignId]);
+  }, [loadCampaign, loadDeliveryHistory]);
 
-  const canSave = useMemo(
-    () => Boolean(campaign && !isSaving),
-    [campaign, isSaving],
-  );
+  const approvalGranted = campaign?.approval_status === "approved";
+  const canSendEmail =
+    Boolean(campaign) &&
+    approvalGranted &&
+    !isSendingEmail &&
+    Boolean(sendState.recipient_email.trim()) &&
+    Boolean(editState.email_subject.trim()) &&
+    Boolean(editState.email_body.trim());
 
   async function handleSave() {
-    if (!campaignId || !canSave) {
+    if (!campaignId || !campaign) {
       return;
     }
 
     setIsSaving(true);
 
     try {
-      const response = await fetch(
-        `/api/investor-growth/campaigns/${campaignId}`,
-        {
-          method: "PATCH",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            email_subject: editState.email_subject,
-            email_body: editState.email_body,
-            sms_body: editState.sms_body,
-            social_post: editState.social_post,
-            segment_id: selectedSegmentId,
-          }),
-        },
-      );
+      const response = await fetch(`/api/investor-growth/campaigns/${campaignId}`, {
+        method: "PATCH",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          email_subject: editState.email_subject,
+          email_body: editState.email_body,
+          sms_body: editState.sms_body,
+          social_post: editState.social_post,
+          segment_id: selectedSegmentId,
+        }),
+      });
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as {
@@ -232,8 +301,7 @@ export default function InvestorGrowthCampaignDetailPage() {
         throw new Error(payload.error || "Failed to submit campaign.");
       }
 
-      const data = (await response.json()) as { status: string };
-      setCampaign((prev) => (prev ? { ...prev, status: data.status } : prev));
+      await loadCampaign();
       message.success("Campaign submitted for approval.");
     } catch (err) {
       const messageText =
@@ -268,8 +336,7 @@ export default function InvestorGrowthCampaignDetailPage() {
         throw new Error(payload.error || "Failed to approve campaign.");
       }
 
-      const data = (await response.json()) as { status: string };
-      setCampaign((prev) => (prev ? { ...prev, status: data.status } : prev));
+      await loadCampaign();
       message.success("Campaign approved.");
     } catch (err) {
       const messageText =
@@ -285,45 +352,34 @@ export default function InvestorGrowthCampaignDetailPage() {
       return;
     }
 
-    Modal.confirm({
-      title: "Reject Campaign",
-      content: "Are you sure you want to reject this campaign?",
-      okText: "Reject",
-      okType: "danger",
-      onOk: async () => {
-        setIsApprovingRejecting(true);
+    setIsApprovingRejecting(true);
 
-        try {
-          const response = await fetch(
-            `/api/investor-growth/campaigns/${campaignId}/reject`,
-            {
-              method: "POST",
-              headers: { "Content-Type": "application/json" },
-              body: JSON.stringify({ decision_notes: "" }),
-            },
-          );
+    try {
+      const response = await fetch(
+        `/api/investor-growth/campaigns/${campaignId}/reject`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ decision_notes: "" }),
+        },
+      );
 
-          if (!response.ok) {
-            const payload = (await response.json().catch(() => ({}))) as {
-              error?: string;
-            };
-            throw new Error(payload.error || "Failed to reject campaign.");
-          }
+      if (!response.ok) {
+        const payload = (await response.json().catch(() => ({}))) as {
+          error?: string;
+        };
+        throw new Error(payload.error || "Failed to reject campaign.");
+      }
 
-          const data = (await response.json()) as { status: string };
-          setCampaign((prev) =>
-            prev ? { ...prev, status: data.status } : prev,
-          );
-          message.success("Campaign rejected.");
-        } catch (err) {
-          const messageText =
-            err instanceof Error ? err.message : "Failed to reject campaign.";
-          message.error(messageText);
-        } finally {
-          setIsApprovingRejecting(false);
-        }
-      },
-    });
+      await loadCampaign();
+      message.success("Campaign rejected.");
+    } catch (err) {
+      const messageText =
+        err instanceof Error ? err.message : "Failed to reject campaign.";
+      message.error(messageText);
+    } finally {
+      setIsApprovingRejecting(false);
+    }
   }
 
   async function handleSendEmail() {
@@ -331,13 +387,18 @@ export default function InvestorGrowthCampaignDetailPage() {
       return;
     }
 
-    if (campaign.status !== "approved") {
+    if (!approvalGranted) {
       message.error("Campaign must be approved before sending.");
       return;
     }
 
-    if (!recipientEmail.trim()) {
+    if (!sendState.recipient_email.trim()) {
       message.error("Recipient email is required.");
+      return;
+    }
+
+    if (!editState.email_subject.trim() || !editState.email_body.trim()) {
+      message.error("Subject and email body are required before sending.");
       return;
     }
 
@@ -349,32 +410,37 @@ export default function InvestorGrowthCampaignDetailPage() {
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ recipient_email: recipientEmail.trim() }),
+          body: JSON.stringify({
+            recipient_name: sendState.recipient_name,
+            recipient_email: sendState.recipient_email,
+            subject: editState.email_subject,
+            body: editState.email_body,
+          }),
         },
       );
 
+      const payload = (await response.json().catch(() => ({}))) as {
+        error?: string;
+        campaign?: CampaignDetail;
+      };
+
       if (!response.ok) {
-        const payload = (await response.json().catch(() => ({}))) as {
-          error?: string;
-        };
+        if (payload.campaign) {
+          setCampaign(payload.campaign);
+        }
         throw new Error(payload.error || "Failed to send email.");
       }
 
-      const payload = (await response.json().catch(() => ({}))) as {
-        email_delivery_status?: string;
-      };
+      if (payload.campaign) {
+        setCampaign(payload.campaign);
+      }
 
-      setCampaign((prev) =>
-        prev
-          ? {
-              ...prev,
-              email_delivery_status: payload.email_delivery_status ?? "sent",
-            }
-          : prev,
-      );
-      setIsSendModalOpen(false);
+      await loadCampaign();
+      await loadDeliveryHistory();
       message.success("Email sent successfully.");
     } catch (err) {
+      await loadCampaign();
+      await loadDeliveryHistory();
       const messageText =
         err instanceof Error ? err.message : "Failed to send email.";
       message.error(messageText);
@@ -388,9 +454,14 @@ export default function InvestorGrowthCampaignDetailPage() {
       <div className={styles.container}>
         <header className={styles.header}>
           <h1 className={styles.title}>Campaign Detail</h1>
-          <Link href="/investor-growth/campaigns" className={styles.backLink}>
-            Back to Campaigns
-          </Link>
+          <div className={styles.headerActions}>
+            <Link href="/investor-growth" className={styles.backLink}>
+              Dashboard
+            </Link>
+            <Link href="/investor-growth/campaigns" className={styles.backLink}>
+              Back to Campaigns
+            </Link>
+          </div>
         </header>
 
         {isLoading ? (
@@ -442,17 +513,7 @@ export default function InvestorGrowthCampaignDetailPage() {
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Status: </span>
-                  <StatusBadge
-                    status={
-                      (campaign.status as
-                        | "draft"
-                        | "pending_approval"
-                        | "approved"
-                        | "rejected"
-                        | "sent"
-                        | "in_progress")
-                    }
-                  />
+                  <StatusBadge status={campaign.status} />
                 </div>
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Email Delivery: </span>
@@ -468,8 +529,25 @@ export default function InvestorGrowthCampaignDetailPage() {
                     {formatDate(campaign.created_at)}
                   </span>
                 </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Last Sent: </span>
+                  <span className={styles.infoValue}>
+                    {formatDate(campaign.email_sent_at)}
+                  </span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Provider Message ID: </span>
+                  <span className={styles.infoValue}>
+                    {campaign.provider_message_id || "-"}
+                  </span>
+                </div>
+                <div className={styles.infoRow}>
+                  <span className={styles.infoLabel}>Last Error: </span>
+                  <span className={styles.infoValue}>
+                    {campaign.last_error || "-"}
+                  </span>
+                </div>
 
-                {/* Segment Selection */}
                 <div className={styles.infoRow}>
                   <span className={styles.infoLabel}>Segment: </span>
                   <select
@@ -488,24 +566,20 @@ export default function InvestorGrowthCampaignDetailPage() {
                   </select>
                 </div>
 
-                {/* Approval Workflow Buttons */}
-                {campaign.status === "draft" && (
+                {campaign.status === "draft" ? (
                   <button
                     className={styles.submitButton}
                     onClick={() => void handleSubmitForApproval()}
                     disabled={isSubmittingForApproval}
-                    style={{ marginTop: "10px" }}
                   >
                     {isSubmittingForApproval
                       ? "Submitting..."
                       : "Submit for Approval"}
                   </button>
-                )}
+                ) : null}
 
-                {campaign.status === "pending_approval" && (
-                  <div
-                    style={{ marginTop: "10px", display: "flex", gap: "10px" }}
-                  >
+                {campaign.status === "pending_approval" ? (
+                  <div className={styles.approvalActions}>
                     <button
                       className={styles.approveButton}
                       onClick={() => void handleApprove()}
@@ -521,7 +595,7 @@ export default function InvestorGrowthCampaignDetailPage() {
                       {isApprovingRejecting ? "Processing..." : "Reject"}
                     </button>
                   </div>
-                )}
+                ) : null}
               </article>
             </aside>
 
@@ -595,49 +669,130 @@ export default function InvestorGrowthCampaignDetailPage() {
                   type="button"
                   className={styles.saveButton}
                   onClick={() => void handleSave()}
-                  disabled={!canSave}
+                  disabled={isSaving}
                 >
                   {isSaving ? "Saving..." : "Save Changes"}
                 </button>
+              </article>
+
+              <article className={styles.card}>
+                <h2 className={styles.sectionTitle}>Send Email</h2>
+                <p className={styles.helperCopy}>
+                  Each click sends exactly one email using the current subject
+                  and body shown above.
+                </p>
+
+                {!approvalGranted ? (
+                  <div className={styles.warningBox}>
+                    This campaign is not approved yet. Approve it before sending
+                    any email.
+                  </div>
+                ) : null}
+
+                <div className={styles.block}>
+                  <h3 className={styles.blockTitle}>Recipient Name</h3>
+                  <input
+                    className={styles.input}
+                    value={sendState.recipient_name}
+                    onChange={(e) =>
+                      setSendState((prev) => ({
+                        ...prev,
+                        recipient_name: e.target.value,
+                      }))
+                    }
+                    placeholder="Investor name"
+                  />
+                </div>
+
+                <div className={styles.block}>
+                  <h3 className={styles.blockTitle}>Recipient Email</h3>
+                  <input
+                    className={styles.input}
+                    type="email"
+                    value={sendState.recipient_email}
+                    onChange={(e) =>
+                      setSendState((prev) => ({
+                        ...prev,
+                        recipient_email: e.target.value,
+                      }))
+                    }
+                    placeholder="investor@example.com"
+                  />
+                </div>
 
                 <button
                   type="button"
                   className={styles.sendButton}
-                  onClick={() => setIsSendModalOpen(true)}
-                  disabled={isSendingEmail || campaign.status !== "approved"}
-                  style={{
-                    marginLeft: "10px",
-                  }}
+                  onClick={() => void handleSendEmail()}
+                  disabled={!canSendEmail}
                 >
                   {isSendingEmail ? "Sending..." : "Send Email"}
                 </button>
 
-                {campaign.status !== "approved" ? (
+                {!approvalGranted ? (
                   <p className={styles.helperText}>
-                    Campaign must be approved before sending.
+                    Send is disabled until approval status is `approved`.
                   </p>
+                ) : null}
+              </article>
+
+              <article className={styles.card}>
+                <h2 className={styles.sectionTitle}>Delivery History</h2>
+
+                {isHistoryLoading ? (
+                  <p className={styles.message}>Loading delivery history...</p>
+                ) : null}
+
+                {!isHistoryLoading && deliveryEvents.length === 0 ? (
+                  <p className={styles.message}>
+                    No delivery attempts have been logged yet.
+                  </p>
+                ) : null}
+
+                {!isHistoryLoading && deliveryEvents.length > 0 ? (
+                  <div className={styles.tableWrap}>
+                    <table className={styles.table}>
+                      <thead>
+                        <tr>
+                          <th>Channel</th>
+                          <th>Recipient</th>
+                          <th>Status</th>
+                          <th>Provider</th>
+                          <th>Timestamp</th>
+                          <th>Error</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {deliveryEvents.map((event) => (
+                          <tr key={event.id}>
+                            <td>{event.channel}</td>
+                            <td>
+                              <div className={styles.recipientCell}>
+                                <strong>{event.recipient || "-"}</strong>
+                                <span>{event.recipient_name || "-"}</span>
+                              </div>
+                            </td>
+                            <td>
+                              <StatusBadge
+                                status={mapEmailDeliveryStatusToBadgeStatus(
+                                  event.status,
+                                )}
+                              />
+                            </td>
+                            <td>{event.provider || "-"}</td>
+                            <td>{formatDate(event.timestamp)}</td>
+                            <td>{event.error || "-"}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
                 ) : null}
               </article>
             </div>
           </section>
         ) : null}
       </div>
-
-      <Modal
-        title="Send Campaign Email"
-        open={isSendModalOpen}
-        onOk={() => void handleSendEmail()}
-        onCancel={() => setIsSendModalOpen(false)}
-        okText={isSendingEmail ? "Sending..." : "Confirm Send"}
-        confirmLoading={isSendingEmail}
-      >
-        <p>Are you sure you want to send this campaign email?</p>
-        <Input
-          value={recipientEmail}
-          onChange={(event) => setRecipientEmail(event.target.value)}
-          placeholder="recipient@example.com"
-        />
-      </Modal>
     </main>
   );
 }

@@ -36,6 +36,9 @@ export interface InvestorGrowthCampaign {
 
   status: InvestorGrowthCampaignStatus;
   email_delivery_status: InvestorGrowthDeliveryStatus;
+  email_sent_at?: string | null;
+  email_provider_message_id?: string | null;
+  email_last_error?: string | null;
 
   created_at: string;
   updated_at: string;
@@ -54,6 +57,7 @@ export interface InvestorGrowthDeliveryEvent {
   delivery_status: string;
 
   provider_message_id?: string;
+  provider_response_json?: any;
   error_message?: string;
 
   created_at: string;

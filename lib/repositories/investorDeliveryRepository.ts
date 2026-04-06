@@ -36,6 +36,7 @@ function mapDeliveryEvent(
     content_payload_json: asRecord(row.content_payload_json),
     delivery_status: String(row.delivery_status ?? "not_sent"),
     provider_message_id: asNullableString(row.provider_message_id) ?? undefined,
+    provider_response_json: asRecord(row.provider_response_json),
     error_message: asNullableString(row.error_message) ?? undefined,
     created_at: String(row.created_at),
   };

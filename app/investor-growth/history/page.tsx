@@ -93,7 +93,10 @@ export default function InvestorGrowthHistoryPage() {
             Browse previously generated investor outreach campaigns.
           </p>
           <Link href="/investor-growth" className={styles.backLink}>
-            Back to Generator
+            Back to Dashboard
+          </Link>
+          <Link href="/investor-growth/generate" className={styles.backLink}>
+            Create Campaign
           </Link>
           <Link href="/investor-growth/campaigns" className={styles.backLink}>
             Open Campaign Dashboard

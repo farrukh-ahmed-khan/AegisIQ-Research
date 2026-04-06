@@ -25,6 +25,14 @@ type UpdateCampaignInput = {
   segment_id?: string | null;
 };
 
+type MarkCampaignEmailResultInput = {
+  delivery_status: "sending" | "sent" | "failed";
+  status?: InvestorGrowthCampaign["status"];
+  provider_message_id?: string | null;
+  error_message?: string | null;
+  sent_at?: string | null;
+};
+
 function asNullableString(value: unknown): string | null {
   return typeof value === "string" ? value : null;
 }
@@ -59,6 +67,9 @@ function mapCampaign(row: Record<string, unknown>): InvestorGrowthCampaign {
       "draft") as InvestorGrowthCampaign["status"],
     email_delivery_status: (asNullableString(row.email_delivery_status) ??
       "not_sent") as InvestorGrowthCampaign["email_delivery_status"],
+    email_sent_at: asNullableString(row.email_sent_at),
+    email_provider_message_id: asNullableString(row.email_provider_message_id),
+    email_last_error: asNullableString(row.email_last_error),
     created_at: String(row.created_at),
     updated_at: String(row.updated_at),
   };
@@ -233,6 +244,44 @@ export async function updateCampaignEmailDelivery(
       email_sent_at = CASE
         WHEN ${emailDeliveryStatus} = 'sent' THEN now()
         ELSE email_sent_at
+      END,
+      updated_at = now()
+    WHERE id = ${campaignId}::uuid
+    RETURNING *
+  `;
+
+  if (!rows[0]) {
+    return null;
+  }
+
+  return mapCampaign(rows[0]);
+}
+
+export async function markCampaignEmailResult(
+  campaignId: string,
+  input: MarkCampaignEmailResultInput,
+): Promise<InvestorGrowthCampaign | null> {
+  const rows = await sql<Record<string, unknown>[]>`
+    UPDATE investor_growth_campaigns
+    SET
+      status = COALESCE(${input.status ?? null}, status),
+      email_delivery_status = ${input.delivery_status},
+      email_sent_at = CASE
+        WHEN ${input.delivery_status} = 'sent'
+          THEN COALESCE(${input.sent_at ?? null}::timestamp, now())
+        ELSE email_sent_at
+      END,
+      email_provider_message_id = CASE
+        WHEN ${input.delivery_status} = 'sent'
+          THEN ${input.provider_message_id ?? null}
+        ELSE email_provider_message_id
+      END,
+      email_last_error = CASE
+        WHEN ${input.delivery_status} = 'failed'
+          THEN ${input.error_message ?? null}
+        WHEN ${input.delivery_status} = 'sent'
+          THEN NULL
+        ELSE email_last_error
       END,
       updated_at = now()
     WHERE id = ${campaignId}::uuid
