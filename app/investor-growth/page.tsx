@@ -3,6 +3,7 @@
 import Link from "next/link";
 import { useState } from "react";
 import { message } from "antd";
+import Panel from "../../components/investor-growth/panel";
 import InvestorGrowthForm from "../../components/investor-growth/InvestorGrowthForm";
 import InvestorGrowthResultPanel from "../../components/investor-growth/InvestorGrowthResultPanel";
 import styles from "./page.module.css";
@@ -162,19 +163,23 @@ export default function InvestorGrowthPage() {
         </header>
 
         <section className={styles.grid}>
-          <InvestorGrowthForm
-            onSubmit={handleGenerateStrategy}
-            isLoading={isLoading}
-          />
-          <InvestorGrowthResultPanel
-            content={generatedContent}
-            isLoading={isLoading}
-            isSaving={isSaving}
-            onSave={handleSaveCampaign}
-            canSave={Boolean(generatedContent && !campaignId)}
-            campaignId={campaignId}
-            error={error}
-          />
+          <Panel title="Campaign Input">
+            <InvestorGrowthForm
+              onSubmit={handleGenerateStrategy}
+              isLoading={isLoading}
+            />
+          </Panel>
+          <Panel title="Generated Output">
+            <InvestorGrowthResultPanel
+              content={generatedContent}
+              isLoading={isLoading}
+              isSaving={isSaving}
+              onSave={handleSaveCampaign}
+              canSave={Boolean(generatedContent && !campaignId)}
+              campaignId={campaignId}
+              error={error}
+            />
+          </Panel>
         </section>
       </div>
     </main>

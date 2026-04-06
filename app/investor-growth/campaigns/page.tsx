@@ -2,6 +2,9 @@
 
 import Link from "next/link";
 import { useEffect, useState } from "react";
+import CampaignsTable from "../../../components/investor-growth/campaigns-table";
+import MetricCard from "../../../components/investor-growth/metric-card";
+import Panel from "../../../components/investor-growth/panel";
 import styles from "./page.module.css";
 
 type CampaignItem = {
@@ -22,27 +25,6 @@ type CampaignsApiResponse = {
     total_pages: number;
   };
 };
-
-function formatDate(value: string): string {
-  const date = new Date(value);
-  if (Number.isNaN(date.getTime())) {
-    return value;
-  }
-  return date.toLocaleString("en-US");
-}
-
-function getStatusClass(status: string): string {
-  switch (status) {
-    case "approved":
-      return styles.statusApproved;
-    case "rejected":
-      return styles.statusRejected;
-    case "pending_approval":
-      return styles.statusPending;
-    default:
-      return styles.statusDraft;
-  }
-}
 
 export default function InvestorGrowthCampaignsPage() {
   const [campaigns, setCampaigns] = useState<CampaignItem[]>([]);
@@ -100,81 +82,54 @@ export default function InvestorGrowthCampaignsPage() {
           </Link>
         </header>
 
-        {isLoading ? (
-          <p className={styles.message}>Loading campaigns...</p>
-        ) : null}
-        {!isLoading && error ? <p className={styles.error}>{error}</p> : null}
-        {!isLoading && !error && campaigns.length === 0 ? (
-          <p className={styles.message}>No campaigns created yet.</p>
-        ) : null}
+        <div className={styles.metricsRow}>
+          <MetricCard
+            label="Current Page Items"
+            value={isLoading ? "--" : campaigns.length}
+          />
+          <MetricCard label="Current Page" value={page} />
+          <MetricCard label="Total Pages" value={totalPages} />
+        </div>
 
-        {!isLoading && !error && campaigns.length > 0 ? (
-          <>
-            <div className={styles.tableWrap}>
-              <table className={styles.table}>
-                <thead>
-                  <tr>
-                    <th>Ticker</th>
-                    <th>Company Name</th>
-                    <th>Objective</th>
-                    <th>Status</th>
-                    <th>Created Date</th>
-                    <th>Action</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {campaigns.map((campaign) => (
-                    <tr key={campaign.id}>
-                      <td>{campaign.ticker || "-"}</td>
-                      <td>{campaign.company_name || "-"}</td>
-                      <td>{campaign.campaign_objective || "-"}</td>
-                      <td>
-                        <span
-                          className={`${styles.statusBadge} ${getStatusClass(campaign.status)}`}
-                        >
-                          {campaign.status}
-                        </span>
-                      </td>
-                      <td>{formatDate(campaign.created_at)}</td>
-                      <td>
-                        <Link
-                          href={`/investor-growth/campaigns/${campaign.id}`}
-                          className={styles.viewButton}
-                        >
-                          View
-                        </Link>
-                      </td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+        <Panel title="Campaigns">
+          {error ? (
+            <p className={styles.error}>{error}</p>
+          ) : (
+            <>
+              <CampaignsTable
+                campaigns={campaigns}
+                isLoading={isLoading}
+                className={styles.tableSection}
+              />
 
-            <div className={styles.pagination}>
-              <button
-                type="button"
-                className={styles.paginationButton}
-                onClick={() => setPage((prev) => Math.max(1, prev - 1))}
-                disabled={page <= 1 || isLoading}
-              >
-                Previous
-              </button>
-              <span className={styles.pageInfo}>
-                Page {page} of {totalPages}
-              </span>
-              <button
-                type="button"
-                className={styles.paginationButton}
-                onClick={() =>
-                  setPage((prev) => Math.min(totalPages, prev + 1))
-                }
-                disabled={page >= totalPages || isLoading}
-              >
-                Next
-              </button>
-            </div>
-          </>
-        ) : null}
+              {!isLoading && campaigns.length > 0 && (
+                <div className={styles.pagination}>
+                  <button
+                    type="button"
+                    className={styles.paginationButton}
+                    onClick={() => setPage((prev) => Math.max(1, prev - 1))}
+                    disabled={page <= 1 || isLoading}
+                  >
+                    Previous
+                  </button>
+                  <span className={styles.pageInfo}>
+                    Page {page} of {totalPages}
+                  </span>
+                  <button
+                    type="button"
+                    className={styles.paginationButton}
+                    onClick={() =>
+                      setPage((prev) => Math.min(totalPages, prev + 1))
+                    }
+                    disabled={page >= totalPages || isLoading}
+                  >
+                    Next
+                  </button>
+                </div>
+              )}
+            </>
+          )}
+        </Panel>
       </div>
     </main>
   );

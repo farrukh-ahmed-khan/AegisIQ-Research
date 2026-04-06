@@ -1,0 +1,162 @@
+.detail {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.overview {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+  gap: 2rem;
+}
+
+.overviewItem {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.overviewItem label {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 600;
+}
+
+.overviewItem p {
+  margin: 0;
+  font-size: 1.1rem;
+  color: #f1f5f9;
+  font-weight: 600;
+}
+
+.statusContainer {
+  display: inline-block;
+  width: fit-content;
+}
+
+.strategyPanel {
+  background: #0f172a;
+}
+
+.strategyContent {
+  line-height: 1.7;
+  color: #e5e7eb;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.strategyContent p {
+  margin: 0 0 1rem 0;
+}
+
+.strategyContent p:last-child {
+  margin-bottom: 0;
+}
+
+.editForm {
+  display: flex;
+  flex-direction: column;
+  gap: 1.5rem;
+}
+
+.contentDisplay {
+  display: flex;
+  flex-direction: column;
+  gap: 2rem;
+}
+
+.contentSection {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.contentSection h4 {
+  margin: 0;
+  font-size: 0.9rem;
+  color: #bfdbfe;
+  text-transform: uppercase;
+  letter-spacing: 0.3px;
+  font-weight: 700;
+}
+
+.contentBox {
+  background: #0f172a;
+  border: 1px solid #1f2937;
+  border-radius: 6px;
+  padding: 1rem;
+  line-height: 1.6;
+  color: #e5e7eb;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.contentBox strong {
+  display: block;
+  margin-bottom: 0.75rem;
+  color: #f1f5f9;
+}
+
+.contentBox p {
+  margin: 0;
+}
+
+.editButton {
+  padding: 0.5rem 1.25rem;
+  background: #2563eb;
+  color: white;
+  border: none;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.editButton:hover {
+  background: #1d4ed8;
+}
+
+.editActions {
+  display: flex;
+  gap: 1rem;
+  justify-content: flex-end;
+  margin-top: 1.5rem;
+}
+
+.cancelButton,
+.saveButton {
+  padding: 0.75rem 1.5rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  font-weight: 600;
+  cursor: pointer;
+  transition: all 0.2s ease;
+  border: none;
+}
+
+.cancelButton {
+  background: #334155;
+  color: #e5e7eb;
+}
+
+.cancelButton:hover:not(:disabled) {
+  background: #475569;
+}
+
+.saveButton {
+  background: #2563eb;
+  color: white;
+}
+
+.saveButton:hover:not(:disabled) {
+  background: #1d4ed8;
+}
+
+.saveButton:disabled,
+.cancelButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}

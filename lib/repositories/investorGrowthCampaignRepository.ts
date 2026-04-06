@@ -13,6 +13,7 @@ type CreateCampaignInput = {
   email_draft: string;
   sms_draft: string;
   social_post: string;
+  segment_id?: string | null;
 };
 
 type UpdateCampaignInput = {
@@ -21,6 +22,7 @@ type UpdateCampaignInput = {
   sms_body?: string;
   social_post?: string;
   notes?: string;
+  segment_id?: string | null;
 };
 
 function asNullableString(value: unknown): string | null {
@@ -102,6 +104,7 @@ export async function createCampaign(
       email_body,
       sms_body,
       social_post,
+      segment_id,
       status,
       email_delivery_status,
       created_at,
@@ -123,6 +126,7 @@ export async function createCampaign(
       ${input.email_draft},
       ${input.sms_draft},
       ${input.social_post},
+      ${input.segment_id ?? null}::uuid,
       'draft',
       'not_sent',
       now(),
@@ -205,6 +209,7 @@ export async function updateCampaign(
       sms_body = COALESCE(${input.sms_body ?? null}, sms_body),
       social_post = COALESCE(${input.social_post ?? null}, social_post),
       notes = COALESCE(${input.notes ?? null}, notes),
+      segment_id = COALESCE(${input.segment_id ?? null}::uuid, segment_id),
       updated_at = now()
     WHERE id = ${campaignId}::uuid
     RETURNING *

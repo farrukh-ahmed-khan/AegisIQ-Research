@@ -51,7 +51,7 @@ export default function InvestorGrowthResultPanel({
 }: Props) {
   return (
     <section className={styles.card}>
-      <h2 className={styles.title}>Generated Output</h2>
+      {/* <h2 className={styles.title}>Generated Output</h2> */}
 
       {content && !isLoading ? (
         <div className={styles.actions}>

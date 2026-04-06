@@ -207,6 +207,84 @@
   font-size: 0.82rem;
 }
 
+.segmentSelect {
+  width: 100%;
+  padding: 8px 12px;
+  border: 1px solid #334155;
+  border-radius: 8px;
+  background: #0f172a;
+  color: #e5e7eb;
+  font-size: 0.92rem;
+  margin-top: 6px;
+}
+
+.segmentSelect:focus {
+  outline: none;
+  border-color: #2563eb;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.submitButton {
+  margin-top: 12px;
+  border: 1px solid #7c3aed;
+  background: #7c3aed;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+  width: 100%;
+}
+
+.submitButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.submitButton:hover:not(:disabled) {
+  background: #6d28d9;
+}
+
+.approveButton {
+  flex: 1;
+  border: 1px solid #16a34a;
+  background: #16a34a;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.approveButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.approveButton:hover:not(:disabled) {
+  background: #15803d;
+}
+
+.rejectButton {
+  flex: 1;
+  border: 1px solid #dc2626;
+  background: #dc2626;
+  color: #ffffff;
+  padding: 10px 14px;
+  border-radius: 8px;
+  font-weight: 600;
+  cursor: pointer;
+}
+
+.rejectButton:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+}
+
+.rejectButton:hover:not(:disabled) {
+  background: #b91c1c;
+}
+
 @media (max-width: 980px) {
   .layout {
     grid-template-columns: 1fr;

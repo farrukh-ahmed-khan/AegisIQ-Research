@@ -120,132 +120,328 @@ Future phases will introduce an internal security master dataset and financial m
 
 ---
 
-# Investor Growth MVP
+# AegisIQ – Investor Growth MVP
 
-This module provides a lightweight Investor CRM, segmentation system, campaign management workflow, and email delivery functionality for investor outreach.
+The **Investor Growth module** provides a structured system for managing investor outreach campaigns including:
 
----
+- AI-assisted campaign generation
+- Campaign management dashboard
+- Investor CRM
+- Investor segmentation
+- Campaign approval workflow
+- Manual email delivery
+- Audit logging
 
-# Features Implemented
-
-## 1. Campaign Persistence & Core APIs
-
-Implemented full campaign persistence and management APIs.
-
-### Backend
-
-- Implemented campaign save flow with full payload persistence in the existing investor campaign table.
-- Added repository layer methods for:
-  - Create campaign
-  - List campaigns
-  - Fetch campaign by ID
-  - Update campaign
-
-### APIs
-
-| Method | Endpoint                            | Description                     |
-| ------ | ----------------------------------- | ------------------------------- |
-| POST   | /api/investor-growth/campaigns      | Save campaign                   |
-| GET    | /api/investor-growth/campaigns      | Fetch campaign list             |
-| GET    | /api/investor-growth/campaigns/[id] | Fetch campaign by ID            |
-| PATCH  | /api/investor-growth/campaigns/[id] | Update editable campaign fields |
-
-### Campaign Generation Flow
-
-Users now follow a structured workflow:
-
-1. Generate campaign content
-2. Review generated output
-3. Explicitly save the campaign
-4. Manage it through the campaign dashboard
+The system is designed with a **review-first architecture**, meaning AI assists in content generation but all actions remain **user-controlled and auditable**.
 
 ---
 
-# 2. Campaign Dashboard & Detail Management
+# Architecture Overview
+
+The Investor Growth system is built in progressive batches.
+
+| Batch     | Purpose                                                           |
+| --------- | ----------------------------------------------------------------- |
+| Batch 1   | Base project setup and database structure                         |
+| Batch 2   | AI generation service and campaign APIs                           |
+| Batch 3   | Campaign UI pages                                                 |
+| Phase 4–6 | Campaign management, CRM, segmentation, approvals, email delivery |
+
+The system is **Netlify-safe**, **additive**, and follows a **secure API-first architecture**.
+
+---
+
+# Batch 2 – AI Generation & Core APIs
+
+Batch 2 introduces the **first working vertical slice** of the Investor Growth module.
+
+## Campaign Generation Flow
+
+1. User enters campaign inputs
+2. `POST /api/investor-growth/generate` generates strategy + draft content using AI
+3. `POST /api/investor-growth/save` persists the generated campaign
+4. Campaigns can then be viewed and edited through APIs
+
+The system is intentionally **review-first**:
+
+- AI output is **advisory**
+- Output is **structured JSON**
+- No automatic sending
+- No approval bypass
+- No scheduling or automation
+
+---
+
+## Generation Model
+
+The AI service returns:
+
+### Strategy Payload
+
+Structured campaign strategy.
+
+### Content Payload
+
+Draft outreach content.
+
+### Flattened Editable Fields
+
+These are exposed for direct editing in the UI:
+
+- `emailSubject`
+- `emailBody`
+- `smsBody`
+- `socialPost`
+
+Flattening prevents the UI from needing to unpack nested JSON structures.
+
+---
+
+## Batch 2 API Routes
+
+### Generation & Save
+
+| Method | Endpoint                      |
+| ------ | ----------------------------- |
+| POST   | /api/investor-growth/generate |
+| POST   | /api/investor-growth/save     |
+
+### Campaign APIs
+
+| Method | Endpoint                            |
+| ------ | ----------------------------------- |
+| GET    | /api/investor-growth/campaigns      |
+| GET    | /api/investor-growth/campaigns/[id] |
+| PATCH  | /api/investor-growth/campaigns/[id] |
+
+---
+
+## Deferred APIs (Later Batches)
+
+The following endpoints were intentionally deferred:
+
+- `/api/investor-growth/campaigns/[id]/send-email`
+- Contacts CRUD APIs
+- Segments CRUD APIs
+- Submit / approve / reject APIs
+
+These were implemented in later phases.
+
+---
+
+## Batch 2 File Structure
+
+### New Files
+
+```
+lib/investor-growth/validators.ts
+lib/investor-growth/auth.ts
+lib/investor-growth/services/generation.ts
+
+app/api/investor-growth/generate/route.ts
+app/api/investor-growth/save/route.ts
+app/api/investor-growth/campaigns/route.ts
+app/api/investor-growth/campaigns/[id]/route.ts
+```
+
+### Replacement Files
+
+```
+lib/investor-growth/types.ts
+```
+
+---
+
+## Architecture Notes
+
+### Authentication
+
+Authentication access is abstracted behind a helper:
+
+```
+lib/investor-growth/auth.ts
+```
+
+This helper:
+
+- reads common request headers
+- allows easy replacement with Clerk/session auth later
+- keeps route logic auth-agnostic
+
+### Validation
+
+Validation uses **lightweight TypeScript guards** instead of Zod to avoid unnecessary dependencies.
+
+### OpenAI Integration
+
+The generation service uses the **current OpenAI SDK pattern** and returns **structured JSON output** from a constrained prompt.
+
+If the repository already includes an OpenAI wrapper, the service layer can easily be swapped.
+
+---
+
+# Batch 3 – Investor Growth UI
+
+Batch 3 introduces the **first visible product surface**.
+
+## New Pages
+
+### Generation Workspace
+
+```
+/investor-growth
+```
+
+Features:
+
+- Campaign input form
+- AI generation action
+- Strategy preview
+- Editable generated drafts
+- Save campaign functionality
+
+---
 
 ### Campaign Dashboard
-
-Implemented a full campaign management dashboard.
-
-**Route**
 
 ```
 /investor-growth/campaigns
 ```
 
-### Features
+Features:
 
-- Campaign table view
-- Pagination support
-- Status badges:
-  - `draft`
-  - `pending_approval`
-  - `approved`
-  - `rejected`
+- Campaign table
+- Recent campaigns overview
+- Status badges
+- Navigation to campaign details
+
+---
 
 ### Campaign Detail Page
-
-A dedicated detail page allows users to review and manage generated campaign content.
-
-**Route**
 
 ```
 /investor-growth/campaigns/[id]
 ```
 
-### Editable Content
+Features:
 
-Users can edit generated content including:
-
-- Email Subject
-- Email Body
-- SMS Message
-- Social Post
-
-All changes can be saved via API updates.
+- Editable campaign content
+- Strategy display
+- Save updates
+- Ownership-safe API updates
 
 ---
 
-# 3. Manual Email Sending (Approved Campaigns Only)
+## Batch 3 File Structure
 
-Implemented manual email sending using **Resend**.
+### New Components
 
-### Email Provider
+```
+components/investor-growth/page-shell.tsx
+components/investor-growth/section-header.tsx
+components/investor-growth/metric-card.tsx
+components/investor-growth/status-badge.tsx
+components/investor-growth/panel.tsx
+components/investor-growth/form-field.tsx
+components/investor-growth/text-area-field.tsx
+components/investor-growth/campaigns-table.tsx
+components/investor-growth/generate-campaign-form.tsx
+components/investor-growth/campaign-detail-client.tsx
+```
 
-Resend is used for transactional email delivery.
+### Pages
 
-Environment Variable:
+```
+app/investor-growth/page.tsx
+app/investor-growth/campaigns/page.tsx
+app/investor-growth/campaigns/[id]/page.tsx
+```
+
+---
+
+## UI Design System
+
+The UI follows a **premium institutional SaaS design language**:
+
+- Dark institutional style
+- Minimal borders
+- Clean grid layout
+- Strong typography hierarchy
+- Minimal animation
+- Product-focused interface
+
+Reusable primitives include:
+
+- Page Shell
+- Section Header
+- Metric Card
+- Status Badge
+- Panel/Card
+- Form Fields
+- Table Components
+
+---
+
+# Campaign Persistence & Core APIs
+
+Campaign persistence allows full lifecycle management.
+
+## Backend Features
+
+- Campaign save flow
+- Repository layer for data access
+- Campaign list and detail retrieval
+- Editable campaign fields
+
+## APIs
+
+| Method | Endpoint                            |
+| ------ | ----------------------------------- |
+| POST   | /api/investor-growth/campaigns      |
+| GET    | /api/investor-growth/campaigns      |
+| GET    | /api/investor-growth/campaigns/[id] |
+| PATCH  | /api/investor-growth/campaigns/[id] |
+
+---
+
+# Manual Email Sending
+
+Manual campaign delivery is implemented using **Resend**.
+
+## Environment Variable
 
 ```
 RESEND_API_KEY
 ```
 
-### API Endpoint
+## Email API
 
 ```
 POST /api/investor-growth/campaigns/[id]/send-email
 ```
 
-### Email Sending Rules
+### Rules
 
-- Campaign **must be approved** before sending
-- Email content is pulled from:
+- Campaign must be **approved**
+- Email uses:
   - `email_subject`
   - `email_body`
 
-### Delivery Tracking
+---
 
-Each send attempt is logged in:
+## Delivery Tracking
+
+All send attempts are logged in:
 
 ```
 investor_growth_delivery_events
 ```
 
-Logged fields include:
+Fields logged include:
 
 - campaign_id
 - user_id
-- channel (email)
+- channel
 - recipient_payload_json
 - content_payload_json
 - delivery_status
@@ -253,29 +449,18 @@ Logged fields include:
 - provider_response_json
 - triggered_at
 
-### Campaign Status Updates
-
-Campaign delivery status is tracked with:
+Campaign status fields updated:
 
 - `email_delivery_status`
 - `email_sent_at`
 
-### UI Integration
-
-Campaign detail page now includes:
-
-- **Send Email button**
-- Confirmation modal before sending
-- Recipient email input
-- Delivery status tracking
-
 ---
 
-# 4. Investor Contacts CRM
+# Investor Contacts CRM
 
-Implemented a lightweight investor CRM system.
+A lightweight CRM system for managing investor contacts.
 
-### Contacts APIs
+## Contacts APIs
 
 | Method | Endpoint                           |
 | ------ | ---------------------------------- |
@@ -284,7 +469,7 @@ Implemented a lightweight investor CRM system.
 | PATCH  | /api/investor-growth/contacts/[id] |
 | DELETE | /api/investor-growth/contacts/[id] |
 
-### Contact Fields
+## Contact Fields
 
 - name
 - email
@@ -295,7 +480,7 @@ Implemented a lightweight investor CRM system.
 - tags_json
 - notes
 
-### UI Page
+### UI
 
 ```
 /investor-growth/contacts
@@ -306,45 +491,40 @@ Features:
 - Add contact
 - Edit contact
 - Delete contact
-- Manage investor information
 
 ---
 
-# 5. Investor Segmentation
+# Investor Segments
 
-Implemented segmentation system to group investor contacts.
+Segmentation allows grouping contacts for targeted campaigns.
 
-### Segments APIs
+## Segment APIs
 
 | Method | Endpoint                      |
 | ------ | ----------------------------- |
 | GET    | /api/investor-growth/segments |
 | POST   | /api/investor-growth/segments |
 
-### Database Tables
+## Database Tables
 
 ```
 investor_segments
 investor_segment_members
 ```
 
-### Segments UI
+### UI
 
 ```
 /investor-growth/segments
 ```
 
-Users can:
-
-- Create segments
-- Assign contacts to segments
-- Manage investor groups
+Contacts can be assigned to segments.
 
 ---
 
-# 6. Segment Assignment to Campaigns
+# Campaign Segmentation
 
-Campaigns can now target a specific segment.
+Campaigns can target specific segments.
 
 ### Campaign Field
 
@@ -356,21 +536,19 @@ segment_id
 
 When sending campaign emails:
 
-- Only contacts belonging to the selected segment will receive the email.
+Only contacts in the selected segment receive the email.
 
 ---
 
-# 7. Campaign Approval Workflow
+# Campaign Approval Workflow
 
-Implemented a structured campaign approval process.
-
-### Campaign Status Flow
+Campaign lifecycle:
 
 ```
 draft → pending_approval → approved / rejected
 ```
 
-### Approval APIs
+## Approval APIs
 
 | Method | Endpoint                                    |
 | ------ | ------------------------------------------- |
@@ -378,9 +556,7 @@ draft → pending_approval → approved / rejected
 | POST   | /api/investor-growth/campaigns/[id]/approve |
 | POST   | /api/investor-growth/campaigns/[id]/reject  |
 
-### Approval Storage
-
-Approval records are stored in:
+Approval records stored in:
 
 ```
 investor_campaign_approvals
@@ -388,9 +564,9 @@ investor_campaign_approvals
 
 ---
 
-# 8. Audit Logging
+# Audit Logging
 
-Implemented full audit logging for important system actions.
+All critical actions are logged.
 
 ### Audit Table
 
@@ -407,7 +583,7 @@ investor_growth_audit_log
 - campaign_rejected
 - campaign_email_sent
 
-This ensures traceability and operational transparency across campaign lifecycle events.
+This ensures **traceability and operational transparency**.
 
 ---
 
@@ -415,16 +591,16 @@ This ensures traceability and operational transparency across campaign lifecycle
 
 The **Investor Growth MVP** now includes:
 
-- Campaign generation and persistence
-- Campaign management dashboard
+- AI-assisted campaign generation
+- Campaign dashboard and detail management
 - Investor CRM
 - Investor segmentation
 - Campaign approval workflow
 - Manual email sending
-- Delivery tracking
+- Delivery event tracking
 - Full audit logging
 
-This provides a complete foundational system for managing investor outreach campaigns.
+This provides a complete **foundation for managing investor outreach campaigns** inside the AegisIQ platform.
 
 # Architecture
 

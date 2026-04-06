@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { createCampaign } from "@/lib/repositories/investorGrowthCampaignRepository";
+import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type SaveCampaignBody = {
@@ -14,6 +15,7 @@ type SaveCampaignBody = {
   email_draft: string;
   sms_draft: string;
   social_post: string;
+  segment_id?: string;
 };
 
 export async function POST(request: NextRequest) {
@@ -62,6 +64,20 @@ export async function POST(request: NextRequest) {
       email_draft: body.email_draft.trim(),
       sms_draft: body.sms_draft.trim(),
       social_post: body.social_post.trim(),
+      segment_id: body.segment_id,
+    });
+
+    // Audit log
+    await createAuditLog({
+      user_id: toStableUuid(userId),
+      campaign_id: campaign.id,
+      action: "campaign_created",
+      metadata_json: {
+        campaign_id: campaign.id,
+        ticker: body.ticker,
+        company_name: body.company_name,
+        segment_id: body.segment_id,
+      },
     });
 
     return NextResponse.json({

@@ -4,6 +4,7 @@ import {
   getCampaignById,
   updateCampaign,
 } from "@/lib/repositories/investorGrowthCampaignRepository";
+import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -18,6 +19,7 @@ type PatchBody = {
   sms_body?: string;
   social_post?: string;
   notes?: string;
+  segment_id?: string | null;
 };
 
 function readContentValue(
@@ -43,6 +45,7 @@ function mapCampaignResponse(campaign: {
   email_body?: string;
   sms_body?: string;
   social_post?: string;
+  segment_id?: string | null;
   created_at: string;
 }) {
   const strategy = readContentValue(campaign.strategy_payload_json, "strategy");
@@ -62,6 +65,7 @@ function mapCampaignResponse(campaign: {
     email_draft: campaign.email_body ?? "",
     sms_draft: campaign.sms_body ?? "",
     social_post: campaign.social_post ?? "",
+    segment_id: campaign.segment_id ?? null,
     created_at: campaign.created_at,
   };
 }
@@ -114,6 +118,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const body = (await request.json()) as PatchBody;
+    const stableUserId = toStableUuid(userId);
 
     const updated = await updateCampaign(id, {
       email_subject: body.email_subject?.trim(),
@@ -121,6 +126,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       sms_body: body.sms_body?.trim(),
       social_post: body.social_post?.trim(),
       notes: body.notes?.trim(),
+      segment_id: body.segment_id,
     });
 
     if (!updated) {
@@ -129,6 +135,17 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         { status: 404 },
       );
     }
+
+    // Audit log
+    await createAuditLog({
+      user_id: stableUserId,
+      campaign_id: id,
+      action: "campaign_updated",
+      metadata_json: {
+        campaign_id: id,
+        segment_id: body.segment_id,
+      },
+    });
 
     return NextResponse.json(mapCampaignResponse(updated));
   } catch (error) {

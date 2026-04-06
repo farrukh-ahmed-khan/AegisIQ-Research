@@ -1,0 +1,74 @@
+.field {
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+  margin-bottom: 1.5rem;
+}
+
+.label {
+  font-size: 0.95rem;
+  font-weight: 600;
+  color: #bfdbfe;
+  letter-spacing: 0.2px;
+}
+
+.required {
+  color: #ef4444;
+  margin-left: 0.25rem;
+}
+
+.input {
+  width: 100%;
+}
+
+.input input,
+.input textarea,
+.input select {
+  width: 100%;
+  background: #0f172a;
+  border: 1px solid #334155;
+  color: #e5e7eb;
+  padding: 0.75rem 1rem;
+  border-radius: 6px;
+  font-size: 0.95rem;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.input input::placeholder,
+.input textarea::placeholder {
+  color: white;
+}
+
+.input input:focus,
+.input textarea:focus,
+.input select:focus {
+  background: #0f172a;
+  border-color: #2563eb;
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(37, 99, 235, 0.1);
+}
+
+.hasError .input input,
+.hasError .input textarea {
+  border-color: #dc2626;
+  background: rgba(220, 38, 38, 0.05);
+}
+
+.hasError .input input:focus,
+.hasError .input textarea:focus {
+  box-shadow: 0 0 0 3px rgba(220, 38, 38, 0.1);
+  border-color: #dc2626;
+}
+
+.error {
+  font-size: 0.85rem;
+  color: #fca5a5;
+  margin: 0;
+}
+
+.helper {
+  font-size: 0.85rem;
+  color: #94a3b8;
+  margin: 0;
+}
