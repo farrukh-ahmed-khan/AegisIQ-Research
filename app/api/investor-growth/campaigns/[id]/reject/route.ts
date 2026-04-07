@@ -6,6 +6,10 @@ import {
   updateApproval,
 } from "@/lib/repositories/investorCampaignApprovalRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
+import {
+  ensureInvestorGrowthAdvancedSchema,
+  updateCampaignAdvancedFields,
+} from "@/lib/investor-growth/advancedRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -19,6 +23,7 @@ export async function POST(
   context: RouteContext,
 ) {
   try {
+    await ensureInvestorGrowthAdvancedSchema();
     const { userId } = await auth();
 
     if (!userId) {
@@ -72,6 +77,16 @@ export async function POST(
       SET status = 'rejected', updated_at = now()
       WHERE id = ${id}
     `;
+
+    await updateCampaignAdvancedFields(id, {
+      compliance_state: "changes_requested",
+      compliance_hold_reason:
+        typeof body.decision_notes === "string" && body.decision_notes.trim()
+          ? body.decision_notes.trim()
+          : "Approval reviewer requested revisions.",
+      content_locked_at: null,
+      post_approval_edit_invalidated: false,
+    });
 
     // Audit log
     await createAuditLog({

@@ -9,6 +9,12 @@ import {
 import { createDeliveryEvent } from "@/lib/repositories/investorDeliveryRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
 import { sendInvestorGrowthEmail } from "@/lib/investor-growth/emailService";
+import {
+  ensureInvestorGrowthAdvancedSchema,
+  getCampaignAdvancedDetails,
+  refreshCampaignAnalytics,
+  upsertChannelExecution,
+} from "@/lib/investor-growth/advancedRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -29,6 +35,7 @@ function isValidEmail(value: string): boolean {
 }
 
 export async function POST(request: NextRequest, context: RouteContext) {
+  await ensureInvestorGrowthAdvancedSchema();
   const { userId } = await auth();
 
   if (!userId) {
@@ -38,6 +45,7 @@ export async function POST(request: NextRequest, context: RouteContext) {
   const stableUserId = toStableUuid(userId);
   const { id } = await context.params;
   const campaign = await getCampaignById(id);
+  const advanced = await getCampaignAdvancedDetails(id);
 
   if (!campaign || campaign.user_id !== stableUserId) {
     return NextResponse.json({ error: "Campaign not found." }, { status: 404 });
@@ -74,6 +82,17 @@ export async function POST(request: NextRequest, context: RouteContext) {
     );
   }
 
+  if (
+    advanced?.post_approval_edit_invalidated ||
+    advanced?.compliance_state === "hold" ||
+    advanced?.compliance_state === "review_required"
+  ) {
+    return NextResponse.json(
+      { error: "Campaign content requires renewed review before send." },
+      { status: 400 },
+    );
+  }
+
   await updateCampaign(campaign.id, {
     email_subject: subject,
     email_body: htmlBody,
@@ -86,6 +105,21 @@ export async function POST(request: NextRequest, context: RouteContext) {
       to: recipientEmail,
       subject,
       html: htmlBody,
+    });
+
+    await upsertChannelExecution({
+      campaign_id: campaign.id,
+      user_id: stableUserId,
+      channel: "email",
+      platform: "resend",
+      template_name: "investor_email",
+      draft_content: htmlBody,
+      approval_rule_name: "email_default",
+      approval_status: "approved",
+      delivery_status: "sent",
+      provider_message_id: result.messageId,
+      metrics_json: { opens: 0, clicks: 0, replies: 0 },
+      metadata_json: { subject, recipientEmail },
     });
 
     await createDeliveryEvent({
@@ -128,6 +162,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
       },
     });
 
+    await refreshCampaignAnalytics(campaign.id, stableUserId);
+
     return NextResponse.json({
       success: true,
       campaign: updatedCampaign,
@@ -158,6 +194,20 @@ export async function POST(request: NextRequest, context: RouteContext) {
       error_message: errorMessage,
     });
 
+    await upsertChannelExecution({
+      campaign_id: campaign.id,
+      user_id: stableUserId,
+      channel: "email",
+      platform: "resend",
+      template_name: "investor_email",
+      draft_content: htmlBody,
+      approval_rule_name: "email_default",
+      approval_status: "approved",
+      delivery_status: "failed",
+      metrics_json: { opens: 0, clicks: 0, replies: 0 },
+      metadata_json: { subject, recipientEmail, error: errorMessage },
+    });
+
     const updatedCampaign = await markCampaignEmailResult(campaign.id, {
       delivery_status: "failed",
       error_message: errorMessage,
@@ -176,6 +226,8 @@ export async function POST(request: NextRequest, context: RouteContext) {
         error: errorMessage,
       },
     });
+
+    await refreshCampaignAnalytics(campaign.id, stableUserId);
 
     return NextResponse.json(
       {

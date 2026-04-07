@@ -52,6 +52,12 @@ const Footer = () => {
                 </Link>
               </li>
               <li>
+                <Link href="/investor-growth/channels">Channel Execution</Link>
+              </li>
+              <li>
+                <Link href="/investor-growth/calendar">Posting Calendar</Link>
+              </li>
+              <li>
                 <Link href="/investor-growth/contacts">Investor Contacts</Link>
               </li>
               <li>

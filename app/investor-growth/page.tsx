@@ -15,6 +15,11 @@ type DashboardData = {
     approved: number;
     sent: number;
     failed_deliveries: number;
+    scheduled_channel_touches: number;
+    engagement_score: number;
+    opens: number;
+    clicks: number;
+    replies: number;
   };
   recent_campaigns: Array<{
     id: string;
@@ -24,6 +29,17 @@ type DashboardData = {
     status: "draft" | "pending_approval" | "approved" | "rejected" | "sent";
     email_delivery_status: "not_sent" | "sending" | "sent" | "failed";
     created_at: string;
+  }>;
+  top_content_panels?: Array<{
+    campaign_id: string;
+    best_channel?: string;
+    total_variants?: number;
+  }>;
+  trend_views?: Array<{
+    campaign_id: string;
+    generated_at?: string;
+    sends_last_snapshot?: number;
+    engagement_last_snapshot?: number;
   }>;
 };
 
@@ -84,6 +100,24 @@ export default function InvestorGrowthPage() {
             >
               View All Campaigns
             </Link>
+            <Link
+              href="/investor-growth/channels"
+              className={styles.actionLinkSecondary}
+            >
+              Channels
+            </Link>
+            <Link
+              href="/investor-growth/calendar"
+              className={styles.actionLinkSecondary}
+            >
+              Calendar
+            </Link>
+            <Link
+              href="/investor-growth/analytics"
+              className={styles.actionLinkSecondary}
+            >
+              Analytics
+            </Link>
           </div>
         </header>
 
@@ -113,6 +147,22 @@ export default function InvestorGrowthPage() {
           <MetricCard
             label="Failed Deliveries"
             value={isLoading ? "--" : summary?.failed_deliveries ?? 0}
+          />
+          <MetricCard
+            label="Scheduled Touches"
+            value={isLoading ? "--" : summary?.scheduled_channel_touches ?? 0}
+          />
+          <MetricCard
+            label="Engagement Score"
+            value={isLoading ? "--" : summary?.engagement_score ?? 0}
+          />
+          <MetricCard
+            label="Opens / Clicks / Replies"
+            value={
+              isLoading
+                ? "--"
+                : `${summary?.opens ?? 0}/${summary?.clicks ?? 0}/${summary?.replies ?? 0}`
+            }
           />
         </section>
 
@@ -174,6 +224,54 @@ export default function InvestorGrowthPage() {
             </div>
           ) : null}
         </Panel>
+
+        <section className={styles.metrics}>
+          <Panel
+            title="Top Content Panels"
+            subtitle="Quick read on which campaigns are producing the strongest content mix."
+          >
+            {isLoading ? <p className={styles.emptyState}>Loading analytics...</p> : null}
+            {!isLoading && (dashboard?.top_content_panels?.length ?? 0) === 0 ? (
+              <p className={styles.emptyState}>No analytics snapshots yet.</p>
+            ) : null}
+            {!isLoading && (dashboard?.top_content_panels?.length ?? 0) > 0 ? (
+              <div className={styles.recentList}>
+                {dashboard?.top_content_panels?.map((panel) => (
+                  <article key={panel.campaign_id} className={styles.recentCard}>
+                    <h3 className={styles.recentTitle}>{panel.best_channel || "email"}</h3>
+                    <p className={styles.recentMeta}>Campaign ID: {panel.campaign_id}</p>
+                    <p className={styles.recentObjective}>
+                      Variants: {panel.total_variants ?? 0}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </Panel>
+
+          <Panel
+            title="Trend Views"
+            subtitle="Simple campaign cohort trend snapshots for optimization loops."
+          >
+            {isLoading ? <p className={styles.emptyState}>Loading trends...</p> : null}
+            {!isLoading && (dashboard?.trend_views?.length ?? 0) === 0 ? (
+              <p className={styles.emptyState}>Trend data will appear after execution activity.</p>
+            ) : null}
+            {!isLoading && (dashboard?.trend_views?.length ?? 0) > 0 ? (
+              <div className={styles.recentList}>
+                {dashboard?.trend_views?.map((trend) => (
+                  <article key={trend.campaign_id} className={styles.recentCard}>
+                    <h3 className={styles.recentTitle}>{trend.engagement_last_snapshot ?? 0}</h3>
+                    <p className={styles.recentMeta}>Campaign ID: {trend.campaign_id}</p>
+                    <p className={styles.recentObjective}>
+                      Sends: {trend.sends_last_snapshot ?? 0}
+                    </p>
+                  </article>
+                ))}
+              </div>
+            ) : null}
+          </Panel>
+        </section>
       </div>
     </main>
   );

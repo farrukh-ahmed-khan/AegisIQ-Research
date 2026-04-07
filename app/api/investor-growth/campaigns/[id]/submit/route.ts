@@ -10,6 +10,11 @@ import {
   updateApproval,
 } from "@/lib/repositories/investorCampaignApprovalRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
+import {
+  ensureInvestorGrowthAdvancedSchema,
+  getCampaignAdvancedDetails,
+  updateCampaignAdvancedFields,
+} from "@/lib/investor-growth/advancedRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -23,6 +28,7 @@ export async function POST(
   context: RouteContext,
 ) {
   try {
+    await ensureInvestorGrowthAdvancedSchema();
     const { userId } = await auth();
 
     if (!userId) {
@@ -57,6 +63,15 @@ export async function POST(
       );
     }
 
+    const advanced = await getCampaignAdvancedDetails(id);
+
+    if (advanced?.compliance_state === "hold") {
+      return NextResponse.json(
+        { error: "Campaign is on compliance hold and cannot be submitted." },
+        { status: 400 },
+      );
+    }
+
     // Touch campaign so updated_at reflects the submission action.
     await updateCampaignRepo(id, {});
 
@@ -78,9 +93,24 @@ export async function POST(
     const { sql } = await import("@/lib/db");
     await sql`
       UPDATE investor_growth_campaigns
-      SET status = 'pending_approval', updated_at = now()
+      SET
+        status = 'pending_approval',
+        post_approval_edit_invalidated = FALSE,
+        compliance_state = 'in_review',
+        updated_at = now()
       WHERE id = ${id}
     `;
+
+    await updateCampaignAdvancedFields(id, {
+      approval_rules_json:
+        advanced?.approval_rules_json && Object.keys(advanced.approval_rules_json).length > 0
+          ? advanced.approval_rules_json
+          : {
+              email: { required_role: "marketing_lead", steps: 1, sla_hours: 24 },
+              sms: { required_role: "compliance", steps: 2, sla_hours: 12 },
+              social: { required_role: "communications", steps: 1, sla_hours: 24 },
+            },
+    });
 
     // Audit log
     await createAuditLog({

@@ -33,6 +33,15 @@ export interface InvestorGrowthCampaign {
   social_post?: string;
 
   segment_id?: string | null;
+  channel_mix_json?: any;
+  posting_calendar_json?: any;
+  social_posts_json?: any;
+  approval_rules_json?: any;
+  ai_strategy_json?: any;
+  compliance_state?: string;
+  compliance_hold_reason?: string | null;
+  content_locked_at?: string | null;
+  post_approval_edit_invalidated?: boolean;
 
   status: InvestorGrowthCampaignStatus;
   email_delivery_status: InvestorGrowthDeliveryStatus;
@@ -75,6 +84,12 @@ export interface InvestorContact {
   organization?: string;
   role?: string;
   investor_type?: string;
+  account_name?: string;
+  relationship_stage?: string;
+  interest_score?: number;
+  last_engagement_at?: string | null;
+  next_follow_up_at?: string | null;
+  crm_metadata_json?: any;
 
   tags_json?: any;
   notes?: string;
@@ -109,6 +124,12 @@ export interface InvestorCampaignApproval {
   user_id: string;
 
   status: "pending" | "approved" | "rejected";
+  step_number?: number;
+  channel?: string | null;
+  approver_role?: string | null;
+  rule_name?: string | null;
+  sla_due_at?: string | null;
+  invalidated_at?: string | null;
 
   submitted_at?: string;
   decided_at?: string;

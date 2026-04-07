@@ -2,6 +2,7 @@
 
 import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
+import { useRouter } from "next/navigation";
 import { message } from "antd";
 import MetricCard from "../../../components/investor-growth/metric-card";
 import Panel from "../../../components/investor-growth/panel";
@@ -53,6 +54,7 @@ function formatDate(value: string | null): string {
 }
 
 export default function InvestorGrowthApprovalsPage() {
+  const router = useRouter();
   const [data, setData] = useState<ApprovalDashboardResponse | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(
     null,
@@ -74,6 +76,12 @@ export default function InvestorGrowthApprovalsPage() {
       const response = await fetch("/api/investor-growth/approvals", {
         cache: "no-store",
       });
+
+      if (response.status === 401) {
+        setError("Please sign in to access the approval queue.");
+        router.replace("/sign-in");
+        return;
+      }
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as {
@@ -113,6 +121,11 @@ export default function InvestorGrowthApprovalsPage() {
           cache: "no-store",
         },
       );
+
+      if (response.status === 401) {
+        router.replace("/sign-in");
+        return;
+      }
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as {
@@ -174,6 +187,12 @@ export default function InvestorGrowthApprovalsPage() {
               : JSON.stringify({ decision_notes: decisionNotes }),
         },
       );
+
+      if (response.status === 401) {
+        message.error("Your session has expired. Please sign in again.");
+        router.replace("/sign-in");
+        return;
+      }
 
       if (!response.ok) {
         const payload = (await response.json().catch(() => ({}))) as {

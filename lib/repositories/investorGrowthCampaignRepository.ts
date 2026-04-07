@@ -63,6 +63,16 @@ function mapCampaign(row: Record<string, unknown>): InvestorGrowthCampaign {
     sms_body: asNullableString(row.sms_body) ?? undefined,
     social_post: asNullableString(row.social_post) ?? undefined,
     segment_id: asNullableString(row.segment_id),
+    channel_mix_json: asRecord(row.channel_mix_json),
+    posting_calendar_json: asRecord(row.posting_calendar_json),
+    social_posts_json: asRecord(row.social_posts_json),
+    approval_rules_json: asRecord(row.approval_rules_json),
+    ai_strategy_json: asRecord(row.ai_strategy_json),
+    compliance_state: asNullableString(row.compliance_state) ?? undefined,
+    compliance_hold_reason: asNullableString(row.compliance_hold_reason),
+    content_locked_at: asNullableString(row.content_locked_at),
+    post_approval_edit_invalidated:
+      row.post_approval_edit_invalidated === true,
     status: (asNullableString(row.status) ??
       "draft") as InvestorGrowthCampaign["status"],
     email_delivery_status: (asNullableString(row.email_delivery_status) ??

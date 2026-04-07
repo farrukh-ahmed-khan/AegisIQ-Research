@@ -45,8 +45,12 @@ export async function GET(_: Request, context: RouteContext) {
         channel: event.channel,
         recipient:
           readRecordValue(event.recipient_payload_json, "email") ||
-          readRecordValue(event.recipient_payload_json, "to"),
-        recipient_name: readRecordValue(event.recipient_payload_json, "name"),
+          readRecordValue(event.recipient_payload_json, "to") ||
+          readRecordValue(event.recipient_payload_json, "phone") ||
+          readRecordValue(event.recipient_payload_json, "audience"),
+        recipient_name:
+          readRecordValue(event.recipient_payload_json, "name") ||
+          readRecordValue(event.recipient_payload_json, "platform"),
         subject: readRecordValue(event.content_payload_json, "subject"),
         body: readRecordValue(event.content_payload_json, "body"),
         status: event.delivery_status,

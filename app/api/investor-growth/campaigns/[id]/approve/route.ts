@@ -6,6 +6,10 @@ import {
   updateApproval,
 } from "@/lib/repositories/investorCampaignApprovalRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
+import {
+  ensureInvestorGrowthAdvancedSchema,
+  updateCampaignAdvancedFields,
+} from "@/lib/investor-growth/advancedRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -19,6 +23,7 @@ export async function POST(
   context: RouteContext,
 ) {
   try {
+    await ensureInvestorGrowthAdvancedSchema();
     const { userId } = await auth();
 
     if (!userId) {
@@ -72,6 +77,20 @@ export async function POST(
       SET status = 'approved', updated_at = now()
       WHERE id = ${id}
     `;
+
+    await updateCampaignAdvancedFields(id, {
+      compliance_state: "approved",
+      compliance_hold_reason: null,
+      content_locked_at: new Date().toISOString(),
+      post_approval_edit_invalidated: false,
+      ai_strategy_json: {
+        summary:
+          "Recommended multi-channel sequence approved. Lead with email, reinforce with SMS, then schedule social awareness posts.",
+        audience_recommendation: campaign.audience_focus ?? "Targeted investor segment",
+        channel_mix_recommendation: "email + sms + social",
+        risk_flags: [],
+      },
+    });
 
     // Audit log
     await createAuditLog({

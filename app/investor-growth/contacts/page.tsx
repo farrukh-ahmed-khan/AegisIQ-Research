@@ -22,8 +22,21 @@ interface Contact {
   organization?: string;
   role?: string;
   investor_type?: string;
+  account_name?: string;
+  relationship_stage?: string;
+  interest_score?: number;
+  next_follow_up_at?: string | null;
   notes?: string;
   tags_json?: Record<string, unknown>;
+  created_at: string;
+}
+
+interface TimelineEntry {
+  id: string;
+  entry_type: string;
+  title: string;
+  note?: string | null;
+  due_at?: string | null;
   created_at: string;
 }
 
@@ -62,6 +75,7 @@ export default function ContactsPage() {
     null,
   );
   const [loading, setLoading] = useState(true);
+  const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pagination, setPagination] = useState<PaginationData>({
@@ -80,6 +94,10 @@ export default function ContactsPage() {
     organization: "",
     role: "",
     investor_type: "",
+    account_name: "",
+    relationship_stage: "prospect",
+    interest_score: "",
+    next_follow_up_at: "",
     notes: "",
   });
 
@@ -108,6 +126,32 @@ export default function ContactsPage() {
 
   const selectedContact =
     contacts.find((contact) => contact.id === selectedContactId) ?? null;
+
+  useEffect(() => {
+    async function loadTimeline() {
+      if (!selectedContactId) {
+        setTimeline([]);
+        return;
+      }
+
+      try {
+        const response = await fetch(
+          `/api/investor-growth/contacts/${selectedContactId}/timeline`,
+          {
+            cache: "no-store",
+          },
+        );
+        const data = (await response.json().catch(() => ({}))) as {
+          timeline?: TimelineEntry[];
+        };
+        setTimeline(Array.isArray(data.timeline) ? data.timeline : []);
+      } catch {
+        setTimeline([]);
+      }
+    }
+
+    void loadTimeline();
+  }, [selectedContactId]);
 
   // Handle form submit
   const handleSubmit = async () => {
@@ -138,7 +182,13 @@ export default function ContactsPage() {
       const response = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify({
+          ...formData,
+          interest_score:
+            formData.interest_score === ""
+              ? undefined
+              : Number(formData.interest_score),
+        }),
       });
 
       if (!response.ok) {
@@ -210,6 +260,11 @@ export default function ContactsPage() {
       organization: contact.organization ?? "",
       role: contact.role ?? "",
       investor_type: contact.investor_type ?? "",
+      account_name: contact.account_name ?? "",
+      relationship_stage: contact.relationship_stage ?? "prospect",
+      interest_score:
+        contact.interest_score === undefined ? "" : String(contact.interest_score),
+      next_follow_up_at: contact.next_follow_up_at ?? "",
       notes: contact.notes ?? "",
     });
     setIsModalOpen(true);
@@ -225,6 +280,10 @@ export default function ContactsPage() {
       organization: "",
       role: "",
       investor_type: "",
+      account_name: "",
+      relationship_stage: "prospect",
+      interest_score: "",
+      next_follow_up_at: "",
       notes: "",
     });
     setErrors({});
@@ -289,6 +348,7 @@ export default function ContactsPage() {
                   <th>Organization</th>
                   <th>Role</th>
                   <th>Investor Type</th>
+                  <th>Stage</th>
                   <th>Created</th>
                   <th>Actions</th>
                 </tr>
@@ -309,6 +369,7 @@ export default function ContactsPage() {
                     <td>{contact.organization || "-"}</td>
                     <td>{contact.role || "-"}</td>
                     <td>{contact.investor_type || "-"}</td>
+                    <td>{contact.relationship_stage || "-"}</td>
                     <td>{formatDate(contact.created_at)}</td>
                     <td>
                       <div className={styles.actionButtons}>
@@ -390,12 +451,45 @@ export default function ContactsPage() {
               <strong>{selectedContact.investor_type || "-"}</strong>
             </div>
             <div className={styles.detailRow}>
+              <span>Account</span>
+              <strong>{selectedContact.account_name || "-"}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Relationship Stage</span>
+              <strong>{selectedContact.relationship_stage || "-"}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Interest Score</span>
+              <strong>{selectedContact.interest_score ?? 0}</strong>
+            </div>
+            <div className={styles.detailRow}>
+              <span>Next Follow-up</span>
+              <strong>
+                {selectedContact.next_follow_up_at
+                  ? formatDate(selectedContact.next_follow_up_at)
+                  : "-"}
+              </strong>
+            </div>
+            <div className={styles.detailRow}>
               <span>Created</span>
               <strong>{formatDate(selectedContact.created_at)}</strong>
             </div>
             <div className={styles.detailNotes}>
               <span>Notes</span>
               <p>{selectedContact.notes || "No notes added yet."}</p>
+            </div>
+            <div className={styles.detailNotes}>
+              <span>Timeline</span>
+              {timeline.length === 0 ? (
+                <p>No outreach timeline entries yet.</p>
+              ) : (
+                timeline.map((entry) => (
+                  <p key={entry.id}>
+                    {entry.title} | {entry.note || entry.entry_type} |{" "}
+                    {formatDate(entry.created_at)}
+                  </p>
+                ))
+              )}
             </div>
           </div>
         )}
@@ -531,6 +625,76 @@ export default function ContactsPage() {
                   setFormData({ ...formData, investor_type: e.target.value })
                 }
                 placeholder="e.g., Angel, VC, PE"
+                style={{
+                  background: "#0f172a",
+                  borderColor: "#334155",
+                  color: "#e5e7eb",
+                }}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Account</label>
+              <Input
+                value={formData.account_name}
+                onChange={(e) =>
+                  setFormData({ ...formData, account_name: e.target.value })
+                }
+                placeholder="Fund or account name"
+                style={{
+                  background: "#0f172a",
+                  borderColor: "#334155",
+                  color: "#e5e7eb",
+                }}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Relationship Stage</label>
+              <Input
+                value={formData.relationship_stage}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    relationship_stage: e.target.value,
+                  })
+                }
+                placeholder="prospect, active, diligence, relationship"
+                style={{
+                  background: "#0f172a",
+                  borderColor: "#334155",
+                  color: "#e5e7eb",
+                }}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Interest Score</label>
+              <Input
+                value={formData.interest_score}
+                onChange={(e) =>
+                  setFormData({ ...formData, interest_score: e.target.value })
+                }
+                placeholder="0 to 100"
+                style={{
+                  background: "#0f172a",
+                  borderColor: "#334155",
+                  color: "#e5e7eb",
+                }}
+              />
+            </div>
+
+            <div className={styles.formGroup}>
+              <label>Next Follow-up</label>
+              <Input
+                value={formData.next_follow_up_at}
+                onChange={(e) =>
+                  setFormData({
+                    ...formData,
+                    next_follow_up_at: e.target.value,
+                  })
+                }
+                placeholder="2026-04-15T10:00:00Z"
                 style={{
                   background: "#0f172a",
                   borderColor: "#334155",

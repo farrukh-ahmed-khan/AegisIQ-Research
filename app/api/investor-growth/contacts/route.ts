@@ -6,12 +6,14 @@ import {
   countContactsByUser,
 } from "@/lib/repositories/investorContactRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
+import { ensureInvestorGrowthAdvancedSchema } from "@/lib/investor-growth/advancedRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 const PER_PAGE = 25;
 
 export async function GET(request: Request) {
   try {
+    await ensureInvestorGrowthAdvancedSchema();
     const { userId } = await auth();
 
     if (!userId) {
@@ -47,6 +49,7 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
   try {
+    await ensureInvestorGrowthAdvancedSchema();
     const { userId } = await auth();
 
     if (!userId) {
@@ -70,6 +73,13 @@ export async function POST(request: Request) {
       organization: body.organization?.trim(),
       role: body.role?.trim(),
       investor_type: body.investor_type?.trim(),
+      account_name: body.account_name?.trim(),
+      relationship_stage: body.relationship_stage?.trim(),
+      interest_score:
+        typeof body.interest_score === "number" ? body.interest_score : undefined,
+      last_engagement_at: body.last_engagement_at?.trim(),
+      next_follow_up_at: body.next_follow_up_at?.trim(),
+      crm_metadata_json: body.crm_metadata_json,
       tags_json: body.tags_json,
       notes: body.notes?.trim(),
     });

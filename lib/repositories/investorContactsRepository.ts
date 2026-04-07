@@ -47,6 +47,15 @@ function mapContact(row: Record<string, unknown>): InvestorContact {
     organization: asNullableString(row.organization) ?? undefined,
     role: asNullableString(row.role) ?? undefined,
     investor_type: asNullableString(row.investor_type) ?? undefined,
+    account_name: asNullableString(row.account_name) ?? undefined,
+    relationship_stage: asNullableString(row.relationship_stage) ?? undefined,
+    interest_score:
+      row.interest_score === null || row.interest_score === undefined
+        ? undefined
+        : Number(row.interest_score),
+    last_engagement_at: asNullableString(row.last_engagement_at),
+    next_follow_up_at: asNullableString(row.next_follow_up_at),
+    crm_metadata_json: asRecord(row.crm_metadata_json),
     tags_json: asRecord(row.tags_json),
     notes: asNullableString(row.notes) ?? undefined,
     created_at: String(row.created_at),

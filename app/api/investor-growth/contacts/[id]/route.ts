@@ -6,6 +6,7 @@ import {
   deleteContact,
 } from "@/lib/repositories/investorContactRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
+import { ensureInvestorGrowthAdvancedSchema } from "@/lib/investor-growth/advancedRepository";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -19,6 +20,7 @@ export async function GET(
   context: RouteContext,
 ) {
   try {
+    await ensureInvestorGrowthAdvancedSchema();
     const { userId } = await auth();
 
     if (!userId) {
@@ -52,6 +54,7 @@ export async function PATCH(
   context: RouteContext,
 ) {
   try {
+    await ensureInvestorGrowthAdvancedSchema();
     const { userId } = await auth();
 
     if (!userId) {
@@ -85,6 +88,25 @@ export async function PATCH(
         typeof body.investor_type === "string"
           ? body.investor_type.trim()
           : undefined,
+      account_name:
+        typeof body.account_name === "string"
+          ? body.account_name.trim()
+          : undefined,
+      relationship_stage:
+        typeof body.relationship_stage === "string"
+          ? body.relationship_stage.trim()
+          : undefined,
+      interest_score:
+        typeof body.interest_score === "number" ? body.interest_score : undefined,
+      last_engagement_at:
+        typeof body.last_engagement_at === "string"
+          ? body.last_engagement_at.trim()
+          : undefined,
+      next_follow_up_at:
+        typeof body.next_follow_up_at === "string"
+          ? body.next_follow_up_at.trim()
+          : undefined,
+      crm_metadata_json: body.crm_metadata_json,
       tags_json: body.tags_json,
       notes: typeof body.notes === "string" ? body.notes.trim() : undefined,
     });
@@ -111,6 +133,7 @@ export async function DELETE(
   context: RouteContext,
 ) {
   try {
+    await ensureInvestorGrowthAdvancedSchema();
     const { userId } = await auth();
 
     if (!userId) {

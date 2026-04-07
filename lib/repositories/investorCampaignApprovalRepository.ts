@@ -21,6 +21,15 @@ function mapApproval(row: Record<string, unknown>): InvestorCampaignApproval {
     campaign_id: String(row.campaign_id),
     user_id: String(row.user_id),
     status: String(row.status) as "pending" | "approved" | "rejected",
+    step_number:
+      row.step_number === null || row.step_number === undefined
+        ? undefined
+        : Number(row.step_number),
+    channel: asNullableString(row.channel),
+    approver_role: asNullableString(row.approver_role),
+    rule_name: asNullableString(row.rule_name),
+    sla_due_at: asNullableString(row.sla_due_at),
+    invalidated_at: asNullableString(row.invalidated_at),
     submitted_at: asNullableString(row.submitted_at),
     decided_at: asNullableString(row.decided_at),
     decision_notes: asNullableString(row.decision_notes),
