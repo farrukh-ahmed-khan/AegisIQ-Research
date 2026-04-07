@@ -118,6 +118,18 @@ export default function InvestorGrowthPage() {
             >
               Analytics
             </Link>
+            <Link
+              href="/investor-growth/approvals"
+              className={styles.actionLinkSecondary}
+            >
+              Approvals
+            </Link>
+            <Link
+              href="/investor-growth/contacts"
+              className={styles.actionLinkSecondary}
+            >
+              Investor CRM
+            </Link>
           </div>
         </header>
 
@@ -270,6 +282,42 @@ export default function InvestorGrowthPage() {
                 ))}
               </div>
             ) : null}
+          </Panel>
+        </section>
+
+        <section className={styles.metrics}>
+          <Panel
+            title="Governance Workspace"
+            subtitle="Operate approval chains, compliance controls, and exportable audit trails."
+          >
+            <div className={styles.recentList}>
+              <article className={styles.recentCard}>
+                <h3 className={styles.recentTitle}>Role-Aware Approvals</h3>
+                <p className={styles.recentObjective}>
+                  Channel-level approval rules, SLA due dates, post-approval invalidation, and CSV exports are available from the approvals queue.
+                </p>
+                <Link href="/investor-growth/approvals" className={styles.inlineAction}>
+                  Open Governance Queue
+                </Link>
+              </article>
+            </div>
+          </Panel>
+
+          <Panel
+            title="Enterprise IR Platform"
+            subtitle="Investor growth now includes CRM workflow, analytics workspace, and board/export-ready operating surfaces."
+          >
+            <div className={styles.recentList}>
+              <article className={styles.recentCard}>
+                <h3 className={styles.recentTitle}>CRM + Analytics</h3>
+                <p className={styles.recentObjective}>
+                  Manage relationship stages, follow-up tasks, outreach timelines, engagement scorecards, and campaign optimization from one workspace.
+                </p>
+                <Link href="/investor-growth/contacts" className={styles.inlineAction}>
+                  Open Investor CRM
+                </Link>
+              </article>
+            </div>
           </Panel>
         </section>
       </div>

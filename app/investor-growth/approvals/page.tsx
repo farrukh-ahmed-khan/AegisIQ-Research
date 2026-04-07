@@ -21,29 +21,52 @@ type ApprovalCampaign = {
   approval: {
     id: string;
     status: "pending" | "approved" | "rejected";
+    step_number: number | null;
+    channel: string | null;
+    approver_role: string | null;
+    rule_name: string | null;
+    sla_due_at: string | null;
     submitted_at: string | null;
     decided_at: string | null;
     decision_notes: string | null;
   } | null;
+  approval_chain: ApprovalHistoryItem[];
+  approval_progress: {
+    current_step: number | null;
+    total_steps: number;
+    next_sla_due_at: string | null;
+  };
 };
 
 type ApprovalHistoryItem = {
   id: string;
-  action: string;
-  label: string;
-  note: string | null;
-  acted_by: string;
-  created_at: string;
+  action?: string;
+  label?: string;
+  note?: string | null;
+  acted_by?: string;
+  created_at?: string;
+  status?: string;
+  step_number?: number;
+  channel?: string | null;
+  approver_role?: string | null;
+  sla_due_at?: string | null;
+  invalidated_at?: string | null;
+  decision_notes?: string | null;
 };
 
 type ApprovalDashboardResponse = {
   summary: {
     pending: number;
+    overdue: number;
     ready_to_submit: number;
     approved: number;
   };
   campaigns: ApprovalCampaign[];
   pending_campaigns: ApprovalCampaign[];
+  export_urls?: {
+    json?: string;
+    csv?: string;
+  };
 };
 
 function formatDate(value: string | null): string {
@@ -201,11 +224,18 @@ export default function InvestorGrowthApprovalsPage() {
         throw new Error(payload.error || `Failed to ${action} campaign.`);
       }
 
+      const payload = (await response.json().catch(() => ({}))) as {
+        status?: string;
+        next_step?: { step_number?: number | null };
+      };
+
       message.success(
         action === "submit"
           ? "Campaign submitted for approval."
           : action === "approve"
-            ? "Campaign approved."
+            ? payload.status === "approved"
+              ? "Campaign approved."
+              : `Approval step cleared${payload.next_step?.step_number ? `, moving to step ${payload.next_step.step_number}.` : "."}`
             : "Campaign rejected.",
       );
       setDecisionNotes("");
@@ -237,12 +267,18 @@ export default function InvestorGrowthApprovalsPage() {
             <Link href="/investor-growth/campaigns" className={styles.backLink}>
               Campaigns
             </Link>
+            {data?.export_urls?.csv ? (
+              <Link href={data.export_urls.csv} className={styles.backLink}>
+                Export CSV
+              </Link>
+            ) : null}
           </div>
         }
       />
 
       <div className={styles.metricsRow}>
         <MetricCard label="Pending" value={isLoading ? "--" : data?.summary.pending ?? 0} />
+        <MetricCard label="Overdue SLAs" value={isLoading ? "--" : data?.summary.overdue ?? 0} />
         <MetricCard
           label="Ready To Submit"
           value={isLoading ? "--" : data?.summary.ready_to_submit ?? 0}
@@ -287,6 +323,10 @@ export default function InvestorGrowthApprovalsPage() {
                             {campaign.company_name || campaign.ticker || "Campaign"}
                           </strong>
                           <span>{campaign.campaign_objective || "-"}</span>
+                          <span>
+                            Step {campaign.approval_progress.current_step ?? "-"} of{" "}
+                            {campaign.approval_progress.total_steps}
+                          </span>
                         </div>
                       </td>
                       <td>
@@ -313,6 +353,19 @@ export default function InvestorGrowthApprovalsPage() {
                 </p>
                 <p className={styles.selectedMeta}>
                   Status: {selectedCampaign.status.replace("_", " ")}
+                </p>
+                <p className={styles.selectedMeta}>
+                  Current step: {selectedCampaign.approval_progress.current_step ?? "-"} /{" "}
+                  {selectedCampaign.approval_progress.total_steps}
+                </p>
+                <p className={styles.selectedMeta}>
+                  Role: {selectedCampaign.approval?.approver_role || "-"}
+                </p>
+                <p className={styles.selectedMeta}>
+                  Channel: {selectedCampaign.approval?.channel || "-"}
+                </p>
+                <p className={styles.selectedMeta}>
+                  SLA due: {formatDate(selectedCampaign.approval?.sla_due_at ?? null)}
                 </p>
                 <textarea
                   className={styles.notesInput}
@@ -369,11 +422,21 @@ export default function InvestorGrowthApprovalsPage() {
                 {approvalHistory.map((item) => (
                   <div key={item.id} className={styles.historyItem}>
                     <div className={styles.historyTop}>
-                      <strong>{item.label}</strong>
-                      <span>{formatDate(item.created_at)}</span>
+                      <strong>{item.label || `Step ${item.step_number ?? "-"}`}</strong>
+                      <span>{formatDate(item.created_at ?? null)}</span>
                     </div>
-                    <p>Actor: {item.acted_by}</p>
-                    <p>Note: {item.note || "-"}</p>
+                    <p>Actor: {item.acted_by || "-"}</p>
+                    <p>
+                      Detail:{" "}
+                      {item.channel || item.approver_role
+                        ? `${item.channel || "-"} / ${item.approver_role || "-"}`
+                        : item.note || "-"}
+                    </p>
+                    <p>
+                      SLA: {formatDate(item.sla_due_at ?? null)} | Invalidated:{" "}
+                      {formatDate(item.invalidated_at ?? null)}
+                    </p>
+                    <p>Note: {item.note || item.decision_notes || "-"}</p>
                   </div>
                 ))}
               </div>

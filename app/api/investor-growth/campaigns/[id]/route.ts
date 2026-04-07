@@ -13,6 +13,8 @@ import {
   refreshCampaignAnalytics,
   updateCampaignAdvancedFields,
 } from "@/lib/investor-growth/advancedRepository";
+import { getApprovalsByCampaignId } from "@/lib/repositories/investorCampaignApprovalRepository";
+import { buildAiStrategySummary } from "@/lib/investor-growth/strategyEngine";
 import { sql } from "@/lib/db";
 import { toStableUuid } from "@/lib/stable-user-id";
 
@@ -134,20 +136,36 @@ export async function GET(_: NextRequest, context: RouteContext) {
       );
     }
 
-    const [advanced, channelExecutions] = await Promise.all([
+    const [advanced, channelExecutions, approvalChain] = await Promise.all([
       getCampaignAdvancedDetails(campaign.id),
       listChannelExecutionsByCampaign(campaign.id),
+      getApprovalsByCampaignId(campaign.id),
     ]);
     const analytics =
       (await getCampaignAnalytics(campaign.id)) ??
       (await refreshCampaignAnalytics(campaign.id, campaign.user_id));
 
+    const aiStrategy =
+      advanced?.ai_strategy_json && Object.keys(advanced.ai_strategy_json).length > 0
+        ? advanced.ai_strategy_json
+        : buildAiStrategySummary({
+            campaign: {
+              ...campaign,
+              ...advanced,
+            },
+            analytics,
+            advanced,
+            channelExecutions,
+          });
+
     return NextResponse.json({
       ...mapCampaignResponse({
         ...campaign,
         ...advanced,
+        ai_strategy_json: aiStrategy,
       }),
       channel_executions: channelExecutions,
+      approval_chain: approvalChain,
       analytics,
     });
   } catch (error) {
@@ -235,12 +253,37 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
       });
     }
 
+    const refreshedAdvanced = await getCampaignAdvancedDetails(id);
+    const refreshedAnalytics =
+      (await getCampaignAnalytics(id)) ?? (await refreshCampaignAnalytics(id, stableUserId));
+    const refreshedExecutions = await listChannelExecutionsByCampaign(id);
+    const mergedCampaign = {
+      ...existing,
+      ...updated,
+      ...refreshedAdvanced,
+    };
+
     await updateCampaignAdvancedFields(id, {
       channel_mix_json: body.channel_mix_json,
       posting_calendar_json: body.posting_calendar_json,
       social_posts_json: body.social_posts_json,
       approval_rules_json: body.approval_rules_json,
-      ai_strategy_json: body.ai_strategy_json,
+      ai_strategy_json:
+        body.ai_strategy_json ??
+        buildAiStrategySummary({
+          campaign: mergedCampaign,
+          analytics: refreshedAnalytics,
+          advanced: {
+            ...refreshedAdvanced,
+            channel_mix_json:
+              body.channel_mix_json ?? refreshedAdvanced?.channel_mix_json ?? {},
+            approval_rules_json:
+              body.approval_rules_json ?? refreshedAdvanced?.approval_rules_json ?? {},
+            compliance_state:
+              body.compliance_state ?? refreshedAdvanced?.compliance_state ?? "clear",
+          },
+          channelExecutions: refreshedExecutions,
+        }),
       compliance_state: body.compliance_state,
       compliance_hold_reason: body.compliance_hold_reason,
     });
@@ -270,9 +313,10 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
     }
 
     const latest = await getCampaignById(id);
-    const [advanced, channelExecutions] = await Promise.all([
+    const [advanced, channelExecutions, approvalChain] = await Promise.all([
       getCampaignAdvancedDetails(id),
       listChannelExecutionsByCampaign(id),
+      getApprovalsByCampaignId(id),
     ]);
     const analytics = await refreshCampaignAnalytics(id, stableUserId);
 
@@ -282,6 +326,7 @@ export async function PATCH(request: NextRequest, context: RouteContext) {
         ...advanced,
       }),
       channel_executions: channelExecutions,
+      approval_chain: approvalChain,
       analytics,
     });
   } catch (error) {

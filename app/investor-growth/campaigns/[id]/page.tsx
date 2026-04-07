@@ -27,10 +27,20 @@ type Campaign = {
   segment_id?: string | null;
   channel_mix?: Record<string, unknown>;
   approval_rules?: Record<string, unknown>;
+  ai_strategy?: Record<string, unknown>;
   compliance_state?: string;
   compliance_hold_reason?: string | null;
   content_locked_at?: string | null;
   post_approval_edit_invalidated?: boolean;
+  approval_chain?: Array<{
+    id: string;
+    status: string;
+    step_number?: number;
+    channel?: string | null;
+    approver_role?: string | null;
+    sla_due_at?: string | null;
+    invalidated_at?: string | null;
+  }>;
   channel_executions?: Array<{
     id: string;
     channel: string;
@@ -100,6 +110,7 @@ const DEFAULT_CONFIG: Config = {
 const fmt = (v: string | null) => !v ? "-" : (Number.isNaN(new Date(v).getTime()) ? v : new Date(v).toLocaleString("en-US"));
 const num = (v: unknown) => String(v ?? 0);
 const toN = (v: string) => { const n = Number(v); return Number.isFinite(n) && n >= 0 ? n : 0; };
+const listText = (value: unknown) => Array.isArray(value) ? value.map((item) => String(item)).join(", ") : String(value ?? "-");
 const rule = (rules: Record<string, unknown> | undefined, key: string) => ((rules?.[key] && typeof rules[key] === "object") ? rules[key] as Record<string, unknown> : {});
 const enabled = (v: unknown, fallback: boolean) => typeof v === "boolean" ? v : typeof v === "string" ? v !== "false" && v !== "off" : fallback;
 function badge(status: string) { return status === "sending" ? "in_progress" : status === "failed" ? "rejected" : status === "sent" ? "sent" : "draft"; }
@@ -221,6 +232,8 @@ export default function InvestorGrowthCampaignDetailPage() {
 
   const seg = campaign?.analytics?.segment_metrics_json?.all_segments as Record<string, unknown> | undefined;
   const coh = campaign?.analytics?.cohort_metrics_json?.current_campaign as Record<string, unknown> | undefined;
+  const ai = campaign?.ai_strategy as Record<string, unknown> | undefined;
+  const enterprise = ai?.enterprise_workspace as Record<string, unknown> | undefined;
 
   return (
     <main className={styles.page}>
@@ -249,6 +262,7 @@ export default function InvestorGrowthCampaignDetailPage() {
                 <div className={styles.infoRow}><span className={styles.infoLabel}>Status</span><StatusBadge status={campaign.status} /></div>
                 <div className={styles.infoRow}><span className={styles.infoLabel}>Email Delivery</span><StatusBadge status={badge(campaign.email_delivery_status) as "draft"} /></div>
                 <div className={styles.infoRow}><span className={styles.infoLabel}>Compliance</span><span className={styles.infoValue}>{campaign.compliance_state || "-"}</span></div>
+                <div className={styles.infoRow}><span className={styles.infoLabel}>Approval Steps</span><span className={styles.infoValue}>{campaign.approval_chain?.length ?? 0}</span></div>
                 <div className={styles.infoRow}><span className={styles.infoLabel}>Approval Lock</span><span className={styles.infoValue}>{fmt(campaign.content_locked_at ?? null)}</span></div>
                 <div className={styles.infoRow}><span className={styles.infoLabel}>Invalidated</span><span className={styles.infoValue}>{campaign.post_approval_edit_invalidated ? "Yes" : "No"}</span></div>
                 <div className={styles.infoRow}><span className={styles.infoLabel}>Created</span><span className={styles.infoValue}>{fmt(campaign.created_at)}</span></div>
@@ -302,6 +316,27 @@ export default function InvestorGrowthCampaignDetailPage() {
               </article>
 
               <article className={styles.card}>
+                <h2 className={styles.sectionTitle}>AI Strategy Engine</h2>
+                <div className={styles.analyticsGrid}>
+                  <div className={styles.analyticsCard}><h3 className={styles.blockTitle}>Summary</h3><p className={styles.body}>{String(ai?.summary ?? "-")}</p></div>
+                  <div className={styles.analyticsCard}><h3 className={styles.blockTitle}>Audience + Timing</h3><p className={styles.body}>Audience: {String(ai?.audience_selection_recommendation ?? "-")}<br />Timing: {String(ai?.timing_recommendation ?? "-")}</p></div>
+                  <div className={styles.analyticsCard}><h3 className={styles.blockTitle}>Variants + Mix</h3><p className={styles.body}>Variants: {listText(ai?.content_variant_recommendations)}<br />Mix: {String(ai?.channel_mix_recommendation ?? "-")}</p></div>
+                  <div className={styles.analyticsCard}><h3 className={styles.blockTitle}>Risk Flags</h3><p className={styles.body}>{listText(ai?.campaign_risk_flags)}</p></div>
+                </div>
+                <div className={styles.block}><h3 className={styles.blockTitle}>Explainable Summary</h3><p className={styles.body}>{String(ai?.explainable_summary ?? "-")}</p></div>
+              </article>
+
+              <article className={styles.card}>
+                <h2 className={styles.sectionTitle}>Enterprise IR Workspace</h2>
+                <div className={styles.analyticsGrid}>
+                  <div className={styles.analyticsCard}><h3 className={styles.blockTitle}>Deal Room Hooks</h3><p className={styles.body}>{listText(enterprise?.deal_room_hooks)}</p></div>
+                  <div className={styles.analyticsCard}><h3 className={styles.blockTitle}>Board Exports</h3><p className={styles.body}>{listText(enterprise?.board_level_reporting_exports)}</p></div>
+                  <div className={styles.analyticsCard}><h3 className={styles.blockTitle}>Controls + Modules</h3><p className={styles.body}>Controls: {listText(enterprise?.enterprise_user_controls)}<br />Modules: {listText(enterprise?.premium_reporting_and_governance_modules)}</p></div>
+                  <div className={styles.analyticsCard}><h3 className={styles.blockTitle}>Integrations</h3><p className={styles.body}>CRM/API: {listText(enterprise?.crm_api_integrations)}<br />Enrichment: {listText(enterprise?.external_data_enrichment_connectors)}</p></div>
+                </div>
+              </article>
+
+              <article className={styles.card}>
                 <h2 className={styles.sectionTitle}>Execution Controls</h2>
                 {!approvalGranted ? <div className={styles.warningBox}>Approval is required before execution.</div> : null}
                 <div className={styles.executionGrid}>
@@ -330,6 +365,10 @@ export default function InvestorGrowthCampaignDetailPage() {
               <article className={styles.card}>
                 <h2 className={styles.sectionTitle}>Approval History</h2>
                 {approvalHistory.length === 0 ? <p className={styles.message}>No approval events have been logged yet.</p> : <div className={styles.historyList}>{approvalHistory.map((item) => <div key={item.id} className={styles.historyItem}><div className={styles.historyTopRow}><strong>{item.label}</strong><span>{fmt(item.created_at)}</span></div><p className={styles.historyMeta}>Actor: {item.acted_by}</p><p className={styles.historyMeta}>Note: {item.note || "-"}</p></div>)}</div>}
+                {campaign.approval_chain?.length ? <div className={styles.historyList}>{campaign.approval_chain.map((item) => <div key={`chain-${item.id}`} className={styles.historyItem}><div className={styles.historyTopRow}><strong>Step {item.step_number ?? "-"}</strong><span>{item.status}</span></div><p className={styles.historyMeta}>Channel: {item.channel || "-"}</p><p className={styles.historyMeta}>Role: {item.approver_role || "-"}</p><p className={styles.historyMeta}>SLA: {fmt(item.sla_due_at ?? null)} | Invalidated: {fmt(item.invalidated_at ?? null)}</p></div>)}</div> : null}
+                <div className={styles.buttonRow}>
+                  <Link href="/api/investor-growth/approvals/export?format=csv" className={styles.secondaryButton}>Export Approval CSV</Link>
+                </div>
               </article>
             </div>
           </section>

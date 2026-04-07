@@ -130,6 +130,8 @@ export interface InvestorCampaignApproval {
   rule_name?: string | null;
   sla_due_at?: string | null;
   invalidated_at?: string | null;
+  sequence_index?: number;
+  is_active_step?: boolean;
 
   submitted_at?: string;
   decided_at?: string;

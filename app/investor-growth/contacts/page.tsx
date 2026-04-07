@@ -76,6 +76,16 @@ export default function ContactsPage() {
   );
   const [loading, setLoading] = useState(true);
   const [timeline, setTimeline] = useState<TimelineEntry[]>([]);
+  const [timelineForm, setTimelineForm] = useState({
+    entry_type: "note",
+    title: "",
+    note: "",
+    due_at: "",
+    relationship_stage: "prospect",
+    interest_score: "",
+    next_follow_up_at: "",
+    account_name: "",
+  });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errors, setErrors] = useState<Record<string, string>>({});
   const [pagination, setPagination] = useState<PaginationData>({
@@ -152,6 +162,26 @@ export default function ContactsPage() {
 
     void loadTimeline();
   }, [selectedContactId]);
+
+  useEffect(() => {
+    if (!selectedContact) {
+      return;
+    }
+
+    setTimelineForm({
+      entry_type: "note",
+      title: "",
+      note: "",
+      due_at: "",
+      relationship_stage: selectedContact.relationship_stage ?? "prospect",
+      interest_score:
+        selectedContact.interest_score === undefined
+          ? ""
+          : String(selectedContact.interest_score),
+      next_follow_up_at: selectedContact.next_follow_up_at ?? "",
+      account_name: selectedContact.account_name ?? "",
+    });
+  }, [selectedContact]);
 
   // Handle form submit
   const handleSubmit = async () => {
@@ -268,6 +298,60 @@ export default function ContactsPage() {
       notes: contact.notes ?? "",
     });
     setIsModalOpen(true);
+  };
+
+  const handleTimelineSubmit = async () => {
+    if (!selectedContactId || !timelineForm.title.trim()) {
+      message.error("Timeline title is required");
+      return;
+    }
+
+    setIsSubmitting(true);
+    try {
+      const response = await fetch(
+        `/api/investor-growth/contacts/${selectedContactId}/timeline`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...timelineForm,
+            interest_score:
+              timelineForm.interest_score === ""
+                ? undefined
+                : Number(timelineForm.interest_score),
+          }),
+        },
+      );
+
+      if (!response.ok) {
+        throw new Error(
+          await getErrorMessage(response, "Failed to add timeline entry"),
+        );
+      }
+
+      message.success("Timeline entry saved");
+      await fetchContacts(pagination.page);
+      const timelineResponse = await fetch(
+        `/api/investor-growth/contacts/${selectedContactId}/timeline`,
+        { cache: "no-store" },
+      );
+      const timelineData = (await timelineResponse.json().catch(() => ({}))) as {
+        timeline?: TimelineEntry[];
+      };
+      setTimeline(Array.isArray(timelineData.timeline) ? timelineData.timeline : []);
+      setTimelineForm((current) => ({
+        ...current,
+        title: "",
+        note: "",
+        due_at: "",
+      }));
+    } catch (error) {
+      message.error(
+        error instanceof Error ? error.message : "Failed to add timeline entry",
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   // Reset form
@@ -490,6 +574,151 @@ export default function ContactsPage() {
                   </p>
                 ))
               )}
+            </div>
+            <div className={styles.detailNotes}>
+              <span>Add CRM Timeline Entry</span>
+              <div className={styles.formGroup}>
+                <label>Entry Type</label>
+                <Input
+                  value={timelineForm.entry_type}
+                  onChange={(e) =>
+                    setTimelineForm({ ...timelineForm, entry_type: e.target.value })
+                  }
+                  placeholder="note, outreach, follow_up_task"
+                  style={{
+                    background: "#0f172a",
+                    borderColor: "#334155",
+                    color: "#e5e7eb",
+                  }}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Title</label>
+                <Input
+                  value={timelineForm.title}
+                  onChange={(e) =>
+                    setTimelineForm({ ...timelineForm, title: e.target.value })
+                  }
+                  placeholder="Investor follow-up scheduled"
+                  style={{
+                    background: "#0f172a",
+                    borderColor: "#334155",
+                    color: "#e5e7eb",
+                  }}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Note</label>
+                <Input.TextArea
+                  value={timelineForm.note}
+                  onChange={(e) =>
+                    setTimelineForm({ ...timelineForm, note: e.target.value })
+                  }
+                  rows={3}
+                  style={{
+                    background: "#0f172a",
+                    borderColor: "#334155",
+                    color: "#e5e7eb",
+                  }}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Due At</label>
+                <Input
+                  value={timelineForm.due_at}
+                  onChange={(e) =>
+                    setTimelineForm({ ...timelineForm, due_at: e.target.value })
+                  }
+                  placeholder="2026-04-15T10:00:00Z"
+                  style={{
+                    background: "#0f172a",
+                    borderColor: "#334155",
+                    color: "#e5e7eb",
+                  }}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Relationship Stage</label>
+                <Input
+                  value={timelineForm.relationship_stage}
+                  onChange={(e) =>
+                    setTimelineForm({
+                      ...timelineForm,
+                      relationship_stage: e.target.value,
+                    })
+                  }
+                  style={{
+                    background: "#0f172a",
+                    borderColor: "#334155",
+                    color: "#e5e7eb",
+                  }}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Interest Score</label>
+                <Input
+                  value={timelineForm.interest_score}
+                  onChange={(e) =>
+                    setTimelineForm({
+                      ...timelineForm,
+                      interest_score: e.target.value,
+                    })
+                  }
+                  placeholder="0 to 100"
+                  style={{
+                    background: "#0f172a",
+                    borderColor: "#334155",
+                    color: "#e5e7eb",
+                  }}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Next Follow-up</label>
+                <Input
+                  value={timelineForm.next_follow_up_at}
+                  onChange={(e) =>
+                    setTimelineForm({
+                      ...timelineForm,
+                      next_follow_up_at: e.target.value,
+                    })
+                  }
+                  placeholder="2026-04-16T09:00:00Z"
+                  style={{
+                    background: "#0f172a",
+                    borderColor: "#334155",
+                    color: "#e5e7eb",
+                  }}
+                />
+              </div>
+              <div className={styles.formGroup}>
+                <label>Account Name</label>
+                <Input
+                  value={timelineForm.account_name}
+                  onChange={(e) =>
+                    setTimelineForm({
+                      ...timelineForm,
+                      account_name: e.target.value,
+                    })
+                  }
+                  placeholder="Fund or account"
+                  style={{
+                    background: "#0f172a",
+                    borderColor: "#334155",
+                    color: "#e5e7eb",
+                  }}
+                />
+              </div>
+              <Button
+                type="primary"
+                onClick={handleTimelineSubmit}
+                loading={isSubmitting}
+                style={{
+                  background: "#2563eb",
+                  borderColor: "#2563eb",
+                }}
+              >
+                Save Timeline Entry
+              </Button>
             </div>
           </div>
         )}

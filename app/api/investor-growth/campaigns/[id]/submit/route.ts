@@ -5,9 +5,8 @@ import {
   updateCampaign as updateCampaignRepo,
 } from "@/lib/repositories/investorGrowthCampaignRepository";
 import {
-  getApprovalByCampaignId,
-  createApproval,
-  updateApproval,
+  createApprovalChain,
+  invalidatePendingApprovalsByCampaignId,
 } from "@/lib/repositories/investorCampaignApprovalRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
 import {
@@ -15,6 +14,7 @@ import {
   getCampaignAdvancedDetails,
   updateCampaignAdvancedFields,
 } from "@/lib/investor-growth/advancedRepository";
+import { buildApprovalChain } from "@/lib/investor-growth/approvalWorkflow";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -75,19 +75,32 @@ export async function POST(
     // Touch campaign so updated_at reflects the submission action.
     await updateCampaignRepo(id, {});
 
-    // Create or update approval record
-    const approval = await getApprovalByCampaignId(id);
+    const approvalRules =
+      advanced?.approval_rules_json && Object.keys(advanced.approval_rules_json).length > 0
+        ? advanced.approval_rules_json
+        : {
+            email: { required_role: "marketing_lead", steps: 1, sla_hours: 24 },
+            sms: { required_role: "compliance", steps: 2, sla_hours: 12 },
+            social: { required_role: "communications", steps: 1, sla_hours: 24 },
+          };
 
-    if (!approval) {
-      await createApproval({
+    const approvalChain = buildApprovalChain(
+      approvalRules,
+      advanced?.channel_mix_json ?? campaign.channel_mix_json ?? {},
+    );
+
+    await invalidatePendingApprovalsByCampaignId(id);
+    await createApprovalChain(
+      approvalChain.map((step) => ({
         campaign_id: id,
         user_id: stableUserId,
-      });
-    } else {
-      await updateApproval(approval.id, {
-        status: "pending",
-      });
-    }
+        step_number: step.step_number,
+        channel: step.channel,
+        approver_role: step.approver_role,
+        rule_name: step.rule_name,
+        sla_due_at: step.sla_due_at,
+      })),
+    );
 
     // Update campaign status to pending_approval
     const { sql } = await import("@/lib/db");
@@ -102,14 +115,7 @@ export async function POST(
     `;
 
     await updateCampaignAdvancedFields(id, {
-      approval_rules_json:
-        advanced?.approval_rules_json && Object.keys(advanced.approval_rules_json).length > 0
-          ? advanced.approval_rules_json
-          : {
-              email: { required_role: "marketing_lead", steps: 1, sla_hours: 24 },
-              sms: { required_role: "compliance", steps: 2, sla_hours: 12 },
-              social: { required_role: "communications", steps: 1, sla_hours: 24 },
-            },
+      approval_rules_json: approvalRules,
     });
 
     // Audit log
@@ -120,10 +126,15 @@ export async function POST(
       metadata_json: {
         campaign_id: id,
         previous_status: campaign.status,
+        approval_chain: approvalChain,
       },
     });
 
-    return NextResponse.json({ success: true, status: "pending_approval" });
+    return NextResponse.json({
+      success: true,
+      status: "pending_approval",
+      approval_chain: approvalChain,
+    });
   } catch (error) {
     console.error("POST /campaigns/[id]/submit error:", error);
     return NextResponse.json(

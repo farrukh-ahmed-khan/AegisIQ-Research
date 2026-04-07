@@ -2,14 +2,18 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getCampaignById } from "@/lib/repositories/investorGrowthCampaignRepository";
 import {
-  getApprovalByCampaignId,
+  getActiveApprovalByCampaignId,
+  getApprovalsByCampaignId,
   updateApproval,
 } from "@/lib/repositories/investorCampaignApprovalRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
 import {
   ensureInvestorGrowthAdvancedSchema,
+  getCampaignAdvancedDetails,
   updateCampaignAdvancedFields,
 } from "@/lib/investor-growth/advancedRepository";
+import { buildApprovalStepLabel } from "@/lib/investor-growth/approvalWorkflow";
+import { buildAiStrategySummary } from "@/lib/investor-growth/strategyEngine";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -55,22 +59,51 @@ export async function POST(
       );
     }
 
-    // Get approval record
-    const approval = await getApprovalByCampaignId(id);
+    // Get active approval step
+    const approval = await getActiveApprovalByCampaignId(id);
     if (!approval) {
       return NextResponse.json(
-        { error: "Approval record not found" },
+        { error: "No active approval step found" },
         { status: 404 },
       );
     }
 
-    // Update approval status
+    // Update approval status for the current step
     await updateApproval(approval.id, {
       status: "approved",
       decision_notes: body.decision_notes,
     });
 
-    // Update campaign status
+    const approvals = await getApprovalsByCampaignId(id);
+    const remaining = approvals.filter(
+      (item) => item.decided_at == null && item.invalidated_at == null,
+    );
+    const advanced = await getCampaignAdvancedDetails(id);
+
+    if (remaining.length > 0) {
+      await createAuditLog({
+        user_id: stableUserId,
+        campaign_id: id,
+        action: "approval_step_approved",
+        metadata_json: {
+          campaign_id: id,
+          approver_id: stableUserId,
+          decision_notes: body.decision_notes,
+          approval_step: buildApprovalStepLabel(approval),
+          next_step_number: remaining[0]?.step_number ?? null,
+          next_approver_role: remaining[0]?.approver_role ?? null,
+        },
+      });
+
+      return NextResponse.json({
+        success: true,
+        status: "pending_approval",
+        step_approved: approval.step_number ?? 1,
+        next_step: remaining[0] ?? null,
+      });
+    }
+
+    // Update campaign status once every approval step is complete.
     const { sql } = await import("@/lib/db");
     await sql`
       UPDATE investor_growth_campaigns
@@ -83,13 +116,10 @@ export async function POST(
       compliance_hold_reason: null,
       content_locked_at: new Date().toISOString(),
       post_approval_edit_invalidated: false,
-      ai_strategy_json: {
-        summary:
-          "Recommended multi-channel sequence approved. Lead with email, reinforce with SMS, then schedule social awareness posts.",
-        audience_recommendation: campaign.audience_focus ?? "Targeted investor segment",
-        channel_mix_recommendation: "email + sms + social",
-        risk_flags: [],
-      },
+      ai_strategy_json: buildAiStrategySummary({
+        campaign,
+        advanced,
+      }),
     });
 
     // Audit log
@@ -101,6 +131,7 @@ export async function POST(
         campaign_id: id,
         approver_id: stableUserId,
         decision_notes: body.decision_notes,
+        approval_step: buildApprovalStepLabel(approval),
       },
     });
 

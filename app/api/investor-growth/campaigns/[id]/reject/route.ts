@@ -2,7 +2,8 @@ import { NextResponse } from "next/server";
 import { auth } from "@clerk/nextjs/server";
 import { getCampaignById } from "@/lib/repositories/investorGrowthCampaignRepository";
 import {
-  getApprovalByCampaignId,
+  getActiveApprovalByCampaignId,
+  invalidatePendingApprovalsByCampaignId,
   updateApproval,
 } from "@/lib/repositories/investorCampaignApprovalRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
@@ -10,6 +11,7 @@ import {
   ensureInvestorGrowthAdvancedSchema,
   updateCampaignAdvancedFields,
 } from "@/lib/investor-growth/advancedRepository";
+import { buildApprovalStepLabel } from "@/lib/investor-growth/approvalWorkflow";
 import { toStableUuid } from "@/lib/stable-user-id";
 
 type RouteContext = {
@@ -55,11 +57,11 @@ export async function POST(
       );
     }
 
-    // Get approval record
-    const approval = await getApprovalByCampaignId(id);
+    // Get active approval record
+    const approval = await getActiveApprovalByCampaignId(id);
     if (!approval) {
       return NextResponse.json(
-        { error: "Approval record not found" },
+        { error: "No active approval step found" },
         { status: 404 },
       );
     }
@@ -69,6 +71,7 @@ export async function POST(
       status: "rejected",
       decision_notes: body.decision_notes,
     });
+    await invalidatePendingApprovalsByCampaignId(id);
 
     // Update campaign status
     const { sql } = await import("@/lib/db");
@@ -97,6 +100,7 @@ export async function POST(
         campaign_id: id,
         rejector_id: stableUserId,
         decision_notes: body.decision_notes,
+        approval_step: buildApprovalStepLabel(approval),
       },
     });
 
