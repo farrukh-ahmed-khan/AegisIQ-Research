@@ -140,12 +140,14 @@ The system is designed with a **review-first architecture**, meaning AI assists 
 
 The Investor Growth system is built in progressive batches.
 
-| Batch     | Purpose                                                           |
-| --------- | ----------------------------------------------------------------- |
-| Batch 1   | Base project setup and database structure                         |
-| Batch 2   | AI generation service and campaign APIs                           |
-| Batch 3   | Campaign UI pages                                                 |
-| Phase 4–6 | Campaign management, CRM, segmentation, approvals, email delivery |
+| Batch   | Purpose                                              |
+| ------- | ---------------------------------------------------- |
+| Batch 1 | Base project setup and database structure            |
+| Batch 2 | AI generation service and campaign APIs              |
+| Batch 3 | Campaign UI pages                                    |
+| Batch 4 | Email delivery + operator dashboard                  |
+| Batch 5 | CRM + segments + approval workflow + queue           |
+| Phase 6 | Expanded workflow automation and operational scaling |
 
 The system is **Netlify-safe**, **additive**, and follows a **secure API-first architecture**.
 
@@ -379,6 +381,202 @@ Reusable primitives include:
 - Panel/Card
 - Form Fields
 - Table Components
+
+---
+
+# Batch 4 – Email Delivery + Dashboard
+
+Batch 4 introduces the first **operator workflow beyond drafting**.
+
+It adds:
+
+- Manual email send only
+- Approval enforcement before send
+- Delivery event logging
+- Campaign-level delivery history
+- Dashboard metrics + recent campaign overview
+
+The implementation remains within MVP rules:
+
+- No autonomous sending
+- No scheduling
+- No bulk blast logic
+- Explicit user action required
+- Subject/body remain editable before send
+
+---
+
+## Batch 4 Architecture Summary
+
+### Manual Email Delivery
+
+A user can send a single campaign email manually from the campaign detail page.
+
+### Approval Enforcement
+
+A campaign must have `approvalStatus === "approved"` before send is allowed.
+
+### Delivery Tracking
+
+Each send attempt:
+
+- creates a delivery event row
+- updates campaign delivery fields
+
+### Dashboard Surface
+
+`/investor-growth` now acts as an operator dashboard with:
+
+- campaign counts
+- approval counts
+- delivery counts
+- recent campaign overview
+
+---
+
+## Batch 4 Route Map
+
+### New Routes
+
+| Method | Endpoint                                            |
+| ------ | --------------------------------------------------- |
+| POST   | /api/investor-growth/campaigns/[id]/send-email      |
+| GET    | /api/investor-growth/campaigns/[id]/delivery-events |
+| GET    | /api/investor-growth/dashboard                      |
+
+### Existing Routes Reused
+
+| Method | Endpoint                            |
+| ------ | ----------------------------------- |
+| GET    | /api/investor-growth/campaigns      |
+| GET    | /api/investor-growth/campaigns/[id] |
+| PATCH  | /api/investor-growth/campaigns/[id] |
+
+---
+
+## Batch 4 File Structure
+
+### New Files
+
+```
+lib/investor-growth/services/email.ts
+
+app/api/investor-growth/campaigns/[id]/send-email/route.ts
+app/api/investor-growth/campaigns/[id]/delivery-events/route.ts
+app/api/investor-growth/dashboard/route.ts
+
+components/investor-growth/dashboard-overview.tsx
+components/investor-growth/delivery-history-table.tsx
+components/investor-growth/send-email-panel.tsx
+```
+
+### Replacement Files
+
+```
+lib/investor-growth/types.ts
+components/investor-growth/campaign-detail-client.tsx
+app/investor-growth/page.tsx
+```
+
+---
+
+## Batch 4 Architecture Notes
+
+### Email Delivery Posture
+
+Resend is used as the preferred provider.
+
+The service:
+
+- sends one email per explicit user action
+- logs provider result
+- writes delivery event row
+- updates campaign delivery status
+
+### Approval Posture
+
+Send is hard-blocked at route level unless campaign is approved.
+
+### Dashboard Posture
+
+Dashboard metrics are intentionally simple and derived from campaign + delivery data already present in MVP schema.
+
+### Future-Safe Design
+
+Batch 4 design allows extension later without rewrites:
+
+- batch sends
+- segment sends
+- contact picker
+- scheduled sends
+- richer analytics
+- webhook-based delivery status updates
+
+---
+
+## Batch 4 SQL Migration
+
+No migration required for Batch 4.
+
+Batch 1 schema already supports email delivery and analytics logging.
+
+---
+
+# Batch 5 – CRM + Segments + Approvals
+
+Batch 5 adds the next workflow layer on top of Investor Growth with three parts:
+
+- Data layer reuse
+- Backend APIs + repositories
+- Frontend operations pages/components
+
+---
+
+## Batch 5 — What Was Built
+
+### Data
+
+Batch 5 reuses existing investor-growth tables:
+
+- contacts
+- segments
+- segment members
+- campaign approvals
+- campaigns
+- audit log
+
+An optional migration can add these columns if missing:
+
+- `approval_status`
+- `action`
+- `note`
+- `acted_by`
+- `segment_id`
+
+### Backend (APIs + Repositories)
+
+- Contacts: full CRUD (create, read, update, delete)
+- Segments: full CRUD + member add/remove/list
+- Campaigns: submit for approval, approve, reject, view approval history
+- Approval queue: list all pending campaigns
+- Segment assignment: assign or clear a segment on a campaign
+- Audit log writes on every approval transition and segment change
+
+### Frontend (Pages + Components)
+
+- `/investor-growth/contacts`: table + create/edit form + contact detail panel
+- `/investor-growth/segments`: table + create/edit form + membership manager
+- `/investor-growth/approvals`: approval queue table + action bar (submit/approve/reject) + history panel
+- Campaign detail panel (drop-in): approval actions + segment assignment + approval history embeddable in existing campaign detail page
+
+---
+
+## Batch 5 Business Rules Enforced
+
+- Submit is allowed only from `draft` or `rejected`
+- Approve/reject is allowed only from `pending_approval`
+- Only approved campaigns can send
+- All transitions write to the audit log
 
 ---
 
