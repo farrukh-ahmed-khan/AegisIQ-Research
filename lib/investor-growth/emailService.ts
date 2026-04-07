@@ -12,7 +12,11 @@ export type SendInvestorGrowthEmailResult = {
 
 export function getInvestorGrowthEmailConfig() {
   const apiKey = process.env.RESEND_API_KEY?.trim() ?? "";
-  const fromEmail = process.env.RESEND_FROM_EMAIL?.trim() ?? "";
+  // Support a common typo env var as fallback to avoid breaking existing setups.
+  const fromEmail =
+    process.env.RESEND_FROM_EMAIL?.trim() ??
+    process.env.RESEND_FORM_EMAIL?.trim() ??
+    "";
 
   return {
     apiKey,
@@ -30,7 +34,9 @@ export async function sendInvestorGrowthEmail(
   }
 
   if (!fromEmail) {
-    throw new Error("RESEND_FROM_EMAIL is missing.");
+    throw new Error(
+      "Sender email is missing. Set RESEND_FROM_EMAIL (or RESEND_FORM_EMAIL for legacy configs).",
+    );
   }
 
   const response = await fetch("https://api.resend.com/emails", {
