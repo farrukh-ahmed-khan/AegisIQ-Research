@@ -130,6 +130,24 @@ export default function InvestorGrowthPage() {
             >
               Investor CRM
             </Link>
+            <Link
+              href="/investor-growth/segments"
+              className={styles.actionLinkSecondary}
+            >
+              Segments
+            </Link>
+            <Link
+              href="/investor-growth/history"
+              className={styles.actionLinkSecondary}
+            >
+              History
+            </Link>
+            <Link
+              href="/investor-growth/reports"
+              className={styles.actionLinkSecondary}
+            >
+              Board Report
+            </Link>
           </div>
         </header>
 
@@ -315,6 +333,15 @@ export default function InvestorGrowthPage() {
                 </p>
                 <Link href="/investor-growth/contacts" className={styles.inlineAction}>
                   Open Investor CRM
+                </Link>
+              </article>
+              <article className={styles.recentCard}>
+                <h3 className={styles.recentTitle}>Board-Level IR Report</h3>
+                <p className={styles.recentObjective}>
+                  Export a full campaign portfolio summary, approval SLA view, delivery metrics, and audience engagement overview for board or institutional reporting.
+                </p>
+                <Link href="/investor-growth/reports" className={styles.inlineAction}>
+                  Open Board Report
                 </Link>
               </article>
             </div>
