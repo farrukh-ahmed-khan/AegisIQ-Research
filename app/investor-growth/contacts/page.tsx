@@ -1,5 +1,6 @@
 "use client";
 
+import Link from "next/link";
 import { useEffect, useState } from "react";
 import { useAuth } from "@clerk/nextjs";
 import { Button, Input, Modal, message } from "antd";
@@ -379,22 +380,38 @@ export default function ContactsPage() {
         title="Investor Contacts"
         subtitle="Manage your investor contact database"
         action={
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={() => {
-              resetForm();
-              setIsModalOpen(true);
-            }}
-            size="large"
-            style={{
-              background: "#2563eb",
-              borderColor: "#2563eb",
-              height: "40px",
-            }}
-          >
-            Add Contact
-          </Button>
+          <div style={{ display: "flex", gap: 12, alignItems: "center", flexWrap: "wrap" }}>
+            <Link
+              href="/investor-growth/contacts/scoring"
+              style={{
+                textDecoration: "none",
+                borderRadius: 999,
+                padding: "10px 16px",
+                fontWeight: 600,
+                background: "#12324a",
+                color: "#fff",
+                fontSize: "0.9rem",
+              }}
+            >
+              Scoring &amp; Targeting
+            </Link>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={() => {
+                resetForm();
+                setIsModalOpen(true);
+              }}
+              size="large"
+              style={{
+                background: "#2563eb",
+                borderColor: "#2563eb",
+                height: "40px",
+              }}
+            >
+              Add Contact
+            </Button>
+          </div>
         }
       />
 

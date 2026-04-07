@@ -131,6 +131,12 @@ export default function InvestorGrowthPage() {
               Investor CRM
             </Link>
             <Link
+              href="/investor-growth/contacts/scoring"
+              className={styles.actionLinkSecondary}
+            >
+              Scoring
+            </Link>
+            <Link
               href="/investor-growth/segments"
               className={styles.actionLinkSecondary}
             >
