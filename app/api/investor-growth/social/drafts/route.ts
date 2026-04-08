@@ -4,6 +4,10 @@ import { getCampaignById } from "@/lib/repositories/investorGrowthCampaignReposi
 import { createDeliveryEvent } from "@/lib/repositories/investorDeliveryRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
 import {
+  hasInvestorGrowthFacebookConfig,
+  publishInvestorGrowthFacebookPost,
+} from "@/lib/investor-growth/socialService";
+import {
   ensureInvestorGrowthAdvancedSchema,
   getCampaignAdvancedDetails,
   listChannelExecutionsByCampaign,
@@ -84,6 +88,49 @@ export async function POST(request: NextRequest) {
     const scheduledFor = body.scheduled_for?.trim() || null;
     const publishNow = body.publish_now === true;
 
+    if (publishNow && platform !== "facebook") {
+      return NextResponse.json(
+        {
+          error:
+            `Live publishing is only wired for facebook right now. ${platform} is saved as a manual workflow only.`,
+        },
+        { status: 400 },
+      );
+    }
+
+    let deliveryStatus = publishNow ? "sent" : scheduledFor ? "scheduled" : "draft";
+    let providerMessageId: string | null = null;
+    let providerResponse: Record<string, unknown> = {
+      provider: platform,
+      opens: 0,
+      clicks: 0,
+      replies: 0,
+    };
+
+    if (publishNow && platform === "facebook") {
+      if (scheduledFor) {
+        deliveryStatus = "scheduled";
+      } else if (hasInvestorGrowthFacebookConfig()) {
+        const result = await publishInvestorGrowthFacebookPost({
+          message: draftContent,
+        });
+
+        providerMessageId = result.postId;
+        providerResponse = {
+          provider: result.provider,
+          response: result.rawResponse,
+        };
+      } else {
+        return NextResponse.json(
+          {
+            error:
+              "Facebook publishing is not configured. Set FACEBOOK_PAGE_ID and FACEBOOK_PAGE_ACCESS_TOKEN.",
+          },
+          { status: 400 },
+        );
+      }
+    }
+
     const execution = await upsertChannelExecution({
       campaign_id: campaignId,
       user_id: stableUserId,
@@ -97,10 +144,15 @@ export async function POST(request: NextRequest) {
           ? "social_default"
           : "social_default",
       approval_status: campaign.status === "approved" ? "approved" : "draft",
-      delivery_status: publishNow ? "sent" : scheduledFor ? "scheduled" : "draft",
+      delivery_status: deliveryStatus,
+      provider_message_id: providerMessageId,
       metadata_json: {
         platform,
         publish_now: publishNow,
+        delivery_mode:
+          publishNow && !scheduledFor && platform === "facebook"
+            ? "live_publish"
+            : "logged_only",
       },
     });
 
@@ -131,13 +183,9 @@ export async function POST(request: NextRequest) {
         content_payload_json: {
           body: draftContent,
         },
-        delivery_status: "sent",
-        provider_response_json: {
-          provider: platform,
-          opens: 0,
-          clicks: 0,
-          replies: 0,
-        },
+        delivery_status: deliveryStatus,
+        provider_message_id: providerMessageId ?? undefined,
+        provider_response_json: providerResponse,
       });
     }
 

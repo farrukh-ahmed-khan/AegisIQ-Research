@@ -4,6 +4,10 @@ import { getCampaignById } from "@/lib/repositories/investorGrowthCampaignReposi
 import { createDeliveryEvent } from "@/lib/repositories/investorDeliveryRepository";
 import { createAuditLog } from "@/lib/repositories/investorGrowthAuditRepository";
 import {
+  hasInvestorGrowthSmsConfig,
+  sendInvestorGrowthSms,
+} from "@/lib/investor-growth/smsService";
+import {
   ensureInvestorGrowthAdvancedSchema,
   getCampaignAdvancedDetails,
   refreshCampaignAnalytics,
@@ -83,23 +87,47 @@ export async function POST(request: NextRequest) {
     }
 
     const scheduledFor = body.scheduled_for?.trim() || null;
+    const platform = hasInvestorGrowthSmsConfig() ? "twilio" : "manual";
     const deliveryStatus = scheduledFor ? "scheduled" : "sent";
+    let providerMessageId: string | null = null;
+    let providerResponse: Record<string, unknown> = {
+      provider: platform,
+      opens: 0,
+      clicks: 0,
+      replies: 0,
+    };
+
+    if (!scheduledFor && platform === "twilio") {
+      const result = await sendInvestorGrowthSms({
+        to: recipientPhone,
+        body: smsBody,
+      });
+
+      providerMessageId = result.messageId;
+      providerResponse = {
+        provider: result.provider,
+        response: result.rawResponse,
+      };
+    }
 
     const execution = await upsertChannelExecution({
       campaign_id: campaignId,
       user_id: stableUserId,
       channel: "sms",
-      platform: "manual",
+      platform,
       template_name: "investor_sms",
       draft_content: smsBody,
       scheduled_for: scheduledFor,
       approval_rule_name: "sms_default",
       approval_status: "approved",
       delivery_status: deliveryStatus,
+      provider_message_id: providerMessageId,
       metrics_json: { opens: 0, clicks: 0, replies: 0 },
       metadata_json: {
         recipient_phone: recipientPhone,
         recipient_name: body.recipient_name?.trim() ?? null,
+        delivery_mode:
+          scheduledFor || platform === "manual" ? "logged_only" : "live_send",
       },
     });
 
@@ -116,12 +144,8 @@ export async function POST(request: NextRequest) {
           body: smsBody,
         },
         delivery_status: "sent",
-        provider_response_json: {
-          provider: "manual",
-          opens: 0,
-          clicks: 0,
-          replies: 0,
-        },
+        provider_message_id: providerMessageId ?? undefined,
+        provider_response_json: providerResponse,
       });
     }
 
@@ -133,6 +157,7 @@ export async function POST(request: NextRequest) {
         campaign_id: campaignId,
         recipient_phone: recipientPhone,
         scheduled_for: scheduledFor,
+        provider: platform,
       },
     });
 
@@ -141,6 +166,7 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({
       success: true,
       execution,
+      provider: platform,
     });
   } catch (error) {
     const message =
