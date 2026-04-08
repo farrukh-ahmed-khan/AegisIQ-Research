@@ -262,8 +262,10 @@ export default function ChannelEditorTabs({
           </div>
           <hr className={styles.divider} />
           <p className={styles.helperText}>
-            Immediate sends use Twilio when configured. Scheduled entries are
-            saved but require a background worker to fire later.
+            Leave "Schedule For" empty to send immediately via Twilio. Set a
+            future time to schedule — the message will be dispatched
+            automatically within 1 minute of the scheduled time (deployed only;
+            scheduling does not fire on localhost).
           </p>
           <div className={styles.row}>
             <label className={styles.label}>Recipient Name</label>
@@ -421,8 +423,9 @@ export default function ChannelEditorTabs({
             </div>
           </div>
           <p className={styles.helperText}>
-            Scheduled posts are saved in-app and need a scheduler/worker to
-            publish later. LinkedIn and X are workflow-log only.
+            Facebook: leave "Schedule For" empty to publish immediately, or set
+            a time to schedule (auto-dispatched within 1 minute on deployed env).
+            LinkedIn and X are workflow-log only — no live API.
           </p>
           <div className={styles.actionRow}>
             <button
