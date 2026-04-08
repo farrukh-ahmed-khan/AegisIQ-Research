@@ -5,6 +5,7 @@ import { useCallback, useEffect, useState } from "react";
 import { useParams } from "next/navigation";
 import { message } from "antd";
 import StatusBadge from "../../../../components/investor-growth/status-badge";
+import ChannelEditorTabs from "../../../../components/investor-growth/channel-editor-tabs";
 import styles from "./page.module.css";
 
 type Campaign = {
@@ -114,9 +115,6 @@ const listText = (value: unknown) => Array.isArray(value) ? value.map((item) => 
 const rule = (rules: Record<string, unknown> | undefined, key: string) => ((rules?.[key] && typeof rules[key] === "object") ? rules[key] as Record<string, unknown> : {});
 const enabled = (v: unknown, fallback: boolean) => typeof v === "boolean" ? v : typeof v === "string" ? v !== "false" && v !== "off" : fallback;
 function badge(status: string) { return status === "sending" ? "in_progress" : status === "failed" ? "rejected" : status === "sent" ? "sent" : "draft"; }
-function socialMode(platform: string) {
-  return platform === "facebook" ? "live publish if configured" : "manual/log only";
-}
 
 function buildConfig(c: Campaign): Config {
   const e = rule(c.approval_rules, "email");
@@ -285,12 +283,32 @@ export default function InvestorGrowthCampaignDetailPage() {
 
             <div className={styles.rightColumn}>
               <article className={styles.card}>
-                <h2 className={styles.sectionTitle}>Generated Content</h2>
-                <div className={styles.block}><h3 className={styles.blockTitle}>Strategy</h3><p className={styles.body}>{campaign.strategy || "-"}</p></div>
-                <div className={styles.block}><h3 className={styles.blockTitle}>Email Subject</h3><input className={styles.input} value={edit.email_subject} onChange={(e) => setEdit((v) => ({ ...v, email_subject: e.target.value }))} /></div>
-                <div className={styles.block}><h3 className={styles.blockTitle}>Email Draft</h3><textarea className={styles.textarea} value={edit.email_body} onChange={(e) => setEdit((v) => ({ ...v, email_body: e.target.value }))} /></div>
-                <div className={styles.block}><h3 className={styles.blockTitle}>SMS Draft</h3><textarea className={styles.textarea} value={edit.sms_body} onChange={(e) => setEdit((v) => ({ ...v, sms_body: e.target.value }))} /></div>
-                <div className={styles.block}><h3 className={styles.blockTitle}>Social Post</h3><textarea className={styles.textarea} value={edit.social_post} onChange={(e) => setEdit((v) => ({ ...v, social_post: e.target.value }))} /></div>
+                <h2 className={styles.sectionTitle}>Strategy</h2>
+                <p className={styles.body}>{campaign.strategy || "-"}</p>
+              </article>
+
+              <article className={styles.card}>
+                <h2 className={styles.sectionTitle}>Channel Editor</h2>
+                <ChannelEditorTabs
+                  channelMix={{
+                    email: config.email_enabled,
+                    sms: config.sms_enabled,
+                    social: config.social_enabled,
+                  }}
+                  edit={edit}
+                  onEditChange={setEdit}
+                  emailSend={emailSend}
+                  onEmailSendChange={setEmailSend}
+                  sms={sms}
+                  onSmsChange={setSms}
+                  social={social}
+                  onSocialChange={setSocial}
+                  smsTemplates={smsTemplates}
+                  approvalGranted={approvalGranted}
+                  busy={busy}
+                  campaignId={campaignId ?? ""}
+                  onPost={post}
+                />
               </article>
 
               <article className={styles.card}>
@@ -339,15 +357,6 @@ export default function InvestorGrowthCampaignDetailPage() {
                 </div>
               </article>
 
-              <article className={styles.card}>
-                <h2 className={styles.sectionTitle}>Execution Controls</h2>
-                {!approvalGranted ? <div className={styles.warningBox}>Approval is required before execution.</div> : null}
-                <div className={styles.executionGrid}>
-                  <div className={styles.executionCard}><h3 className={styles.blockTitle}>Email</h3><p className={styles.helperCopy}>Email sends live through Resend. If you are still using the default onboarding sender, external recipients will be blocked until your domain is verified in Resend.</p><p className={styles.helperCopy}>Best for direct investor outreach with a subject line, richer formatting, and delivery tracking.</p><input className={styles.input} value={emailSend.recipient_name} onChange={(e) => setEmailSend((v) => ({ ...v, recipient_name: e.target.value }))} placeholder="Recipient name" /><input className={styles.input} value={emailSend.recipient_email} onChange={(e) => setEmailSend((v) => ({ ...v, recipient_email: e.target.value }))} placeholder="investor@example.com" /><button className={styles.sendButton} onClick={() => void post(`/api/investor-growth/campaigns/${campaignId}/send-email`, { recipient_name: emailSend.recipient_name, recipient_email: emailSend.recipient_email, subject: edit.email_subject, body: edit.email_body }, "Email sent successfully.", "email")} disabled={!approvalGranted || busy === "email" || !emailSend.recipient_email || !edit.email_subject || !edit.email_body}>{busy === "email" ? "Sending..." : "Send Email"}</button></div>
-                  <div className={styles.executionCard}><h3 className={styles.blockTitle}>SMS</h3><p className={styles.helperCopy}>Immediate sends use Twilio when configured. Scheduled SMS entries are recorded here, but they still need a background worker to fire later.</p><select className={styles.segmentSelect} value={sms.template_name} onChange={(e) => setSms((v) => ({ ...v, template_name: e.target.value }))}>{smsTemplates.length === 0 ? <option value="investor_sms">investor_sms</option> : smsTemplates.map((t) => <option key={t.id} value={t.id}>{t.name}</option>)}</select><input className={styles.input} value={sms.recipient_name} onChange={(e) => setSms((v) => ({ ...v, recipient_name: e.target.value }))} placeholder="Recipient name" /><input className={styles.input} value={sms.recipient_phone} onChange={(e) => setSms((v) => ({ ...v, recipient_phone: e.target.value }))} placeholder="+1 555 555 5555" /><input className={styles.input} type="datetime-local" value={sms.scheduled_for} onChange={(e) => setSms((v) => ({ ...v, scheduled_for: e.target.value }))} /><button className={styles.sendButton} onClick={() => void post("/api/investor-growth/sms/send", { campaign_id: campaignId, recipient_name: sms.recipient_name, recipient_phone: sms.recipient_phone, body: edit.sms_body, scheduled_for: sms.scheduled_for || undefined, template_name: sms.template_name }, sms.scheduled_for ? "SMS scheduled successfully." : "SMS sent successfully.", "sms")} disabled={!approvalGranted || busy === "sms" || !sms.recipient_phone || !edit.sms_body}>{busy === "sms" ? "Working..." : sms.scheduled_for ? "Schedule SMS" : "Send SMS"}</button></div>
-                  <div className={styles.executionCard}><h3 className={styles.blockTitle}>Social</h3><p className={styles.helperCopy}>Facebook can publish live through Meta Graph API when configured. LinkedIn and X are currently manual workflows and will only be logged here.</p><select className={styles.segmentSelect} value={social.platform} onChange={(e) => setSocial((v) => ({ ...v, platform: e.target.value, template_name: `${e.target.value}_default` }))}><option value="linkedin">linkedin (manual)</option><option value="x">x (manual)</option><option value="facebook">facebook (live if configured)</option></select><input className={styles.input} value={social.template_name} onChange={(e) => setSocial((v) => ({ ...v, template_name: e.target.value }))} placeholder="template name" /><input className={styles.input} type="datetime-local" value={social.scheduled_for} onChange={(e) => setSocial((v) => ({ ...v, scheduled_for: e.target.value }))} /><p className={styles.helperCopy}>Current mode: {socialMode(social.platform)}. Scheduled posts are saved in-app and still need a scheduler/worker to publish later.</p><div className={styles.buttonRow}><button className={styles.secondaryButton} onClick={() => void post("/api/investor-growth/social/drafts", { campaign_id: campaignId, platform: social.platform, draft_content: edit.social_post, template_name: social.template_name, scheduled_for: social.scheduled_for || undefined, publish_now: false }, "Social draft saved.", "social-draft")} disabled={busy === "social-draft" || !edit.social_post}>{busy === "social-draft" ? "Saving..." : "Save Draft"}</button><button className={styles.sendButton} onClick={() => void post("/api/investor-growth/social/drafts", { campaign_id: campaignId, platform: social.platform, draft_content: edit.social_post, template_name: social.template_name, scheduled_for: social.scheduled_for || undefined, publish_now: true }, social.platform === "facebook" && !social.scheduled_for ? "Facebook post published." : "Social workflow saved.", "social-publish")} disabled={!approvalGranted || busy === "social-publish" || !edit.social_post}>{busy === "social-publish" ? "Publishing..." : social.platform === "facebook" && !social.scheduled_for ? "Publish Now" : "Log Workflow"}</button></div></div>
-                </div>
-              </article>
 
               <article className={styles.card}>
                 <h2 className={styles.sectionTitle}>Engagement Tracking</h2>

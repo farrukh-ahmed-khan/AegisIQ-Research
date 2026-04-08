@@ -154,6 +154,18 @@ export default function InvestorGrowthPage() {
             >
               Board Report
             </Link>
+            <Link
+              href="/investor-growth/strategy"
+              className={styles.actionLinkSecondary}
+            >
+              AI Strategy
+            </Link>
+            <Link
+              href="/investor-growth/enterprise"
+              className={styles.actionLinkSecondary}
+            >
+              Enterprise IR
+            </Link>
           </div>
         </header>
 
@@ -329,16 +341,25 @@ export default function InvestorGrowthPage() {
 
           <Panel
             title="Enterprise IR Platform"
-            subtitle="Investor growth now includes CRM workflow, analytics workspace, and board/export-ready operating surfaces."
+            subtitle="IR analytics workspace, deal room, governance controls, CRM intelligence, and premium module access."
           >
             <div className={styles.recentList}>
               <article className={styles.recentCard}>
-                <h3 className={styles.recentTitle}>CRM + Analytics</h3>
+                <h3 className={styles.recentTitle}>Enterprise IR Workspace</h3>
                 <p className={styles.recentObjective}>
-                  Manage relationship stages, follow-up tasks, outreach timelines, engagement scorecards, and campaign optimization from one workspace.
+                  Full investor relations operating platform — top campaigns, governance summary, CRM by stage, deal room, enterprise controls, and data exports.
                 </p>
-                <Link href="/investor-growth/contacts" className={styles.inlineAction}>
-                  Open Investor CRM
+                <Link href="/investor-growth/enterprise" className={styles.inlineAction}>
+                  Open Enterprise IR
+                </Link>
+              </article>
+              <article className={styles.recentCard}>
+                <h3 className={styles.recentTitle}>AI Strategy Engine</h3>
+                <p className={styles.recentObjective}>
+                  Per-campaign audience, timing, channel mix, and content variant recommendations with campaign risk flags and explainable strategy summaries.
+                </p>
+                <Link href="/investor-growth/strategy" className={styles.inlineAction}>
+                  Open AI Strategy
                 </Link>
               </article>
               <article className={styles.recentCard}>
