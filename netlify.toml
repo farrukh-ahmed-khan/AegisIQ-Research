@@ -11,3 +11,6 @@
 
 [functions."sync-security-master"]
   schedule = "0 0 * * *"
+
+[functions."dispatch-scheduled-messages"]
+  schedule = "* * * * *"
