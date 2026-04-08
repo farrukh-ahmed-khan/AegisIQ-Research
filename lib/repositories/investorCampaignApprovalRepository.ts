@@ -238,18 +238,22 @@ export async function getPendingApprovalSummaryByUser(userId: string) {
     GROUP BY campaign_id
   `;
 
-  return results.map((row) => ({
-    campaign_id: String(row.campaign_id),
-    current_step:
+  return results.map((row) => {
+    const currentStep =
       row.current_step === null || row.current_step === undefined
         ? null
-        : Number(row.current_step),
-    total_steps:
-      row.total_steps === null || row.total_steps === undefined
-        ? 0
-        : Number(row.total_steps),
-    next_sla_due_at: asNullableString(row.next_sla_due_at),
-  }));
+        : Number(row.current_step);
+    return {
+      campaign_id: String(row.campaign_id),
+      current_step: currentStep,
+      total_steps:
+        row.total_steps === null || row.total_steps === undefined
+          ? 0
+          : Number(row.total_steps),
+      next_sla_due_at: asNullableString(row.next_sla_due_at),
+      status: currentStep !== null ? "pending" : "approved",
+    };
+  });
 }
 
 export async function getApprovalExportRowsByUser(userId: string) {
