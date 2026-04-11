@@ -836,6 +836,67 @@ This provides a complete **foundation for managing investor outreach campaigns**
 
 • Stripe integration (subscription / billing support)
 
+### Stripe Subscription Flow (Implemented)
+
+The application now uses Stripe for recurring subscription checkout with Clerk-based access control.
+
+Implemented APIs:
+
+| Method | Endpoint                                  | Purpose                                                                                |
+| ------ | ----------------------------------------- | -------------------------------------------------------------------------------------- |
+| POST   | /api/stripe/create-checkout-session       | Starts Stripe Checkout in `subscription` mode for signed-in users                      |
+| POST   | /api/stripe/create-billing-portal-session | Opens Stripe Billing Portal for manage/cancel actions                                  |
+| POST   | /api/stripe/webhook                       | Receives Stripe events and updates Clerk subscription metadata                         |
+| POST   | /api/stripe/sync-subscription             | Fallback sync after successful checkout (useful when webhook is delayed/local testing) |
+
+Checkout UX behavior:
+
+- If user is signed out: pricing CTA prompts sign-in before purchase
+- If user is signed in and not subscribed: pricing CTA shows `Purchase`
+- If user has active subscription: CTA shows manage/cancel behavior via billing portal
+
+Subscription state source:
+
+- Stripe status is synced into Clerk metadata (`publicMetadata.subscription` and `publicMetadata.subscriptionActive`)
+- Active statuses considered: `active`, `trialing`
+
+Protected access behavior:
+
+Unauthenticated users are redirected to sign-in, and users without active subscription are redirected to `/pricing` for protected surfaces.
+
+Protected routes include:
+
+- `/dashboard`
+- `/report/*`
+- `/reports`
+- `/workspace/*`
+- `/investor-growth/*`
+- related APIs under `/api/workspaces/*`, `/api/reports/*`, `/api/investor-growth/*`
+
+Required environment variables for payments:
+
+```dotenv
+STRIPE_SECRET_KEY=
+STRIPE_PUBLISHABLE_KEY=
+WEBHOOK_SECRET=
+NEXT_PUBLIC_STRIPE_PRICE_PRO=
+NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE=
+NEXT_PUBLIC_APP_URL=
+```
+
+Stripe webhook endpoint (Netlify deployment):
+
+```text
+https://<your-netlify-domain>/api/stripe/webhook
+```
+
+Recommended Stripe webhook events:
+
+- `checkout.session.completed`
+- `customer.subscription.created`
+- `customer.subscription.updated`
+- `customer.subscription.deleted`
+
 ---
 
 ## AI Services
