@@ -103,6 +103,7 @@ const PricingSection = () => {
   const canceledAt = formatDate(asString(subscriptionMetadata.canceledAt));
   const endedAt = formatDate(asString(subscriptionMetadata.endedAt));
   const cancelAtPeriodEnd = asBoolean(subscriptionMetadata.cancelAtPeriodEnd);
+  const isCancellationScheduled = hasActiveSubscription && cancelAtPeriodEnd;
   const statusLabel =
     subscriptionStatus || (hasActiveSubscription ? "active" : "inactive");
 
@@ -150,9 +151,11 @@ const PricingSection = () => {
     }
   }
 
-  async function openBillingPortal() {
+  async function openBillingPortal(action: "manage" | "cancel" = "manage") {
     const res = await fetch("/api/stripe/create-billing-portal-session", {
       method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ action }),
     });
 
     const json = await res.json();
@@ -277,14 +280,35 @@ const PricingSection = () => {
                 !!plan.priceId &&
                 (activePlanPriceId === plan.priceId ||
                   (!activePlanPriceId && plan.featured)) ? (
-                  <button
-                    className={
-                      plan.featured ? styles.btnPrimary : styles.btnOutline
-                    }
-                    onClick={openBillingPortal}
-                  >
-                    Cancel Subscription
-                  </button>
+                  isCancellationScheduled ? (
+                    <>
+                      <button
+                        className={
+                          plan.featured ? styles.btnPrimary : styles.btnOutline
+                        }
+                        disabled
+                      >
+                        Cancellation Scheduled
+                      </button>
+                      <button
+                        className={
+                          plan.featured ? styles.btnPrimary : styles.btnOutline
+                        }
+                        onClick={() => openBillingPortal("manage")}
+                      >
+                        Resume or Manage Plan
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      className={
+                        plan.featured ? styles.btnPrimary : styles.btnOutline
+                      }
+                      onClick={() => openBillingPortal("cancel")}
+                    >
+                      Cancel Subscription
+                    </button>
+                  )
                 ) : null}
 
                 {hasActiveSubscription &&
@@ -295,9 +319,11 @@ const PricingSection = () => {
                     className={
                       plan.featured ? styles.btnPrimary : styles.btnOutline
                     }
-                    onClick={openBillingPortal}
+                    onClick={() => openBillingPortal("manage")}
                   >
-                    Change Plan in Billing Portal
+                    {isCancellationScheduled
+                      ? "Resume or Change in Billing Portal"
+                      : "Change Plan in Billing Portal"}
                   </button>
                 ) : null}
 

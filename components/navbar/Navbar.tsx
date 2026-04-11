@@ -3,13 +3,17 @@ import { Menu, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import { useAuth, UserButton } from "@clerk/nextjs";
+import { useUser, UserButton } from "@clerk/nextjs";
+import { hasActiveSubscriptionFromUserPublicMetadata } from "@/lib/subscription-access";
 import styles from "./navbar.module.css";
 
 export default function SiteNavbar() {
   const router = useRouter();
-  const { isSignedIn } = useAuth();
+  const { isSignedIn, user } = useUser();
   const [mobileOpen, setMobileOpen] = useState(false);
+  const hasActiveSubscription = hasActiveSubscriptionFromUserPublicMetadata(
+    user?.publicMetadata,
+  );
 
   return (
     <nav className={styles.nav}>
@@ -38,7 +42,7 @@ export default function SiteNavbar() {
           <a href="/contact" className={styles.link}>
             Contact
           </a>
-          {isSignedIn ? (
+          {isSignedIn && hasActiveSubscription ? (
             <a href="/transactions" className={styles.link}>
               Transactions
             </a>
@@ -78,7 +82,7 @@ export default function SiteNavbar() {
         <a href="#contact" className={styles.link}>
           Contact
         </a>
-        {isSignedIn ? (
+        {isSignedIn && hasActiveSubscription ? (
           <a href="/transactions" className={styles.link}>
             Transactions
           </a>
