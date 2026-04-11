@@ -1,7 +1,7 @@
 "use client";
 
 import { SignInButton, useUser } from "@clerk/nextjs";
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { hasActiveSubscriptionFromUserPublicMetadata } from "@/lib/subscription-access";
 import styles from "./PricingSection.module.css";
 
@@ -82,6 +82,7 @@ const plans = [
 
 const PricingSection = () => {
   const { isSignedIn, user } = useUser();
+  const syncedOnceRef = useRef(false);
 
   const hasActiveSubscription = hasActiveSubscriptionFromUserPublicMetadata(
     user?.publicMetadata,
@@ -102,16 +103,16 @@ const PricingSection = () => {
   const canceledAt = formatDate(asString(subscriptionMetadata.canceledAt));
   const endedAt = formatDate(asString(subscriptionMetadata.endedAt));
   const cancelAtPeriodEnd = asBoolean(subscriptionMetadata.cancelAtPeriodEnd);
+  const statusLabel =
+    subscriptionStatus || (hasActiveSubscription ? "active" : "inactive");
 
   useEffect(() => {
-    async function syncAfterCheckout() {
+    async function syncSubscriptionState() {
       if (!isSignedIn || !user) return;
+      if (syncedOnceRef.current) return;
+      syncedOnceRef.current = true;
 
       const searchParams = new URLSearchParams(window.location.search);
-
-      const checkout = searchParams.get("checkout");
-      if (checkout !== "success") return;
-
       const sessionId = searchParams.get("session_id") || "";
 
       await fetch("/api/stripe/sync-subscription", {
@@ -123,7 +124,7 @@ const PricingSection = () => {
       await user.reload();
     }
 
-    syncAfterCheckout();
+    syncSubscriptionState();
   }, [isSignedIn, user]);
 
   async function startCheckout(priceId: string) {
@@ -216,10 +217,15 @@ const PricingSection = () => {
                 {isSubscribedPlan ? (
                   <div className={styles.subscriptionMeta}>
                     <p className={styles.subscriptionMetaItem}>
-                      Status:{" "}
-                      {subscriptionStatus ||
-                        (hasActiveSubscription ? "active" : "inactive")}
+                      Status: {statusLabel}
                     </p>
+                    {hasActiveSubscription && cancelAtPeriodEnd ? (
+                      <p
+                        className={`${styles.subscriptionMetaItem} ${styles.subscriptionMetaWarn}`}
+                      >
+                        Active until current cycle ends
+                      </p>
+                    ) : null}
                     {subscribedAt ? (
                       <p className={styles.subscriptionMetaItem}>
                         Subscribed on: {subscribedAt}
@@ -277,7 +283,7 @@ const PricingSection = () => {
                     }
                     onClick={openBillingPortal}
                   >
-                    Manage or Cancel Subscription
+                    Cancel Subscription
                   </button>
                 ) : null}
 
