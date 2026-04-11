@@ -1,3 +1,9 @@
+"use client";
+
+import { SignInButton, useUser } from "@clerk/nextjs";
+import { useEffect } from "react";
+import { useSearchParams } from "next/navigation";
+import { hasActiveSubscriptionFromUserPublicMetadata } from "@/lib/subscription-access";
 import styles from "./PricingSection.module.css";
 
 const plans = [
@@ -12,6 +18,7 @@ const plans = [
       "Daily market summary",
       "Email support",
     ],
+    priceId: "",
     featured: false,
   },
   {
@@ -26,6 +33,10 @@ const plans = [
       "Portfolio risk scoring",
       "Priority support",
     ],
+    priceId:
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO ||
+      process.env.NEXT_PUBLIC_STRIPE_PRICE_SINGLE ||
+      "",
     featured: true,
   },
   {
@@ -40,54 +51,206 @@ const plans = [
       "Dedicated account manager",
       "White-label reports",
     ],
+    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || "",
     featured: false,
   },
 ];
 
-const PricingSection = () => (
-  <section id="pricing" className={styles.section}>
-    <div className={styles.container}>
-      <div className={styles.textCenter}>
-        <span className={styles.badge}>Pricing</span>
-        <h2 className={styles.heading}>
-          Simple,
-          <span className={styles.headingAccent}>Transparent Pricing</span>
-        </h2>
-        <p className={styles.subtitle}>
-          Choose the plan that fits your investment strategy. Upgrade or
-          downgrade anytime.
-        </p>
-      </div>
-      <div className={styles.grid}>
-        {plans?.map((plan, i) => (
-          <div
-            key={i}
-            className={`${styles.card} ${plan?.featured ? styles.featured : ""}`}
-          >
-            {plan?.featured && (
-              <span className={styles.popularBadge}>Most Popular</span>
-            )}
-            <p className={styles.planName}>{plan.name}</p>
-            <p className={styles.price}>
-              {plan.price}
-              <span>{plan.period}</span>
-            </p>
-            <p className={styles.planDesc}>{plan.desc}</p>
-            <ul className={styles.featureList}>
-              {plan.features.map((f, j) => (
-                <li key={j}>{f}</li>
-              ))}
-            </ul>
-            <button
-              className={plan.featured ? styles.btnPrimary : styles.btnOutline}
+const PricingSection = () => {
+  const { isSignedIn, user } = useUser();
+  const searchParams = useSearchParams();
+
+  const hasActiveSubscription = hasActiveSubscriptionFromUserPublicMetadata(
+    user?.publicMetadata,
+  );
+
+  const activePlanPriceId =
+    user?.publicMetadata &&
+    typeof user.publicMetadata === "object" &&
+    user.publicMetadata.subscription &&
+    typeof user.publicMetadata.subscription === "object" &&
+    typeof user.publicMetadata.subscription.planPriceId === "string"
+      ? user.publicMetadata.subscription.planPriceId
+      : "";
+
+  useEffect(() => {
+    async function syncAfterCheckout() {
+      if (!isSignedIn || !user) return;
+
+      const checkout = searchParams.get("checkout");
+      if (checkout !== "success") return;
+
+      const sessionId = searchParams.get("session_id") || "";
+
+      await fetch("/api/stripe/sync-subscription", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ sessionId }),
+      });
+
+      await user.reload();
+    }
+
+    syncAfterCheckout();
+  }, [isSignedIn, user, searchParams]);
+
+  async function startCheckout(priceId: string) {
+    if (!priceId) {
+      alert("This plan is not configured yet. Please contact support.");
+      return;
+    }
+
+    const res = await fetch("/api/stripe/create-checkout-session", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ priceId }),
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      alert(json.error || "Unable to start checkout.");
+      return;
+    }
+
+    if (json.url) {
+      window.location.href = json.url;
+    }
+  }
+
+  async function openBillingPortal() {
+    const res = await fetch("/api/stripe/create-billing-portal-session", {
+      method: "POST",
+    });
+
+    const json = await res.json();
+    if (!res.ok) {
+      alert(json.error || "Unable to open subscription management.");
+      return;
+    }
+
+    if (json.url) {
+      window.location.href = json.url;
+    }
+  }
+
+  return (
+    <section id="pricing" className={styles.section}>
+      <div className={styles.container}>
+        <div className={styles.textCenter}>
+          <span className={styles.badge}>Pricing</span>
+          <h2 className={styles.heading}>
+            Simple,
+            <span className={styles.headingAccent}>Transparent Pricing</span>
+          </h2>
+          <p className={styles.subtitle}>
+            Choose the plan that fits your investment strategy. Upgrade or
+            downgrade anytime.
+          </p>
+        </div>
+        <div className={styles.grid}>
+          {plans?.map((plan, i) => (
+            <div
+              key={i}
+              className={`${styles.card} ${plan?.featured ? styles.featured : ""}`}
             >
-              Get Started
-            </button>
-          </div>
-        ))}
+              {hasActiveSubscription && !!plan.priceId && !activePlanPriceId
+                ? plan.featured
+                : null}
+              {plan?.featured && (
+                <span className={styles.popularBadge}>Most Popular</span>
+              )}
+              <p className={styles.planName}>{plan.name}</p>
+              <p className={styles.price}>
+                {plan.price}
+                <span>{plan.period}</span>
+              </p>
+              <p className={styles.planDesc}>{plan.desc}</p>
+              <ul className={styles.featureList}>
+                {plan.features.map((f, j) => (
+                  <li key={j}>{f}</li>
+                ))}
+              </ul>
+
+              {hasActiveSubscription && !plan.priceId ? (
+                <button
+                  className={
+                    plan.featured ? styles.btnPrimary : styles.btnOutline
+                  }
+                  disabled
+                >
+                  Included Plan
+                </button>
+              ) : null}
+
+              {hasActiveSubscription &&
+              !!plan.priceId &&
+              (activePlanPriceId === plan.priceId ||
+                (!activePlanPriceId && plan.featured)) ? (
+                <button
+                  className={
+                    plan.featured ? styles.btnPrimary : styles.btnOutline
+                  }
+                  onClick={openBillingPortal}
+                >
+                  Manage or Cancel Subscription
+                </button>
+              ) : null}
+
+              {hasActiveSubscription &&
+              !!plan.priceId &&
+              !!activePlanPriceId &&
+              activePlanPriceId !== plan.priceId ? (
+                <button
+                  className={
+                    plan.featured ? styles.btnPrimary : styles.btnOutline
+                  }
+                  onClick={openBillingPortal}
+                >
+                  Change Plan in Billing Portal
+                </button>
+              ) : null}
+
+              {!isSignedIn ? (
+                <SignInButton mode="modal">
+                  <button
+                    className={
+                      plan.featured ? styles.btnPrimary : styles.btnOutline
+                    }
+                  >
+                    Sign in to Purchase
+                  </button>
+                </SignInButton>
+              ) : !hasActiveSubscription && plan.priceId ? (
+                <button
+                  className={
+                    plan.featured ? styles.btnPrimary : styles.btnOutline
+                  }
+                  onClick={() => startCheckout(plan.priceId)}
+                >
+                  Purchase
+                </button>
+              ) : !hasActiveSubscription ? (
+                <a
+                  href="/contact"
+                  className={
+                    plan.featured ? styles.btnPrimary : styles.btnOutline
+                  }
+                  style={{
+                    display: "inline-flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    textDecoration: "none",
+                  }}
+                >
+                  Contact Sales
+                </a>
+              ) : null}
+            </div>
+          ))}
+        </div>
       </div>
-    </div>
-  </section>
-);
+    </section>
+  );
+};
 
 export default PricingSection;
