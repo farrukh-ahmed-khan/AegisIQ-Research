@@ -840,7 +840,7 @@ This provides a complete **foundation for managing investor outreach campaigns**
 
 The application now uses Stripe for recurring subscription checkout with Clerk-based access control.
 
-Implemented APIs:
+Implemented APIS:
 
 | Method | Endpoint                                  | Purpose                                                                                |
 | ------ | ----------------------------------------- | -------------------------------------------------------------------------------------- |
