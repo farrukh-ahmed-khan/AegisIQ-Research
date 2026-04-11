@@ -21,7 +21,13 @@ async function updateClerkSubscription(
     active: boolean;
     stripeCustomerId?: string;
     stripeSubscriptionId?: string;
+    currentPeriodStart?: string | null;
     currentPeriodEnd?: string | null;
+    startedAt?: string | null;
+    cancelAtPeriodEnd?: boolean;
+    cancelAt?: string | null;
+    canceledAt?: string | null;
+    endedAt?: string | null;
     planPriceId?: string;
   },
 ) {
@@ -38,7 +44,13 @@ async function updateClerkSubscription(
         active: payload.active,
         stripeSubscriptionId: payload.stripeSubscriptionId || "",
         stripeCustomerId: payload.stripeCustomerId || "",
+        currentPeriodStart: payload.currentPeriodStart || null,
         currentPeriodEnd: payload.currentPeriodEnd || null,
+        startedAt: payload.startedAt || null,
+        cancelAtPeriodEnd: !!payload.cancelAtPeriodEnd,
+        cancelAt: payload.cancelAt || null,
+        canceledAt: payload.canceledAt || null,
+        endedAt: payload.endedAt || null,
         planPriceId: payload.planPriceId || "",
         updatedAt: new Date().toISOString(),
       },
@@ -129,7 +141,13 @@ export async function POST(request: Request) {
               ? subscription.customer
               : undefined,
           stripeSubscriptionId: subscription.id,
+          currentPeriodStart: toUnixIso(subscription.current_period_start),
           currentPeriodEnd: toUnixIso(subscription.current_period_end),
+          startedAt: toUnixIso(subscription.start_date),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          cancelAt: toUnixIso(subscription.cancel_at),
+          canceledAt: toUnixIso(subscription.canceled_at),
+          endedAt: toUnixIso(subscription.ended_at),
           planPriceId: subscription.items.data[0]?.price?.id || "",
         });
       }
@@ -153,7 +171,13 @@ export async function POST(request: Request) {
               ? subscription.customer
               : undefined,
           stripeSubscriptionId: subscription.id,
+          currentPeriodStart: toUnixIso(subscription.current_period_start),
           currentPeriodEnd: toUnixIso(subscription.current_period_end),
+          startedAt: toUnixIso(subscription.start_date),
+          cancelAtPeriodEnd: subscription.cancel_at_period_end,
+          cancelAt: toUnixIso(subscription.cancel_at),
+          canceledAt: toUnixIso(subscription.canceled_at),
+          endedAt: toUnixIso(subscription.ended_at),
           planPriceId: subscription.items.data[0]?.price?.id || "",
         });
       }

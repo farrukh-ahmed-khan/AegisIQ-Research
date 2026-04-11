@@ -3,11 +3,10 @@ import { NextResponse } from "next/server";
 import Stripe from "stripe";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
+const LIVE_APP_URL = "https://aegisiq-researchs.netlify.app";
 
-function getBaseUrl(request: Request): string {
-  const configured = process.env.NEXT_PUBLIC_APP_URL;
-  if (configured) return configured;
-  return new URL(request.url).origin;
+function getBaseUrl(): string {
+  return LIVE_APP_URL;
 }
 
 function getPublicMetadataValue(
@@ -86,7 +85,7 @@ export async function POST(request: Request) {
       customerId = customer.id;
     }
 
-    const baseUrl = getBaseUrl(request);
+    const baseUrl = getBaseUrl();
 
     const session = await stripe.checkout.sessions.create({
       mode: "subscription",

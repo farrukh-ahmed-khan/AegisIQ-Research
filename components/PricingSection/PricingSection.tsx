@@ -11,17 +11,36 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+function asString(value: unknown): string {
+  return typeof value === "string" ? value : "";
+}
+
+function asBoolean(value: unknown): boolean {
+  return value === true;
+}
+
+function formatDate(value: string): string {
+  if (!value) return "";
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return "";
+  return date.toLocaleDateString("en-US", {
+    year: "numeric",
+    month: "short",
+    day: "numeric",
+  });
+}
+
 const plans = [
   {
-    name: "Starter",
-    price: "$0",
-    period: "/mo",
-    desc: "Perfect for exploring the platform and casual investors.",
+    name: "Free",
+    price: "Free",
+    period: "",
+    desc: "Best for trying AegisIQ basics before unlocking premium research workflows.",
     features: [
-      "5 AI reports per month",
-      "Basic technical indicators",
-      "Daily market summary",
-      "Email support",
+      "Access to public pages (Home, Features, Pricing, About, Contact)",
+      "Create account and sign in",
+      "View pricing and start checkout",
+      "Premium research and investor-growth routes are locked",
     ],
     priceId: "",
     featured: false,
@@ -30,13 +49,13 @@ const plans = [
     name: "Professional",
     price: "$49",
     period: "/mo",
-    desc: "For active traders and serious investors who need an edge.",
+    desc: "For individual operators who need full research + investor growth execution.",
     features: [
-      "Unlimited AI reports",
-      "Advanced analytics & charts",
-      "Real-time alerts",
-      "Portfolio risk scoring",
-      "Priority support",
+      "Unlock Reports and Research Dashboard",
+      "Unlock AI Report Builder and Workspace tools",
+      "Unlock Investor Growth: Campaign Dashboard, Channel Execution, Posting Calendar",
+      "Unlock Investor Contacts, Investor Segments, Approval Queue",
+      "Manage or cancel anytime from Billing Portal",
     ],
     priceId:
       process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO ||
@@ -48,13 +67,13 @@ const plans = [
     name: "Enterprise",
     price: "$199",
     period: "/mo",
-    desc: "For teams and institutional investors needing full access.",
+    desc: "For teams that need enterprise controls, rollout support, and custom workflows.",
     features: [
       "Everything in Pro",
-      "API access",
-      "Custom models",
-      "Dedicated account manager",
-      "White-label reports",
+      "Priority onboarding and implementation support",
+      "Team-level adoption and workflow guidance",
+      "Custom integrations and process tuning",
+      "Dedicated account partnership",
     ],
     priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || "",
     featured: false,
@@ -74,6 +93,15 @@ const PricingSection = () => {
     typeof subscriptionMetadata.planPriceId === "string"
       ? subscriptionMetadata.planPriceId
       : "";
+  const subscriptionStatus = asString(subscriptionMetadata.status);
+  const subscribedAt = formatDate(asString(subscriptionMetadata.startedAt));
+  const currentPeriodEnd = formatDate(
+    asString(subscriptionMetadata.currentPeriodEnd),
+  );
+  const cancelAt = formatDate(asString(subscriptionMetadata.cancelAt));
+  const canceledAt = formatDate(asString(subscriptionMetadata.canceledAt));
+  const endedAt = formatDate(asString(subscriptionMetadata.endedAt));
+  const cancelAtPeriodEnd = asBoolean(subscriptionMetadata.cancelAtPeriodEnd);
 
   useEffect(() => {
     async function syncAfterCheckout() {
@@ -147,110 +175,154 @@ const PricingSection = () => {
             <span className={styles.headingAccent}>Transparent Pricing</span>
           </h2>
           <p className={styles.subtitle}>
-            Choose the plan that fits your investment strategy. Upgrade or
-            downgrade anytime.
+            Buy a plan to unlock premium product routes and operational
+            workflows. Upgrade or downgrade anytime.
+          </p>
+          <p className={styles.accessNote}>
+            Paid access unlocks: <strong>/reports</strong>,
+            <strong> /report/*</strong>, <strong>/workspace/*</strong>, and
+            <strong> /investor-growth/*</strong> including Campaign Dashboard,
+            Channel Execution, Posting Calendar, Investor Contacts, Investor
+            Segments, and Approval Queue.
           </p>
         </div>
         <div className={styles.grid}>
-          {plans?.map((plan, i) => (
-            <div
-              key={i}
-              className={`${styles.card} ${plan?.featured ? styles.featured : ""}`}
-            >
-              {hasActiveSubscription && !!plan.priceId && !activePlanPriceId
-                ? plan.featured
-                : null}
-              {plan?.featured && (
-                <span className={styles.popularBadge}>Most Popular</span>
-              )}
-              <p className={styles.planName}>{plan.name}</p>
-              <p className={styles.price}>
-                {plan.price}
-                <span>{plan.period}</span>
-              </p>
-              <p className={styles.planDesc}>{plan.desc}</p>
-              <ul className={styles.featureList}>
-                {plan.features.map((f, j) => (
-                  <li key={j}>{f}</li>
-                ))}
-              </ul>
-
-              {hasActiveSubscription && !plan.priceId ? (
-                <button
-                  className={
-                    plan.featured ? styles.btnPrimary : styles.btnOutline
-                  }
-                  disabled
-                >
-                  Included Plan
-                </button>
-              ) : null}
-
-              {hasActiveSubscription &&
+          {plans?.map((plan, i) => {
+            const isSubscribedPlan =
               !!plan.priceId &&
               (activePlanPriceId === plan.priceId ||
-                (!activePlanPriceId && plan.featured)) ? (
-                <button
-                  className={
-                    plan.featured ? styles.btnPrimary : styles.btnOutline
-                  }
-                  onClick={openBillingPortal}
-                >
-                  Manage or Cancel Subscription
-                </button>
-              ) : null}
+                (!activePlanPriceId && plan.featured));
 
-              {hasActiveSubscription &&
-              !!plan.priceId &&
-              !!activePlanPriceId &&
-              activePlanPriceId !== plan.priceId ? (
-                <button
-                  className={
-                    plan.featured ? styles.btnPrimary : styles.btnOutline
-                  }
-                  onClick={openBillingPortal}
-                >
-                  Change Plan in Billing Portal
-                </button>
-              ) : null}
+            return (
+              <div
+                key={i}
+                className={`${styles.card} ${plan?.featured ? styles.featured : ""}`}
+              >
+                {plan?.featured && (
+                  <span className={styles.popularBadge}>Most Popular</span>
+                )}
+                <p className={styles.planName}>{plan.name}</p>
+                <p className={styles.price}>
+                  {plan.price}
+                  {plan.period ? <span>{plan.period}</span> : null}
+                </p>
+                <p className={styles.planDesc}>{plan.desc}</p>
+                <ul className={styles.featureList}>
+                  {plan.features.map((f, j) => (
+                    <li key={j}>{f}</li>
+                  ))}
+                </ul>
 
-              {!isSignedIn ? (
-                <SignInButton mode="modal">
+                {isSubscribedPlan ? (
+                  <div className={styles.subscriptionMeta}>
+                    <p className={styles.subscriptionMetaItem}>
+                      Status: {subscriptionStatus || (hasActiveSubscription ? "active" : "inactive")}
+                    </p>
+                    {subscribedAt ? (
+                      <p className={styles.subscriptionMetaItem}>
+                        Subscribed on: {subscribedAt}
+                      </p>
+                    ) : null}
+                    {hasActiveSubscription && cancelAtPeriodEnd && currentPeriodEnd ? (
+                      <p className={`${styles.subscriptionMetaItem} ${styles.subscriptionMetaWarn}`}>
+                        Cancellation scheduled. Access until: {currentPeriodEnd}
+                      </p>
+                    ) : null}
+                    {hasActiveSubscription && !cancelAtPeriodEnd && currentPeriodEnd ? (
+                      <p className={styles.subscriptionMetaItem}>
+                        Current period ends: {currentPeriodEnd}
+                      </p>
+                    ) : null}
+                    {!hasActiveSubscription && (endedAt || canceledAt || currentPeriodEnd) ? (
+                      <p className={styles.subscriptionMetaItem}>
+                        Subscription ended: {endedAt || canceledAt || currentPeriodEnd}
+                      </p>
+                    ) : null}
+                    {!hasActiveSubscription && cancelAt ? (
+                      <p className={styles.subscriptionMetaItem}>
+                        Cancel requested on: {cancelAt}
+                      </p>
+                    ) : null}
+                  </div>
+                ) : null}
+
+                {hasActiveSubscription && !plan.priceId ? (
                   <button
                     className={
                       plan.featured ? styles.btnPrimary : styles.btnOutline
                     }
+                    disabled
                   >
-                    Sign in to Purchase
+                    Included Plan
                   </button>
-                </SignInButton>
-              ) : !hasActiveSubscription && plan.priceId ? (
-                <button
-                  className={
-                    plan.featured ? styles.btnPrimary : styles.btnOutline
-                  }
-                  onClick={() => startCheckout(plan.priceId)}
-                >
-                  Purchase
-                </button>
-              ) : !hasActiveSubscription ? (
-                <a
-                  href="/contact"
-                  className={
-                    plan.featured ? styles.btnPrimary : styles.btnOutline
-                  }
-                  style={{
-                    display: "inline-flex",
-                    alignItems: "center",
-                    justifyContent: "center",
-                    textDecoration: "none",
-                  }}
-                >
-                  Contact Sales
-                </a>
-              ) : null}
-            </div>
-          ))}
+                ) : null}
+
+                {hasActiveSubscription &&
+                !!plan.priceId &&
+                (activePlanPriceId === plan.priceId ||
+                  (!activePlanPriceId && plan.featured)) ? (
+                  <button
+                    className={
+                      plan.featured ? styles.btnPrimary : styles.btnOutline
+                    }
+                    onClick={openBillingPortal}
+                  >
+                    Manage or Cancel Subscription
+                  </button>
+                ) : null}
+
+                {hasActiveSubscription &&
+                !!plan.priceId &&
+                !!activePlanPriceId &&
+                activePlanPriceId !== plan.priceId ? (
+                  <button
+                    className={
+                      plan.featured ? styles.btnPrimary : styles.btnOutline
+                    }
+                    onClick={openBillingPortal}
+                  >
+                    Change Plan in Billing Portal
+                  </button>
+                ) : null}
+
+                {!isSignedIn ? (
+                  <SignInButton mode="modal">
+                    <button
+                      className={
+                        plan.featured ? styles.btnPrimary : styles.btnOutline
+                      }
+                    >
+                      Sign in to Purchase
+                    </button>
+                  </SignInButton>
+                ) : !hasActiveSubscription && plan.priceId ? (
+                  <button
+                    className={
+                      plan.featured ? styles.btnPrimary : styles.btnOutline
+                    }
+                    onClick={() => startCheckout(plan.priceId)}
+                  >
+                    Purchase
+                  </button>
+                ) : !hasActiveSubscription ? (
+                  <a
+                    href="/contact"
+                    className={
+                      plan.featured ? styles.btnPrimary : styles.btnOutline
+                    }
+                    style={{
+                      display: "inline-flex",
+                      alignItems: "center",
+                      justifyContent: "center",
+                      textDecoration: "none",
+                    }}
+                  >
+                    Contact Sales
+                  </a>
+                ) : null}
+              </div>
+            );
+          })}
         </div>
       </div>
     </section>
