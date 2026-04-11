@@ -216,26 +216,36 @@ const PricingSection = () => {
                 {isSubscribedPlan ? (
                   <div className={styles.subscriptionMeta}>
                     <p className={styles.subscriptionMetaItem}>
-                      Status: {subscriptionStatus || (hasActiveSubscription ? "active" : "inactive")}
+                      Status:{" "}
+                      {subscriptionStatus ||
+                        (hasActiveSubscription ? "active" : "inactive")}
                     </p>
                     {subscribedAt ? (
                       <p className={styles.subscriptionMetaItem}>
                         Subscribed on: {subscribedAt}
                       </p>
                     ) : null}
-                    {hasActiveSubscription && cancelAtPeriodEnd && currentPeriodEnd ? (
-                      <p className={`${styles.subscriptionMetaItem} ${styles.subscriptionMetaWarn}`}>
+                    {hasActiveSubscription &&
+                    cancelAtPeriodEnd &&
+                    currentPeriodEnd ? (
+                      <p
+                        className={`${styles.subscriptionMetaItem} ${styles.subscriptionMetaWarn}`}
+                      >
                         Cancellation scheduled. Access until: {currentPeriodEnd}
                       </p>
                     ) : null}
-                    {hasActiveSubscription && !cancelAtPeriodEnd && currentPeriodEnd ? (
+                    {hasActiveSubscription &&
+                    !cancelAtPeriodEnd &&
+                    currentPeriodEnd ? (
                       <p className={styles.subscriptionMetaItem}>
                         Current period ends: {currentPeriodEnd}
                       </p>
                     ) : null}
-                    {!hasActiveSubscription && (endedAt || canceledAt || currentPeriodEnd) ? (
+                    {!hasActiveSubscription &&
+                    (endedAt || canceledAt || currentPeriodEnd) ? (
                       <p className={styles.subscriptionMetaItem}>
-                        Subscription ended: {endedAt || canceledAt || currentPeriodEnd}
+                        Subscription ended:{" "}
+                        {endedAt || canceledAt || currentPeriodEnd}
                       </p>
                     ) : null}
                     {!hasActiveSubscription && cancelAt ? (
