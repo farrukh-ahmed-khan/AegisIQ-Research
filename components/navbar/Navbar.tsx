@@ -39,6 +39,11 @@ export default function SiteNavbar() {
             Contact
           </a>
           {isSignedIn ? (
+            <a href="/transactions" className={styles.link}>
+              Transactions
+            </a>
+          ) : null}
+          {isSignedIn ? (
             <div className={styles.userProfile}>
               <UserButton afterSignOutUrl="/" />
             </div>
@@ -73,6 +78,11 @@ export default function SiteNavbar() {
         <a href="#contact" className={styles.link}>
           Contact
         </a>
+        {isSignedIn ? (
+          <a href="/transactions" className={styles.link}>
+            Transactions
+          </a>
+        ) : null}
         {isSignedIn ? (
           <div className={styles.userProfileMobile}>
             <UserButton afterSignOutUrl="/" />

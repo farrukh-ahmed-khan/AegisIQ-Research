@@ -1,0 +1,138 @@
+.page {
+  min-height: 100vh;
+  background: hsl(222 47% 6%);
+  position: relative;
+  overflow: hidden;
+  padding: 100px 24px;
+}
+
+.glowBlue {
+  position: absolute;
+  top: 8%;
+  left: 10%;
+  width: 420px;
+  height: 420px;
+  border-radius: 50%;
+  filter: blur(110px);
+  background: hsl(217 80% 52% / 0.08);
+}
+
+.glowGold {
+  position: absolute;
+  bottom: 8%;
+  right: 8%;
+  width: 360px;
+  height: 360px;
+  border-radius: 50%;
+  filter: blur(110px);
+  background: hsl(43 80% 55% / 0.08);
+}
+
+.container {
+  position: relative;
+  z-index: 1;
+  max-width: 1100px;
+  margin: 0 auto;
+  display: grid;
+  gap: 20px;
+}
+
+.hero,
+.summaryCard,
+.tableCard {
+  background: hsl(222 44% 10% / 0.92);
+  border: 1px solid hsl(222 30% 18%);
+  border-radius: 16px;
+  padding: 24px;
+}
+
+.badge {
+  display: inline-block;
+  padding: 6px 14px;
+  border-radius: 999px;
+  background: hsl(217 80% 52% / 0.1);
+  border: 1px solid hsl(217 80% 52% / 0.3);
+  color: hsl(217 90% 70%);
+  font-size: 0.76rem;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.title {
+  margin: 12px 0 8px;
+  font-size: clamp(1.8rem, 3.4vw, 2.5rem);
+  color: hsl(210 40% 96%);
+}
+
+.subtitle {
+  margin: 0;
+  color: hsl(215 20% 64%);
+  line-height: 1.7;
+}
+
+.summaryLabel {
+  margin: 0;
+  color: hsl(215 20% 64%);
+  font-size: 0.85rem;
+}
+
+.summaryValue {
+  margin: 6px 0 0;
+  font-size: 1.8rem;
+  font-weight: 800;
+  color: hsl(43 85% 70%);
+}
+
+.tableWrap {
+  overflow-x: auto;
+}
+
+.table {
+  width: 100%;
+  border-collapse: collapse;
+}
+
+.table th,
+.table td {
+  text-align: left;
+  padding: 12px 10px;
+  border-bottom: 1px solid hsl(222 30% 18%);
+  color: hsl(210 40% 94%);
+  font-size: 0.9rem;
+}
+
+.table th {
+  color: hsl(215 20% 66%);
+  font-weight: 600;
+}
+
+.table td a {
+  color: hsl(43 85% 70%);
+  text-decoration: none;
+}
+
+.table td a:hover {
+  text-decoration: underline;
+}
+
+.infoText {
+  margin: 0;
+  color: hsl(215 20% 66%);
+}
+
+.errorText {
+  margin: 0;
+  color: hsl(0 84% 73%);
+}
+
+@media (max-width: 768px) {
+  .page {
+    padding: 76px 16px;
+  }
+
+  .hero,
+  .summaryCard,
+  .tableCard {
+    padding: 18px;
+  }
+}

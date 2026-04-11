@@ -4,6 +4,7 @@ import { hasActiveSubscriptionFromClaims } from "@/lib/subscription-access";
 
 const isAuthenticatedRoute = createRouteMatcher([
   "/dashboard(.*)",
+  "/transactions(.*)",
   "/report(.*)",
   "/reports(.*)",
   "/workspace(.*)",
@@ -74,6 +75,7 @@ export default clerkMiddleware(async (auth, req) => {
 export const config = {
   matcher: [
     "/dashboard(.*)",
+    "/transactions(.*)",
     "/report(.*)",
     "/reports(.*)",
     "/workspace(.*)",
