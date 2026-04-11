@@ -2,9 +2,14 @@
 
 import { SignInButton, useUser } from "@clerk/nextjs";
 import { useEffect } from "react";
-import { useSearchParams } from "next/navigation";
 import { hasActiveSubscriptionFromUserPublicMetadata } from "@/lib/subscription-access";
 import styles from "./PricingSection.module.css";
+
+function asRecord(value: unknown): Record<string, unknown> {
+  return value && typeof value === "object"
+    ? (value as Record<string, unknown>)
+    : {};
+}
 
 const plans = [
   {
@@ -58,24 +63,23 @@ const plans = [
 
 const PricingSection = () => {
   const { isSignedIn, user } = useUser();
-  const searchParams = useSearchParams();
 
   const hasActiveSubscription = hasActiveSubscriptionFromUserPublicMetadata(
     user?.publicMetadata,
   );
 
+  const publicMetadata = asRecord(user?.publicMetadata);
+  const subscriptionMetadata = asRecord(publicMetadata.subscription);
   const activePlanPriceId =
-    user?.publicMetadata &&
-    typeof user.publicMetadata === "object" &&
-    user.publicMetadata.subscription &&
-    typeof user.publicMetadata.subscription === "object" &&
-    typeof user.publicMetadata.subscription.planPriceId === "string"
-      ? user.publicMetadata.subscription.planPriceId
+    typeof subscriptionMetadata.planPriceId === "string"
+      ? subscriptionMetadata.planPriceId
       : "";
 
   useEffect(() => {
     async function syncAfterCheckout() {
       if (!isSignedIn || !user) return;
+
+      const searchParams = new URLSearchParams(window.location.search);
 
       const checkout = searchParams.get("checkout");
       if (checkout !== "success") return;
@@ -92,7 +96,7 @@ const PricingSection = () => {
     }
 
     syncAfterCheckout();
-  }, [isSignedIn, user, searchParams]);
+  }, [isSignedIn, user]);
 
   async function startCheckout(priceId: string) {
     if (!priceId) {
