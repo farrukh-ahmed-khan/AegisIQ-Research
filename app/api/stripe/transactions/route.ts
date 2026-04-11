@@ -34,7 +34,9 @@ export async function GET() {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const clerk = createClerkClient({ secretKey: process.env.CLERK_SECRET_KEY });
+    const clerk = createClerkClient({
+      secretKey: process.env.CLERK_SECRET_KEY,
+    });
     const user = await clerk.users.getUser(userId);
     const publicMetadata = asRecord(user.publicMetadata);
     const privateMetadata = asRecord(user.privateMetadata);

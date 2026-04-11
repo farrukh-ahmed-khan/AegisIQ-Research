@@ -41,7 +41,9 @@ export default function TransactionsPage() {
         return;
       }
 
-      setTransactions(Array.isArray(json.transactions) ? json.transactions : []);
+      setTransactions(
+        Array.isArray(json.transactions) ? json.transactions : [],
+      );
       setLoading(false);
     }
 
@@ -72,7 +74,9 @@ export default function TransactionsPage() {
 
         <section className={styles.summaryCard}>
           <p className={styles.summaryLabel}>Total Paid</p>
-          <p className={styles.summaryValue}>{formatMoney(totals.totalPaid, "usd")}</p>
+          <p className={styles.summaryValue}>
+            {formatMoney(totals.totalPaid, "usd")}
+          </p>
         </section>
 
         <section className={styles.tableCard}>
@@ -81,7 +85,9 @@ export default function TransactionsPage() {
           ) : error ? (
             <p className={styles.errorText}>{error}</p>
           ) : transactions.length === 0 ? (
-            <p className={styles.infoText}>No transactions found for this account.</p>
+            <p className={styles.infoText}>
+              No transactions found for this account.
+            </p>
           ) : (
             <div className={styles.tableWrap}>
               <table className={styles.table}>
@@ -103,15 +109,24 @@ export default function TransactionsPage() {
                       <td>{formatMoney(item.amountPaid, item.currency)}</td>
                       <td>{formatDate(item.createdAt)}</td>
                       <td>
-                        {formatDate(item.periodStart)} - {formatDate(item.periodEnd)}
+                        {formatDate(item.periodStart)} -{" "}
+                        {formatDate(item.periodEnd)}
                       </td>
                       <td>
                         {item.hostedInvoiceUrl ? (
-                          <a href={item.hostedInvoiceUrl} target="_blank" rel="noreferrer">
+                          <a
+                            href={item.hostedInvoiceUrl}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             Open
                           </a>
                         ) : item.invoicePdf ? (
-                          <a href={item.invoicePdf} target="_blank" rel="noreferrer">
+                          <a
+                            href={item.invoicePdf}
+                            target="_blank"
+                            rel="noreferrer"
+                          >
                             PDF
                           </a>
                         ) : (
