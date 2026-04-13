@@ -1098,4 +1098,181 @@ Enterprise Layer
 
 ---
 
+Phase 6 — Multi-Channel Execution Layer
+
+Purpose:
+Extend Investor Growth beyond email into coordinated campaign orchestration.
+
+Deliverables:
+
+SMS messaging system with delivery tracking
+Social post drafting with channel templates
+Posting calendar
+Campaign channel mix configuration
+Channel-based approval rules
+Unified execution dashboard per campaign
+
+New Routes:
+
+/investor-growth/channels
+/investor-growth/calendar
+/api/investor-growth/sms/*
+/api/investor-growth/social/*
+
+Outcome:
+AegisIQ evolves from email-only campaigns into a multi-channel investor promotion platform.
+
+Phase 7 — Analytics + Attribution Loop
+
+Purpose:
+Introduce measurable campaign performance and feedback loops.
+
+Deliverables:
+
+Open / click / reply tracking
+Segment-level performance comparison
+Campaign cohort analytics
+Approval-to-delivery conversion tracking
+Audience engagement scorecards
+Trend-based dashboards
+
+Outcome:
+Campaign execution becomes data-driven and optimizable.
+
+Phase 8 — Investor CRM Layer (Enhanced)
+
+Purpose:
+Transform contacts into structured relationship intelligence.
+
+Deliverables:
+
+Contact activity timeline
+Outreach history tracking
+Relationship stage management
+Investor interest scoring
+Notes and follow-up tasks
+Account-level investor entities
+
+Outcome:
+System evolves from campaign tool → investor relationship management system.
+
+Phase 9 — Approval Governance + Compliance Controls
+
+Purpose:
+Enable regulated communication workflows and compliance enforcement.
+
+Deliverables:
+
+Role-based approval controls
+Multi-step approval chains
+Compliance hold states
+Approval SLAs
+Audit report exports
+Post-approval content locking
+Edit invalidation after approval
+
+Outcome:
+Platform becomes compliance-ready for institutional IR workflows.
+
+Phase 10 — AI Strategy Engine
+
+Purpose:
+Shift from execution tooling to intelligent campaign strategy guidance.
+
+Deliverables:
+
+AI audience targeting recommendations
+Timing optimization suggestions
+Content variant recommendations
+Channel mix optimization
+Campaign risk detection
+Explainable AI strategy summaries
+
+Outcome:
+Investor Growth becomes strategy-assisted, not just workflow-assisted.
+
+Phase 11 — Enterprise IR / Promotion Platform
+
+Purpose:
+Transform AegisIQ into a full investor intelligence operating system.
+
+Deliverables:
+
+Deal room integrations
+IR analytics workspace
+Board-level reporting exports
+Enterprise user management
+CRM + API integrations
+External enrichment connectors (where permitted)
+Advanced reporting + governance modules
+
+Outcome:
+AegisIQ becomes a complete institutional investor relations and promotion platform.
+
+🧱 Batch Expansion Roadmap (Post-MVP)
+
+To maintain a clean and scalable architecture, future development is organized into structured batches:
+
+Batch 6A — Multi-Channel Data Foundation
+
+Focus: Backend infrastructure
+
+SMS & social schemas
+Repository layer extensions
+Unified delivery abstractions
+Campaign model expansion for multi-channel support
+Batch 6B — Multi-Channel UI
+
+Focus: Frontend experience
+
+Channel tabs inside campaign detail
+SMS draft editor
+Social post editor
+Posting schedule interface
+Batch 7A — Analytics Foundation
+
+Focus: Data layer for analytics
+
+Event aggregation schema
+Campaign + segment metrics APIs
+Summary metric computation
+Batch 7B — Analytics Dashboard
+
+Focus: Visualization layer
+
+Campaign performance dashboards
+Engagement and response analytics
+Operator analytics interface
+Batch 8A — Investor CRM Timeline
+
+Focus: Relationship tracking
+
+Contact timelines
+Outreach history
+Notes and follow-ups
+Batch 8B — Investor Scoring + Prioritization
+
+Focus: Intelligence layer
+
+Investor scoring models
+Account ranking system
+Campaign targeting assistance
+📈 Platform Evolution Summary
+
+With Phases 6–11, AegisIQ transitions across three major maturity layers:
+
+Execution Layer
+→ Multi-channel campaign orchestration
+Intelligence Layer
+→ Analytics, attribution, and optimization
+Relationship Layer
+→ Investor CRM and engagement intelligence
+Governance Layer
+→ Compliance, approvals, and audit systems
+Strategy Layer
+→ AI-driven decision support
+Enterprise Layer
+→ Full institutional investor relations platform
+
+
 # Project Structure
