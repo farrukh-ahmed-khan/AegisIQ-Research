@@ -1,3 +1,5 @@
+import type { PlanTier } from "./plan-access";
+
 type GenericRecord = Record<string, unknown>;
 
 const ACTIVE_STATUSES = new Set(["active", "trialing"]);
@@ -62,4 +64,41 @@ export function hasActiveSubscriptionFromUserPublicMetadata(
   if (subscriptionActive !== null) return subscriptionActive;
 
   return isStripeStatusActive(getString(subscription, "status"));
+}
+
+// Extract plan tier from Clerk session claims (used in middleware/server)
+export function getPlanFromClaims(claims: unknown): PlanTier | null {
+  const root = toRecord(claims);
+
+  // Check top-level planTier
+  const direct = root["planTier"];
+  if (typeof direct === "string" && direct) return direct as PlanTier;
+
+  const metadata = getNestedRecord(root, "metadata");
+  const metadataPlan = metadata["planTier"];
+  if (typeof metadataPlan === "string" && metadataPlan) return metadataPlan as PlanTier;
+
+  const publicMetadata = getNestedRecord(root, "public_metadata");
+  const publicPlan = publicMetadata["planTier"];
+  if (typeof publicPlan === "string" && publicPlan) return publicPlan as PlanTier;
+
+  const subscription = getNestedRecord(publicMetadata, "subscription");
+  const subPlan = subscription["planTier"];
+  if (typeof subPlan === "string" && subPlan) return subPlan as PlanTier;
+
+  return null;
+}
+
+// Extract plan tier from user's publicMetadata object (used in client components)
+export function getPlanFromPublicMetadata(value: unknown): PlanTier | null {
+  const publicMetadata = toRecord(value);
+
+  const direct = publicMetadata["planTier"];
+  if (typeof direct === "string" && direct) return direct as PlanTier;
+
+  const subscription = getNestedRecord(publicMetadata, "subscription");
+  const subPlan = subscription["planTier"];
+  if (typeof subPlan === "string" && subPlan) return subPlan as PlanTier;
+
+  return null;
 }

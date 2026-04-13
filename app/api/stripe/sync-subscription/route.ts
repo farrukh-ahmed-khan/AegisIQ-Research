@@ -2,6 +2,7 @@ import { auth, createClerkClient } from "@clerk/nextjs/server";
 import { NextResponse } from "next/server";
 import Stripe from "stripe";
 import { isStripeStatusActive } from "@/lib/subscription-access";
+import { getPlanTierFromPriceId } from "@/lib/plan-access";
 
 const stripe = new Stripe(process.env.STRIPE_SECRET_KEY || "");
 
@@ -78,6 +79,34 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verify the customer actually exists in this Stripe account/mode
+    try {
+      await stripe.customers.retrieve(customerId);
+    } catch (stripeErr) {
+      const msg =
+        stripeErr instanceof Error ? stripeErr.message : "";
+      if (msg.includes("No such customer")) {
+        // Stale customer ID (wrong environment or deleted) — clear it from Clerk
+        await clerk.users.updateUserMetadata(userId, {
+          publicMetadata: {
+            stripeCustomerId: "",
+            subscriptionActive: false,
+            planTier: null,
+            subscription: null,
+          },
+          privateMetadata: {
+            stripeCustomerId: "",
+            stripeSubscriptionId: "",
+          },
+        });
+        return NextResponse.json(
+          { active: false, reason: "Stale customer cleared. Please subscribe again." },
+          { status: 200 },
+        );
+      }
+      throw stripeErr;
+    }
+
     if (!targetSubscription) {
       const subscriptions = await stripe.subscriptions.list({
         customer: customerId,
@@ -92,11 +121,14 @@ export async function POST(request: Request) {
 
     const status = targetSubscription?.status || "inactive";
     const active = isStripeStatusActive(status);
+    const planPriceId = targetSubscription?.items.data[0]?.price?.id || "";
+    const planTier = getPlanTierFromPriceId(planPriceId);
 
     await clerk.users.updateUserMetadata(userId, {
       publicMetadata: {
         stripeCustomerId: customerId,
         subscriptionActive: active,
+        planTier: planTier || null,
         subscription: {
           active,
           status,
@@ -125,7 +157,8 @@ export async function POST(request: Request) {
           endedAt: targetSubscription?.ended_at
             ? new Date(targetSubscription.ended_at * 1000).toISOString()
             : null,
-          planPriceId: targetSubscription?.items.data[0]?.price?.id || "",
+          planPriceId,
+          planTier: planTier || null,
           updatedAt: new Date().toISOString(),
         },
       },

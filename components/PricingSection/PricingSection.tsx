@@ -1,8 +1,11 @@
 "use client";
 
 import { SignInButton, useUser } from "@clerk/nextjs";
-import { useEffect, useRef } from "react";
-import { hasActiveSubscriptionFromUserPublicMetadata } from "@/lib/subscription-access";
+import { useEffect, useRef, useState } from "react";
+import {
+  hasActiveSubscriptionFromUserPublicMetadata,
+  getPlanFromPublicMetadata,
+} from "@/lib/subscription-access";
 import styles from "./PricingSection.module.css";
 
 function asRecord(value: unknown): Record<string, unknown> {
@@ -30,63 +33,154 @@ function formatDate(value: string): string {
   });
 }
 
-const plans = [
-  {
-    name: "Free",
-    price: "Free",
-    period: "",
-    desc: "Best for trying AegisIQ basics before unlocking premium research workflows.",
-    features: [
-      "Access to public pages (Home, Features, Pricing, About, Contact)",
-      "Create account and sign in",
-      "View pricing and start checkout",
-      "Premium research and investor-growth routes are locked",
-    ],
-    priceId: "",
-    featured: false,
-  },
-  {
-    name: "Professional",
-    price: "$49",
-    period: "/mo",
-    desc: "For individual operators who need full research + investor growth execution.",
-    features: [
-      "Unlock Reports and Research Dashboard",
-      "Unlock AI Report Builder and Workspace tools",
-      "Unlock Investor Growth: Campaign Dashboard, Channel Execution, Posting Calendar",
-      "Unlock Investor Contacts, Investor Segments, Approval Queue",
-      "Manage or cancel anytime from Billing Portal",
-    ],
-    priceId:
-      process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO ||
-      process.env.NEXT_PUBLIC_STRIPE_PRICE_SINGLE ||
-      "",
-    featured: true,
-  },
-  {
-    name: "Enterprise",
-    price: "$199",
-    period: "/mo",
-    desc: "For teams that need enterprise controls, rollout support, and custom workflows.",
-    features: [
-      "Everything in Pro",
-      "Priority onboarding and implementation support",
-      "Team-level adoption and workflow guidance",
-      "Custom integrations and process tuning",
-      "Dedicated account partnership",
-    ],
-    priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || "",
-    featured: false,
-  },
-];
+type BillingPeriod = "monthly" | "annual";
+
+const PLANS = {
+  monthly: [
+    {
+      name: "Starter",
+      tier: "starter",
+      price: "$99",
+      period: "/mo",
+      billedAs: null,
+      seats: "1 seat",
+      desc: "Best for solo operators who need core research and intelligence tools.",
+      features: [
+        "Reports (read access)",
+        "AI Report Builder (3 reports/month)",
+        "Research Dashboard & Watchlist",
+        "Community support",
+      ],
+      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_MONTHLY || "",
+      featured: false,
+      isEnterprise: false,
+    },
+    {
+      name: "Pro",
+      tier: "pro",
+      price: "$499",
+      period: "/mo",
+      billedAs: null,
+      seats: "3 seats included",
+      desc: "For teams that need full campaign execution and investor CRM.",
+      features: [
+        "Everything in Starter, unlimited AI reports",
+        "Campaign Dashboard & AI Campaign Generation",
+        "Channel Execution (Email / SMS / Social)",
+        "Posting Calendar",
+        "Investor Contacts, Segments & CRM Timeline",
+        "Approval Queue (standard single-step)",
+        "Campaign Analytics & Standard Exports",
+        "Standard support",
+      ],
+      priceId:
+        process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY ||
+        process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO ||
+        process.env.NEXT_PUBLIC_STRIPE_PRICE_SINGLE ||
+        "",
+      featured: true,
+      isEnterprise: false,
+    },
+    {
+      name: "Enterprise",
+      tier: "enterprise",
+      price: "$2,500",
+      period: "/mo",
+      billedAs: null,
+      seats: "Custom seats",
+      desc: "For organizations that need compliance, multi-step approvals, and advanced integrations.",
+      features: [
+        "Everything in Pro",
+        "Multi-step Approval Workflows",
+        "Compliance Hold States & Role-based Permissions",
+        "IR Analytics Workspace",
+        "Audit-ready & Board-level Exports",
+        "External Enrichment Connectors",
+        "CRM & API Integrations, Deal Room Hooks",
+        "Priority support + onboarding",
+      ],
+      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE_MONTHLY || process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE || "",
+      featured: false,
+      isEnterprise: true,
+    },
+  ],
+  annual: [
+    {
+      name: "Starter",
+      tier: "starter",
+      price: "$79",
+      period: "/mo",
+      billedAs: "Billed as $948/year",
+      seats: "1 seat",
+      desc: "Best for solo operators who need core research and intelligence tools.",
+      features: [
+        "Reports (read access)",
+        "AI Report Builder (3 reports/month)",
+        "Research Dashboard & Watchlist",
+        "Community support",
+      ],
+      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_STARTER_ANNUAL || "",
+      featured: false,
+      isEnterprise: false,
+    },
+    {
+      name: "Pro",
+      tier: "pro",
+      price: "$399",
+      period: "/mo",
+      billedAs: "Billed as $4,788/year",
+      seats: "3 seats included",
+      desc: "For teams that need full campaign execution and investor CRM.",
+      features: [
+        "Everything in Starter, unlimited AI reports",
+        "Campaign Dashboard & AI Campaign Generation",
+        "Channel Execution (Email / SMS / Social)",
+        "Posting Calendar",
+        "Investor Contacts, Segments & CRM Timeline",
+        "Approval Queue (standard single-step)",
+        "Campaign Analytics & Standard Exports",
+        "Standard support",
+      ],
+      priceId:
+        process.env.NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL ||
+        "",
+      featured: true,
+      isEnterprise: false,
+    },
+    {
+      name: "Enterprise",
+      tier: "enterprise",
+      price: "$1,995",
+      period: "/mo",
+      billedAs: "Billed as $23,940/year",
+      seats: "Custom seats",
+      desc: "For organizations that need compliance, multi-step approvals, and advanced integrations.",
+      features: [
+        "Everything in Pro",
+        "Multi-step Approval Workflows",
+        "Compliance Hold States & Role-based Permissions",
+        "IR Analytics Workspace",
+        "Audit-ready & Board-level Exports",
+        "External Enrichment Connectors",
+        "CRM & API Integrations, Deal Room Hooks",
+        "Priority support + onboarding",
+      ],
+      priceId: process.env.NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE_ANNUAL || "",
+      featured: false,
+      isEnterprise: true,
+    },
+  ],
+};
 
 const PricingSection = () => {
   const { isSignedIn, user } = useUser();
   const syncedOnceRef = useRef(false);
+  const [billingPeriod, setBillingPeriod] = useState<BillingPeriod>("monthly");
 
   const hasActiveSubscription = hasActiveSubscriptionFromUserPublicMetadata(
     user?.publicMetadata,
   );
+  const activePlanTier = getPlanFromPublicMetadata(user?.publicMetadata);
 
   const publicMetadata = asRecord(user?.publicMetadata);
   const subscriptionMetadata = asRecord(publicMetadata.subscription);
@@ -137,10 +231,17 @@ const PricingSection = () => {
     const res = await fetch("/api/stripe/create-checkout-session", {
       method: "POST",
       headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ priceId }),
+      body: JSON.stringify({ priceId, billingPeriod }),
     });
 
     const json = await res.json();
+
+    // Enterprise blocked from self-serve — redirect to inquiry
+    if (res.status === 403 && json.redirect) {
+      window.location.href = json.redirect;
+      return;
+    }
+
     if (!res.ok) {
       alert(json.error || "Unable to start checkout.");
       return;
@@ -169,6 +270,8 @@ const PricingSection = () => {
     }
   }
 
+  const plans = PLANS[billingPeriod];
+
   return (
     <section id="pricing" className={styles.section}>
       <div className={styles.container}>
@@ -176,33 +279,52 @@ const PricingSection = () => {
           <span className={styles.badge}>Pricing</span>
           <h2 className={styles.heading}>
             Simple,
-            <span className={styles.headingAccent}>Transparent Pricing</span>
+            <span className={styles.headingAccent}> Transparent Pricing</span>
           </h2>
           <p className={styles.subtitle}>
-            Buy a plan to unlock premium product routes and operational
-            workflows. Upgrade or downgrade anytime.
+            Choose the plan that fits your team. Upgrade or downgrade anytime.
           </p>
+
+          {/* Annual/Monthly Toggle */}
+          <div className={styles.billingToggle}>
+            <button
+              className={`${styles.toggleBtn} ${billingPeriod === "monthly" ? styles.toggleActive : ""}`}
+              onClick={() => setBillingPeriod("monthly")}
+            >
+              Monthly
+            </button>
+            <button
+              className={`${styles.toggleBtn} ${billingPeriod === "annual" ? styles.toggleActive : ""}`}
+              onClick={() => setBillingPeriod("annual")}
+            >
+              Annual
+              <span className={styles.savingsBadge}>Save ~20%</span>
+            </button>
+          </div>
+
           <p className={styles.accessNote}>
-            Paid access unlocks: <strong>/reports</strong>,
-            <strong> /report/*</strong>, <strong>/workspace/*</strong>, and
-            <strong> /investor-growth/*</strong> including Campaign Dashboard,
-            Channel Execution, Posting Calendar, Investor Contacts, Investor
-            Segments, and Approval Queue.
+            Paid access unlocks: <strong>/reports</strong>,{" "}
+            <strong>/report/*</strong>, <strong>/workspace/*</strong>, and{" "}
+            <strong>/investor-growth/*</strong> — feature access depends on
+            your plan tier.
           </p>
         </div>
+
         <div className={styles.grid}>
-          {plans?.map((plan, i) => {
+          {plans.map((plan, i) => {
             const isSubscribedPlan =
-              !!plan.priceId &&
-              (activePlanPriceId === plan.priceId ||
-                (!activePlanPriceId && plan.featured));
+              hasActiveSubscription &&
+              (activePlanTier === plan.tier ||
+                (!!plan.priceId &&
+                  (activePlanPriceId === plan.priceId ||
+                    (!activePlanTier && !activePlanPriceId && plan.featured))));
 
             return (
               <div
                 key={i}
-                className={`${styles.card} ${plan?.featured ? styles.featured : ""}`}
+                className={`${styles.card} ${plan.featured ? styles.featured : ""}`}
               >
-                {plan?.featured && (
+                {plan.featured && (
                   <span className={styles.popularBadge}>Most Popular</span>
                 )}
                 <p className={styles.planName}>{plan.name}</p>
@@ -210,6 +332,10 @@ const PricingSection = () => {
                   {plan.price}
                   {plan.period ? <span>{plan.period}</span> : null}
                 </p>
+                {plan.billedAs ? (
+                  <p className={styles.billedAs}>{plan.billedAs}</p>
+                ) : null}
+                <p className={styles.seatsLabel}>{plan.seats}</p>
                 <p className={styles.planDesc}>{plan.desc}</p>
                 <ul className={styles.featureList}>
                   {plan.features.map((f, j) => (
@@ -217,6 +343,7 @@ const PricingSection = () => {
                   ))}
                 </ul>
 
+                {/* Subscription metadata for current plan */}
                 {isSubscribedPlan ? (
                   <div className={styles.subscriptionMeta}>
                     <p className={styles.subscriptionMetaItem}>
@@ -265,21 +392,47 @@ const PricingSection = () => {
                   </div>
                 ) : null}
 
-                {hasActiveSubscription && !plan.priceId ? (
-                  <button
-                    className={
-                      plan.featured ? styles.btnPrimary : styles.btnOutline
-                    }
-                    disabled
-                  >
-                    Included Plan
-                  </button>
-                ) : null}
-
-                {hasActiveSubscription &&
-                !!plan.priceId &&
-                (activePlanPriceId === plan.priceId ||
-                  (!activePlanPriceId && plan.featured)) ? (
+                {/* CTA Buttons */}
+                {plan.isEnterprise ? (
+                  // Enterprise always goes to sales flow
+                  isSubscribedPlan ? (
+                    <a
+                      href="/enterprise-inquiry"
+                      className={styles.btnOutline}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Contact Sales to Manage
+                    </a>
+                  ) : (
+                    <a
+                      href="/enterprise-inquiry"
+                      className={styles.btnOutline}
+                      style={{
+                        display: "inline-flex",
+                        alignItems: "center",
+                        justifyContent: "center",
+                        textDecoration: "none",
+                      }}
+                    >
+                      Talk to Sales
+                    </a>
+                  )
+                ) : !isSignedIn ? (
+                  <SignInButton mode="modal">
+                    <button
+                      className={
+                        plan.featured ? styles.btnPrimary : styles.btnOutline
+                      }
+                    >
+                      Sign in to Purchase
+                    </button>
+                  </SignInButton>
+                ) : isSubscribedPlan ? (
                   isCancellationScheduled ? (
                     <>
                       <button
@@ -295,6 +448,7 @@ const PricingSection = () => {
                           plan.featured ? styles.btnPrimary : styles.btnOutline
                         }
                         onClick={() => openBillingPortal("manage")}
+                        style={{ marginTop: 8 }}
                       >
                         Resume or Manage Plan
                       </button>
@@ -309,12 +463,8 @@ const PricingSection = () => {
                       Cancel Subscription
                     </button>
                   )
-                ) : null}
-
-                {hasActiveSubscription &&
-                !!plan.priceId &&
-                !!activePlanPriceId &&
-                activePlanPriceId !== plan.priceId ? (
+                ) : hasActiveSubscription && activePlanPriceId ? (
+                  // Subscribed to a different plan — show change plan
                   <button
                     className={
                       plan.featured ? styles.btnPrimary : styles.btnOutline
@@ -325,47 +475,37 @@ const PricingSection = () => {
                       ? "Resume or Change in Billing Portal"
                       : "Change Plan in Billing Portal"}
                   </button>
-                ) : null}
-
-                {!isSignedIn ? (
-                  <SignInButton mode="modal">
-                    <button
-                      className={
-                        plan.featured ? styles.btnPrimary : styles.btnOutline
-                      }
-                    >
-                      Sign in to Purchase
-                    </button>
-                  </SignInButton>
-                ) : !hasActiveSubscription && plan.priceId ? (
+                ) : plan.priceId ? (
                   <button
                     className={
                       plan.featured ? styles.btnPrimary : styles.btnOutline
                     }
                     onClick={() => startCheckout(plan.priceId)}
                   >
-                    Purchase
+                    Get Started
                   </button>
-                ) : !hasActiveSubscription ? (
-                  <a
-                    href="/contact"
+                ) : (
+                  <button
                     className={
                       plan.featured ? styles.btnPrimary : styles.btnOutline
                     }
-                    style={{
-                      display: "inline-flex",
-                      alignItems: "center",
-                      justifyContent: "center",
-                      textDecoration: "none",
-                    }}
+                    disabled
                   >
-                    Contact Sales
-                  </a>
-                ) : null}
+                    Contact Support
+                  </button>
+                )}
               </div>
             );
           })}
         </div>
+
+        <p className={styles.enterpriseNote}>
+          Enterprise subscriptions are activated manually after deal close —
+          no self-serve checkout.{" "}
+          <a href="/enterprise-inquiry" className={styles.enterpriseLink}>
+            Start the conversation →
+          </a>
+        </p>
       </div>
     </section>
   );

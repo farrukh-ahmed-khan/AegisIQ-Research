@@ -49,6 +49,37 @@ export async function POST(request: Request) {
       );
     }
 
+    // Verify the customer exists in this Stripe environment before using it
+    try {
+      await stripe.customers.retrieve(customerId);
+    } catch (stripeErr) {
+      const msg = stripeErr instanceof Error ? stripeErr.message : "";
+      if (msg.includes("No such customer")) {
+        // Clear stale customer ID from Clerk so next checkout creates a fresh one
+        await clerk.users.updateUserMetadata(userId, {
+          publicMetadata: {
+            stripeCustomerId: "",
+            subscriptionActive: false,
+            planTier: null,
+            subscription: null,
+          },
+          privateMetadata: {
+            stripeCustomerId: "",
+            stripeSubscriptionId: "",
+          },
+        });
+        return NextResponse.json(
+          {
+            error:
+              "Your previous subscription record was from a different environment and has been cleared. Please subscribe again.",
+            cleared: true,
+          },
+          { status: 400 },
+        );
+      }
+      throw stripeErr;
+    }
+
     const returnUrl = `${getBaseUrl()}/pricing`;
 
     if (action === "cancel") {

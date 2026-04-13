@@ -4,10 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { message } from "antd";
+import { useUser } from "@clerk/nextjs";
 import MetricCard from "../../../components/investor-growth/metric-card";
 import Panel from "../../../components/investor-growth/panel";
 import SectionHeader from "../../../components/investor-growth/section-header";
 import StatusBadge from "../../../components/investor-growth/status-badge";
+import UpgradePrompt from "../../../components/UpgradePrompt/UpgradePrompt";
+import { getPlanFromPublicMetadata } from "@/lib/subscription-access";
 import styles from "./approvals.module.css";
 
 type ApprovalCampaign = {
@@ -78,6 +81,10 @@ function formatDate(value: string | null): string {
 
 export default function InvestorGrowthApprovalsPage() {
   const router = useRouter();
+  const { user } = useUser();
+  const planTier = getPlanFromPublicMetadata(user?.publicMetadata);
+  const isEnterprise = planTier === "enterprise";
+
   const [data, setData] = useState<ApprovalDashboardResponse | null>(null);
   const [selectedCampaignId, setSelectedCampaignId] = useState<string | null>(
     null,
@@ -444,6 +451,17 @@ export default function InvestorGrowthApprovalsPage() {
           </Panel>
         </div>
       </div>
+
+      {/* Multi-step approvals — Enterprise only */}
+      {!isEnterprise ? (
+        <div style={{ marginTop: "2rem" }}>
+          <UpgradePrompt
+            featureName="Multi-step Approval Workflows"
+            requiredPlan="enterprise"
+            currentPlan={planTier}
+          />
+        </div>
+      ) : null}
     </div>
   );
 }

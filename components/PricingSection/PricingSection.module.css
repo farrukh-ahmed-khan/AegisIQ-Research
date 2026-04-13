@@ -218,3 +218,78 @@
   border-color: hsl(215 20% 40%);
   background: hsl(222 30% 14%);
 }
+
+/* Billing toggle */
+.billingToggle {
+  display: inline-flex;
+  gap: 4px;
+  background: hsl(222 44% 10%);
+  border: 1px solid hsl(222 30% 18%);
+  border-radius: 999px;
+  padding: 4px;
+  margin-bottom: 24px;
+}
+
+.toggleBtn {
+  padding: 8px 20px;
+  border-radius: 999px;
+  border: none;
+  background: transparent;
+  color: hsl(215 20% 60%);
+  font-size: 0.9rem;
+  font-weight: 500;
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  transition: background 0.2s, color 0.2s;
+}
+
+.toggleActive {
+  background: linear-gradient(135deg, hsl(43 80% 55%), hsl(35 75% 45%));
+  color: hsl(222 47% 6%);
+  font-weight: 700;
+}
+
+.savingsBadge {
+  display: inline-block;
+  background: hsl(140 60% 40% / 0.2);
+  border: 1px solid hsl(140 60% 40% / 0.4);
+  color: hsl(140 60% 65%);
+  border-radius: 999px;
+  font-size: 0.72rem;
+  font-weight: 700;
+  padding: 2px 8px;
+}
+
+.billedAs {
+  font-size: 0.82rem;
+  color: hsl(43 85% 70%);
+  margin-bottom: 4px;
+  font-weight: 600;
+}
+
+.seatsLabel {
+  font-size: 0.8rem;
+  color: hsl(215 20% 55%);
+  margin-bottom: 16px;
+  font-weight: 500;
+}
+
+/* Enterprise note footer */
+.enterpriseNote {
+  text-align: center;
+  margin-top: 40px;
+  font-size: 0.88rem;
+  color: hsl(215 20% 55%);
+}
+
+.enterpriseLink {
+  color: hsl(43 85% 70%);
+  text-decoration: none;
+  font-weight: 600;
+}
+
+.enterpriseLink:hover {
+  text-decoration: underline;
+}
