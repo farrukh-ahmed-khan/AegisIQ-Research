@@ -858,6 +858,7 @@ Checkout UX behavior:
 Subscription state source:
 
 - Stripe status is synced into Clerk metadata (`publicMetadata.subscription` and `publicMetadata.subscriptionActive`)
+- Plan tier (`starter`, `pro`, `enterprise`) is also stored and used for server-side feature gating.
 - Active statuses considered: `active`, `trialing`
 
 Protected access behavior:
@@ -876,12 +877,12 @@ Protected routes include:
 Required environment variables for payments:
 
 ```dotenv
-STRIPE_SECRET_KEY=
-STRIPE_PUBLISHABLE_KEY=
-WEBHOOK_SECRET=
-NEXT_PUBLIC_STRIPE_PRICE_PRO=
-NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE=
-NEXT_PUBLIC_APP_URL=
+NEXT_PUBLIC_STRIPE_PRICE_STARTER_MONTHLY=
+NEXT_PUBLIC_STRIPE_PRICE_STARTER_ANNUAL=
+NEXT_PUBLIC_STRIPE_PRICE_PRO_MONTHLY=
+NEXT_PUBLIC_STRIPE_PRICE_PRO_ANNUAL=
+NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE_MONTHLY=
+NEXT_PUBLIC_STRIPE_PRICE_ENTERPRISE_ANNUAL=
 ```
 
 Stripe webhook endpoint (Netlify deployment):
@@ -896,6 +897,193 @@ Recommended Stripe webhook events:
 - `customer.subscription.created`
 - `customer.subscription.updated`
 - `customer.subscription.deleted`
+- - invoice.payment_failed
+- invoice.payment_succeeded
+- customer.subscription.trial_will_end
+
+💳 Stripe Integration — Tiered Subscription & Access Control (Updated)
+
+The AegisIQ platform now supports a fully tiered subscription model with differentiated feature access, seat enforcement, and server-side gating.
+
+This replaces the previous “all subscribers = full access” model.
+
+Subscription Plans
+Starter
+$99/month
+$948/year (annual billing)
+1 seat (hard limit)
+Optional 7-day trial
+Pro
+$499/month
+$4,788/year (annual billing)
+3 seats included
+Enterprise
+$2,500/month
+$23,940/year (annual billing)
+Custom seat limits (defined per contract)
+Sales-led onboarding (no self-serve checkout)
+Feature Access Control Model
+
+Access is enforced server-side using plan-based gating. Client-side checks are used only for UI states.
+
+Plan Hierarchy
+starter < pro < enterprise
+Feature Flag System
+const FEATURE_FLAGS = {
+  reports:                    ['starter', 'pro', 'enterprise'],
+  ai_report_builder:          ['starter', 'pro', 'enterprise'], // rate-limited on starter
+  campaign_dashboard:         ['pro', 'enterprise'],
+  ai_campaign_generation:     ['pro', 'enterprise'],
+  channel_execution:          ['pro', 'enterprise'],
+  posting_calendar:           ['pro', 'enterprise'],
+  investor_contacts:          ['pro', 'enterprise'],
+  investor_segments:          ['pro', 'enterprise'],
+  crm_timeline:               ['pro', 'enterprise'],
+  approval_queue_standard:    ['pro', 'enterprise'],
+  campaign_analytics:         ['pro', 'enterprise'],
+  standard_exports:           ['pro', 'enterprise'],
+
+  // Enterprise-only
+  enrichment_connectors:      ['enterprise'],
+  multi_step_approvals:       ['enterprise'],
+  compliance_holds:           ['enterprise'],
+  role_based_permissions:     ['enterprise'],
+  ir_analytics_workspace:     ['enterprise'],
+  audit_exports:              ['enterprise'],
+  board_exports:              ['enterprise'],
+  crm_api_integrations:       ['enterprise'],
+  deal_room_hooks:            ['enterprise'],
+};
+Middleware-Based Plan Enforcement
+
+All protected routes are validated using server-side middleware:
+
+function requirePlan(minimumPlan) {
+  const planRank = { starter: 1, pro: 2, enterprise: 3 };
+
+  return (req, res, next) => {
+    const userPlan = req.user?.subscription?.plan;
+
+    if (!userPlan || planRank[userPlan] < planRank[minimumPlan]) {
+      return res.status(403).json({
+        error: 'upgrade_required',
+        required: minimumPlan,
+        current: userPlan || 'free'
+      });
+    }
+
+    next();
+  };
+}
+Example Route Protection
+router.get('/campaign-dashboard', requirePlan('pro'));
+router.get('/approval-queue/multi-step', requirePlan('enterprise'));
+router.get('/ir-analytics', requirePlan('enterprise'));
+AI Report Builder — Starter Rate Limiting
+
+Starter users are limited to 3 AI-generated reports per calendar month.
+
+Implementation
+Table: ai_report_usage
+Fields: user_id, month, count
+Behavior
+On generation: check usage count
+If exceeded → return 402 upgrade_required
+UI displays usage progress
+
+Pro and Enterprise users have unlimited access.
+
+Approval Workflow Tiering
+
+Approval functionality is split into two levels:
+
+Pro
+Standard approval queue
+Single-step approvals
+Enterprise
+Multi-step approval chains
+Compliance hold states
+Role-based approval routing
+Full audit trail
+Seat Enforcement
+Starter
+Maximum: 1 user
+Additional invites are blocked
+Pro
+Includes 3 seats
+4th user triggers upgrade or add-on prompt
+Enterprise
+Seat limit stored in Stripe metadata (seats_limit)
+Enforced server-side
+Enterprise Sales Flow
+
+Enterprise subscriptions are not handled via Stripe Checkout.
+
+Flow
+CTA routes to /enterprise-inquiry or scheduling flow
+User submits:
+Name
+Company
+Role
+Team size
+Use case
+Sales team provisions subscription manually via Stripe
+Access Behavior
+Enterprise features remain locked until activation
+UI shows: “Contact sales to activate Enterprise”
+Annual Billing Support
+
+Pricing toggle dynamically selects the correct Stripe price ID:
+
+const priceId = billingPeriod === 'annual'
+  ? PRICE_IDS[plan].annual
+  : PRICE_IDS[plan].monthly;
+Checkout Behavior
+Subscription mode enabled
+Seats passed as quantity
+Metadata includes plan + billing period
+Stripe Webhooks (Critical)
+
+The system relies on Stripe webhooks for real-time access control.
+
+Implemented Events
+Event	Behavior
+checkout.session.completed	Activate subscription + assign plan
+customer.subscription.updated	Sync plan changes
+customer.subscription.deleted	Revoke access immediately
+invoice.payment_failed	Start grace period
+invoice.payment_succeeded	Restore active status
+customer.subscription.trial_will_end	Trigger reminder notifications
+Critical Requirement
+
+Access must be updated immediately on webhook receipt, not on next login.
+
+Upgrade & Locked States
+
+All restricted features display a consistent upgrade UI:
+
+Clear messaging explaining restriction
+Required plan level shown
+CTA:
+Starter → “Upgrade to Pro”
+Pro → “Talk to Enterprise Sales”
+
+The system never silently fails or returns 404 for gated features.
+
+Result
+
+With this update, AegisIQ now includes:
+
+Fully tiered subscription model
+Server-enforced feature access
+Seat-based access control
+Usage-based AI limits
+Enterprise sales workflow
+Real-time subscription lifecycle handling
+
+This establishes a production-grade SaaS monetization and access control system aligned with institutional SaaS standards.
+
+
 
 ---
 
