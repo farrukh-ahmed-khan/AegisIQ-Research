@@ -14,6 +14,7 @@ function asRecord(value: unknown): Record<string, unknown> {
     : {};
 }
 
+
 function asString(value: unknown): string {
   return typeof value === "string" ? value : "";
 }
